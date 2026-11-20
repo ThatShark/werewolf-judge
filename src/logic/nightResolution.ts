@@ -1,3 +1,9 @@
+import {
+  applyWolfBeautyCharmDeath,
+  canDreamCatcherDream,
+  canWolfBeautyCharm,
+  evaluateBearRoar,
+} from './advancedRoles';
 import { checkCanShoot } from './dayResolution';
 import {
   applyMechWolfLearn,
@@ -137,6 +143,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     lastGuardedSeat,
     mechWolfState,
     pendingSelfExplodeSeat,
+    lastCharmedSeat = null,
+    lastDreamTarget = null,
   } = input;
 
   let updatedSeats = initialSeats.map((seat) => ({ ...seat }));
@@ -144,6 +152,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let nextWitchAntidoteUsed = witchAntidoteUsed;
   let nextWitchPoisonUsed = witchPoisonUsed;
   let nextLastGuardedSeat = lastGuardedSeat;
+  let nextLastCharmedSeat = lastCharmedSeat;
+  let nextActiveCharmedSeat: number | null = null;
+  let nextLastDreamTarget: number | null = lastDreamTarget;
   const deaths: NightDeathRecord[] = [];
 
   // 1. 機械狼第一晚學習（在通靈師查驗前執行，使當晚通靈師查驗即可反映所學身分）
@@ -174,6 +185,43 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
     nextLastGuardedSeat = draft.guardTarget;
   }
+
+  // 2.5 攝夢人行動檢核（若未填寫目標則允許跳過以相容純主持台詞板子；填寫時嚴格檢核不可夢自己／死人）
+  const aliveDreamCatcher = updatedSeats.find(
+    (seat) => seat.roleId === 'dream_catcher' && seat.isAlive,
+  );
+  let dreamTarget: number | null = null;
+  if (aliveDreamCatcher) {
+    const requestedDreamTarget = draft.dreamCatcherTarget ?? null;
+    const dreamCheck = canDreamCatcherDream(updatedSeats, requestedDreamTarget, {
+      allowSkip: true,
+    });
+    if (!dreamCheck.allowed) {
+      throw new Error(dreamCheck.reason);
+    }
+    dreamTarget = requestedDreamTarget;
+    nextLastDreamTarget = dreamTarget;
+  }
+
+  // 2.6 狼美人行動檢核（不可自刀、不可連魅）
+  const aliveWolfBeauty = updatedSeats.find(
+    (seat) => seat.roleId === 'wolf_beauty' && seat.isAlive,
+  );
+  if (aliveWolfBeauty) {
+    if (draft.wolfTarget === aliveWolfBeauty.seatNumber) {
+      throw new Error('狼美人不可自刀');
+    }
+    const requestedCharmTarget = draft.wolfBeautyCharmTarget ?? null;
+    const charmCheck = canWolfBeautyCharm(updatedSeats, lastCharmedSeat, requestedCharmTarget);
+    if (!charmCheck.allowed) {
+      throw new Error(charmCheck.reason);
+    }
+    nextLastCharmedSeat = requestedCharmTarget;
+    nextActiveCharmedSeat = requestedCharmTarget;
+  }
+
+  const isDreamProtected = (seatNumber: number): boolean =>
+    dreamTarget !== null && seatNumber === dreamTarget;
 
   // 3. 機械狼第二晚起學習技能檢核
   let mechGuardTarget: number | null = null;
@@ -241,8 +289,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextWitchPoisonUsed = true;
   }
 
-  // 5. 狼刀階段結算（含同守同救奶穿、機械狼雙刀、自爆狼點刀後死亡）
-  if (draft.wolfTarget !== null) {
+  // 5. 狼刀階段結算（含夢遊者免疫夜間傷害、同守同救奶穿、機械狼雙刀、自爆狼點刀後死亡）
+  if (draft.wolfTarget !== null && !isDreamProtected(draft.wolfTarget)) {
     const guardedByNormal = hasAliveGuard && draft.guardTarget === draft.wolfTarget;
     const guardedByMech = mechGuardTarget === draft.wolfTarget;
     const isGuarded = guardedByNormal || guardedByMech;
@@ -254,7 +302,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  if (mechExtraKillTarget !== null) {
+  if (mechExtraKillTarget !== null && !isDreamProtected(mechExtraKillTarget)) {
     const guardedByNormal = hasAliveGuard && draft.guardTarget === mechExtraKillTarget;
     if (!guardedByNormal) {
       updatedSeats = killSeat(updatedSeats, deaths, mechExtraKillTarget, 'mech_wolf_kill', round);
@@ -294,6 +342,10 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         lastGuardedSeat: nextLastGuardedSeat,
         mechWolfState: nextMechWolfState,
         pendingSelfExplodeSeat: null,
+        lastCharmedSeat: nextLastCharmedSeat,
+        activeCharmedSeat: nextActiveCharmedSeat,
+        lastDreamTarget: nextLastDreamTarget,
+        bearRoar: evaluateBearRoar(updatedSeats, nextMechWolfState),
         seerResult,
         psychicResult,
         mechWolfPsychicResult,
@@ -303,8 +355,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 8. 毒藥階段結算（普通守衛不防毒；機械狼學守衛之機械盾可防女巫毒藥）
-  if (draft.witchPoisonTarget !== null) {
+  // 8. 毒藥階段結算（普通守衛不防毒；機械狼學守衛之機械盾可防女巫毒藥；夢遊者免疫毒藥）
+  if (draft.witchPoisonTarget !== null && !isDreamProtected(draft.witchPoisonTarget)) {
     const blockedByMechShield = mechGuardTarget === draft.witchPoisonTarget;
     if (!blockedByMechShield) {
       updatedSeats = killSeat(
@@ -319,10 +371,54 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   if (mechPoisonTarget !== null) {
     nextMechWolfState.usedLearnedOneShotSkill = true;
-    updatedSeats = killSeat(updatedSeats, deaths, mechPoisonTarget, 'mech_wolf_poison', round);
+    if (!isDreamProtected(mechPoisonTarget)) {
+      updatedSeats = killSeat(updatedSeats, deaths, mechPoisonTarget, 'mech_wolf_poison', round);
+    }
   }
 
-  // 9. 更新機械狼入隊狀態、開槍資格與最終勝負
+  // 8.5 攝夢人連夢致死與夜死牽連共死（出局之夢遊者無法發動技能）
+  if (aliveDreamCatcher && dreamTarget !== null) {
+    const isConsecutiveDream = lastDreamTarget !== null && dreamTarget === lastDreamTarget;
+    const dreamCatcherNow = updatedSeats.find(
+      (seat) => seat.seatNumber === aliveDreamCatcher.seatNumber,
+    );
+    const dreamCatcherDiedTonight = dreamCatcherNow ? !dreamCatcherNow.isAlive : false;
+
+    if (isConsecutiveDream) {
+      updatedSeats = killSeat(
+        updatedSeats,
+        deaths,
+        dreamTarget,
+        'dream_catcher_consecutive',
+        round,
+      );
+    } else if (dreamCatcherDiedTonight) {
+      updatedSeats = killSeat(updatedSeats, deaths, dreamTarget, 'dream_catcher_link', round);
+    }
+  }
+
+  // 8.6 狼美人夜死殉情結算（魅惑對象跟著殉情且無法發動技能）
+  let hadWolfBeautyCharmDeath = false;
+  if (aliveWolfBeauty) {
+    const wolfBeautyDeath = deaths.find((d) => d.seat === aliveWolfBeauty.seatNumber);
+    if (wolfBeautyDeath) {
+      const charmOutcome = applyWolfBeautyCharmDeath(
+        updatedSeats,
+        aliveWolfBeauty.seatNumber,
+        wolfBeautyDeath.reason,
+        nextActiveCharmedSeat,
+        round,
+      );
+      if (charmOutcome.charmedDeathSeat !== null) {
+        updatedSeats = charmOutcome.seats;
+        deaths.push({ seat: charmOutcome.charmedDeathSeat, reason: 'wolf_beauty_charm' });
+        nextActiveCharmedSeat = null;
+        hadWolfBeautyCharmDeath = true;
+      }
+    }
+  }
+
+  // 9. 更新機械狼入隊狀態、開槍資格、熊咆哮判定與最終勝負
   nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
 
   const shootEligibilities: ShootEligibility[] = [];
@@ -333,7 +429,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  const victory = checkVictory(updatedSeats, ruleOverrides);
+  const bearRoar = evaluateBearRoar(updatedSeats, nextMechWolfState);
+  const victory = checkVictory(
+    updatedSeats,
+    hadWolfBeautyCharmDeath ? { ...ruleOverrides, wolfKillPriority: true } : ruleOverrides,
+  );
 
   return {
     seats: updatedSeats,
@@ -343,6 +443,10 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     lastGuardedSeat: nextLastGuardedSeat,
     mechWolfState: nextMechWolfState,
     pendingSelfExplodeSeat: null,
+    lastCharmedSeat: nextLastCharmedSeat,
+    activeCharmedSeat: nextActiveCharmedSeat,
+    lastDreamTarget: nextLastDreamTarget,
+    bearRoar,
     seerResult,
     psychicResult,
     mechWolfPsychicResult,

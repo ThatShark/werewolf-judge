@@ -82,7 +82,9 @@ export type NightActionType =
   | 'mech_wolf_learn'         // 機械狼首夜選擇學習對象
   | 'mech_wolf_reveal_skill'  // 機械狼首夜尾聲確認學到的技能
   | 'mech_wolf_night_action'  // 機械狼第二晚起入隊手勢與技能使用
-  | 'confirm_only';           // 僅確認身分（如首夜白痴確認）
+  | 'wolf_beauty_charm'       // 狼美人選擇魅惑對象（不可連魅、不可自魅）
+  | 'dream_catcher_dream'     // 攝夢人強制選擇夢遊者（不可夢自己）
+  | 'confirm_only';           // 僅確認身分（如首夜白痴／熊確認）
 
 export interface NightStepScript {
   stepId: string;
@@ -165,15 +167,22 @@ export type GamePhase =
   | 'game_over';        // 遊戲結束與復盤紀錄
 
 export type DeathReason =
-  | 'wolf_kill'         // 狼刀
-  | 'witch_poison'      // 女巫毒殺
-  | 'milk_pierce'       // 同守同救奶穿
-  | 'exiled'            // 白天放逐
-  | 'hunter_shoot'      // 獵人開槍
-  | 'wolf_king_shoot'   // 狼王開槍
-  | 'self_explode'      // 狼人自爆
-  | 'mech_wolf_poison'  // 機械狼（學女巫）毒殺
-  | 'mech_wolf_kill';   // 機械狼額外刀口
+  | 'wolf_kill'                  // 狼刀
+  | 'witch_poison'               // 女巫毒殺
+  | 'milk_pierce'                // 同守同救奶穿
+  | 'exiled'                     // 白天放逐
+  | 'hunter_shoot'               // 獵人開槍
+  | 'wolf_king_shoot'            // 狼王開槍
+  | 'self_explode'               // 狼人自爆
+  | 'white_wolf_king_explode'    // 白狼王自爆帶走
+  | 'wolf_beauty_charm'          // 狼美人殉情帶走
+  | 'knight_duel'                // 騎士決鬥撞狼淘汰
+  | 'knight_duel_fail'           // 騎士決鬥撞好人以死謝罪
+  | 'dream_catcher_consecutive'  // 攝夢人連續兩晚夢死
+  | 'dream_catcher_link'         // 攝夢人夜死牽連夢遊者共死
+  | 'mech_wolf_poison'           // 機械狼（學女巫）毒殺
+  | 'mech_wolf_kill'             // 機械狼額外刀口
+  | 'manual_judge';              // 法官手動標記出局
 
 export interface PlayerSeat {
   seatNumber: number;           // 1..N
@@ -204,6 +213,103 @@ export interface NightActionDraft {
   psychicCheckTarget: number | null;   // 通靈師查驗對象
   mechWolfLearnTarget: number | null;  // 機械狼首夜學習對象
   mechWolfSkillTarget: number | null;  // 機械狼使用學習技能目標（毒／守／查／雙刀）
+  wolfBeautyCharmTarget: number | null;// 狼美人魅惑對象（不可連魅、不可自魅）
+  dreamCatcherTarget: number | null;   // 攝夢人夢遊者對象（強制選自己以外存活者）
+}
+
+/** 熊天亮自動咆哮判定結果 */
+export interface BearRoarResult {
+  bearSeat: number | null;
+  bearAlive: boolean;
+  leftNeighborSeat: number | null;     // 順時針最近存活鄰居
+  rightNeighborSeat: number | null;    // 逆時針最近存活鄰居
+  roared: boolean;
+  reason: string;
+}
+
+/** 發言順序與單人計時模型（src/logic/speakingOrder.ts） */
+export type SpeakingDirection = 'clockwise' | 'counterclockwise'; // clockwise=座號遞增(左), counterclockwise=座號遞減(右)
+export type SpeakingOrderMode =
+  | 'random'        // 隨機起點 + 隨機方向（警上發言／無警長平安夜）
+  | 'sheriff_left'  // 警左（警長最後歸票）
+  | 'sheriff_right' // 警右（警長最後歸票）
+  | 'dead_left'     // 死左（可指定基準死者；若有警長則警長壓軸）
+  | 'dead_right';   // 死右（可指定基準死者；若有警長則警長壓軸）
+
+export interface SpeakingOrderResult {
+  mode: SpeakingOrderMode;
+  direction: SpeakingDirection;
+  startSeat: number | null;
+  anchorSeat: number | null;           // 警長座位或基準死者座位
+  sheriffLastSeat: number | null;      // 排在最後的歸票位警長
+  queue: number[];
+}
+
+/** 警長競選與警徽狀態模型（src/logic/sheriff.ts） */
+export type SheriffStatus =
+  | 'not_started'
+  | 'sign_up'
+  | 'speaking'
+  | 'voting'
+  | 'pk_speaking'
+  | 'pk_voting'
+  | 'elected'
+  | 'swallowed'
+  | 'no_sheriff';
+
+export type BadgeStatus = 'none' | 'active' | 'destroyed' | 'swallowed';
+
+export interface VoteRoundRecord {
+  roundIndex: number;                          // 1=首輪投票, 2+=PK 輪
+  votes: Record<number, number | null>;        // voterSeat -> targetSeat | null(棄票)
+  totals: Record<number, number>;              // targetSeat -> 總票數
+  votersByTarget: Record<number, number[]>;    // targetSeat -> 投給他的座位列表
+  abstainers: number[];                        // 棄票座位列表
+  extraVotes?: Record<number, number>;         // 預留額外票數接口（如烏鴉 +1 票）
+  tiedSeats: number[];                         // 若平票，列出最高票候選人
+  electedSeat: number | null;                  // 若唯一最高票，列出結果座位
+}
+
+export interface SheriffState {
+  status: SheriffStatus;
+  sheriffSeat: number | null;
+  badgeStatus: BadgeStatus;
+  candidates: number[];                        // 仍在競選中的上警候選人
+  withdrawnSeats: number[];                    // 已退水座位（無警下投票權）
+  pkCandidates: number[];                      // 平票 PK 名單
+  voteRounds: VoteRoundRecord[];               // 警下與 PK 投票明細
+  pendingBadgeTransferFrom: number | null;     // 警長出局等待移交／撕毀警徽
+}
+
+/** 結構化白天事件（供復盤時間軸與 UI 渲染） */
+export type DayStructuredEventType =
+  | 'sheriff_signup'
+  | 'sheriff_withdraw'
+  | 'sheriff_vote'
+  | 'sheriff_elected'
+  | 'sheriff_swallowed'
+  | 'sheriff_no_winner'
+  | 'badge_transfer'
+  | 'badge_destroy'
+  | 'exile_vote'
+  | 'exile_pk'
+  | 'exile_result'
+  | 'idiot_reveal'
+  | 'hunter_shoot'
+  | 'wolf_king_shoot'
+  | 'self_explode'
+  | 'white_wolf_king_explode'
+  | 'knight_duel'
+  | 'wolf_beauty_charm_death'
+  | 'manual_judge'
+  | 'declare_winner';
+
+export interface DayStructuredEvent {
+  type: DayStructuredEventType;
+  summary: string;
+  actorSeat?: number | null;
+  targetSeat?: number | null;
+  voteRecord?: VoteRoundRecord;
 }
 
 export interface GameState {
@@ -225,9 +331,36 @@ export interface GameState {
   /** 若白天有狼人自爆，記錄其座位（當晚點刀後正式死亡） */
   pendingSelfExplodeSeat: number | null;
 
+  /** 高頻進階角色運行時狀態 */
+  lastCharmedSeat: number | null;       // 狼美人上一晚魅惑對象（防連魅）
+  activeCharmedSeat: number | null;     // 狼美人目前生效之魅惑對象（出局時殉情）
+  lastDreamTarget: number | null;       // 攝夢人上一晚夢遊者（連兩晚夢死判定）
+  knightDuelUsed: boolean;              // 騎士是否已使用過翻牌決鬥
+  lastBearRoar: BearRoarResult | null;  // 最近一次天亮熊咆哮判定結果
+
+  /** 自動發言順序與單人倒數計時引擎 */
+  speakingQueue: number[];
+  currentSpeakerIndex: number;
+  speakingMeta: SpeakingOrderResult | null;
+  defaultSpeakDurationSec: number;      // 預設 60 / 90 / 120 秒可調（預設 90）
+  remainingSeconds: number;
+
+  /** 警長競選、警徽與白天放逐投票狀態 */
+  sheriffState: SheriffState;
+  exilePkCandidates: number[];          // 當日白天放逐平票 PK 名單
+
   /** 歷史紀錄與勝負 */
-  nightHistory: Array<{ round: number; draft: NightActionDraft; deaths: Array<{ seat: number; reason: DeathReason }> }>;
-  dayHistory: Array<{ round: number; events: string[] }>;
+  nightHistory: Array<{
+    round: number;
+    draft: NightActionDraft;
+    deaths: Array<{ seat: number; reason: DeathReason }>;
+    bearRoar?: BearRoarResult | null;
+  }>;
+  dayHistory: Array<{
+    round: number;
+    events: string[];
+    structuredEvents?: DayStructuredEvent[];
+  }>;
   winner: Faction | null;
   winReason: string | null;
 }
@@ -274,16 +407,27 @@ export interface GameState {
    - 不合法目標自動鎖定並標註原因（例如守衛不可連守昨晚目標、女巫首夜不可自救若開關關閉、機械狼不可學自己）。
    - 最後一步點擊「結束今夜 ➜ 天亮結算」時須顯示操作摘要並進行二次確認。
 
-### 4.4 天亮結算與白天階段（Day Resolution & Voting）
-1. **天亮公告卡**：
-   - 明確顯示「昨晚平安夜」或「昨晚死亡玩家：X 號、Y 號」（法官視角可查看死因如狼刀／毒殺／奶穿，避免誤報）。
-   - 若死者為獵人或狼王，系統自動依規則顯示「✅ 可開槍」或「❌ 不可開槍（原因：被毒殺／最後一狼／自爆）」，並提供「發動開槍帶走目標」或「壓槍不開」按鈕。
-2. **白天放逐與自爆**：
-   - 提供「放逐投票出局」與「狼人自爆」兩個明確區隔的操作區（皆需二次確認）。
-   - 若白痴被放逐：自動觸發翻牌免死流程（標記 `idiotRevealed = true`、保留存活、標示「無投票權」）。
-   - 若狼人自爆：強制跳轉進入下一晚，並標記該狼人「當晚完成點刀後正式死亡」（狼王自爆不可開槍）。
-3. **自動勝負判定**：
-   - 每次夜晚結算、開槍結算或白天放逐後自動執行勝負判定，觸發「狼刀在先」或屠邊條件時立即提示勝負結果與原因。
+### 4.4 天亮結算與白天完整流程（Day Resolution, Speaking Order & Voting）
+1. **天亮公告卡與熊咆哮提示**：
+   - 明確顯示「昨晚平安夜」或「昨晚死亡玩家：X 號、Y 號」（法官視角可查看死因如狼刀／毒殺／奶穿／攝夢連夢／攝夢牽連／狼美人殉情，避免誤報）。
+   - 若場上有「熊」，系統自動依天亮存活座位計算左右最近存活鄰居是否含狼，直接呈現「🐻 熊咆哮了」或「🐻 熊沒有咆哮」及判定依據。
+   - 若死者為獵人或狼王，系統自動依規則顯示「✅ 可開槍」或「❌ 不可開槍（原因：被毒殺／被攝夢夢死或牽連／狼美人殉情／最後一狼／自爆）」，並提供「發動開槍帶走目標」或「壓槍不開」按鈕。
+2. **警長競選與警徽交接（Sheriff Election & Badge）**：
+   - 支援完整警上流程：記錄**上警名單**、**退水名單**（退水者失去警下投票權；若僅餘 1 名候選人可直接當選）、**警下投票明細（誰投誰／棄票）**、**平票 PK**、**當選警長**。
+   - **警上自爆吞警徽**：警長競選進行期間若發生普通狼人或白狼王自爆，自動判定「吞警徽（本局無警長）」並強制入夜，完整寫入復盤時間軸。
+   - **警徽交牌與撕毀**：警長因任何原因出局時，自動進入待處理警徽狀態，法官可記錄「移交警徽給指定存活座位」或「撕毀警徽」。
+3. **自動抽取發言順序與單人倒數計時引擎**：
+   - **隨機抽取模式**：適用於警上候選人發言（僅抽上警名單）或無警長之平安夜（全體存活玩家），隨機抽出起始存活座位與方向（順時針＝座號遞增／逆時針＝座號遞減），自動跳過已出局玩家。
+   - **警長指定模式**：支援「警左／警右」與「死左／死右（昨夜多死時可指定基準死者座位）」，自動跳過已出局玩家並將警長排於最後一位（歸票位）。
+   - **單人倒數計時器**：預設 60 / 90 / 120 秒可調（預設 90 秒），提供「生成發言順序」、「下一位發言」以及即時加減秒數（如 `+10s` / `-10s`），全部持久化至 Zustand Store。
+4. **放逐投票明細與計票**：
+   - 記錄每位具投票權之存活玩家（自動排除已翻牌無投票權之白痴）的投票對象或棄票。
+   - 自動計票（警長預設 `1.5` 票權重，並預留烏鴉額外 `+1` 票 `extraVotes` 接口），自動判定最高票放逐、平票 PK 或平安日（無人出局／二次 PK 平票）。
+5. **白天突發技能與結構化復盤**：
+   - 結構化記錄並自動結算：「普通狼人自爆」、「白狼王自爆帶走目標（被帶走者無法發動技能，強制入夜）」、「騎士翻牌決鬥目標（撞狼直接淘汰目標且不觸發死亡技能並立即入夜；撞好人騎士自刎並繼續白天）」、「白痴翻牌免死」。
+   - 所有事件同步寫入 `dayHistory.events`（人類可讀摘要）與 `dayHistory.structuredEvents`（結構化票型與行動紀錄）。
+6. **自動勝負判定**：
+   - 每次夜晚結算、開槍結算、騎士決鬥、白狼王自爆帶人、狼美人殉情或白天放逐後自動執行勝負判定，觸發「狼刀在先」或屠邊條件時立即提示勝負結果與原因。
 
 ---
 
@@ -348,6 +492,30 @@ export interface GameState {
      - 當所有小狼皆出局且機械狼仍存活時，自動切換 `hasJoinedWolfTeam = true`，次晚主持提示「入隊手勢」並解鎖狼刀（與學小狼之雙刀）。
   5. **勝負計算**：機械狼屬於狼人陣營，好人需淘汰所有小狼**與**機械狼方能獲勝。
 
+### 核心引擎與白天完整流程升級（Phase 1.5 驗證基準）
+
+在既有 10 個核心角色與 3 個 MVP 板子之上，擴充白天完整流程引擎與 5 個高頻進階角色之「誰對誰做了什麼」自動結算規則：
+
+1. **自動抽取發言順序與計時引擎（`src/logic/speakingOrder.ts`）**：
+   - 環狀方向：`clockwise`（順時針／座號遞增／警左與死左）、`counterclockwise`（逆時針／座號遞減／警右與死右），一律自動跳過 `isAlive === false` 的出局座位。
+   - **隨機抽取模式**：可限定 `candidateSeats`（警上發言）或全體存活玩家（無警長平安夜），隨機抽取起始座位與方向（支援注入 `rng` 供決定性測試）。
+   - **警長指定模式**：支援 `sheriff_left`、`sheriff_right`、`dead_left`、`dead_right`（多死時可指定 `referenceDeadSeat`），若有存活警長一律將警長排於佇列最後一位（歸票位）。
+   - Store 狀態支援 `speakingQueue`、`currentSpeakerIndex`、`defaultSpeakDurationSec`（60/90/120 秒可調）、`remainingSeconds`，以及生成順序、下一位、`+10s`/`-10s` 調時。
+2. **警長競選、吞警徽與警徽交接（`src/logic/sheriff.ts`）**：
+   - 記錄上警、退水（退水後無警下投票權）、警下投票明細（誰投誰／棄票）、平票 PK、當選警長。
+   - 警上競選期間發生任何狼人自爆（含白狼王自爆）➜ 自動判定「吞警徽（本局無警長）」並強制入夜。
+   - 警長出局時觸發待移交狀態，支援移交給指定存活玩家或撕毀警徽。
+3. **放逐投票明細與計票（`src/logic/voting.ts`）**：
+   - 自動排除已翻牌無投票權之白痴。
+   - 警長持有警徽且存活時具 `1.5` 票權重（可參數化覆寫）；預留烏鴉額外 `+1` 票（`extraVotes`）接口。
+   - 自動計票並產出最高票放逐、平票 PK 或平安日結果，同步寫入結構化復盤時間軸。
+4. **五個高頻進階角色自動結算規則**：
+   - **白狼王（`white_wolf_king`）**：白天可隨時亮牌自爆並立即帶走一名存活玩家（被帶走者無法發動技能，例如獵人不可開槍），立即檢查勝負；若未結束則強制入夜，白狼王本身於當晚點刀後死亡。若於警上自爆，亦觸發吞警徽。
+   - **狼美人（`wolf_beauty`）**：不可自爆、不可自刀；每晚於狼刀後魅惑一名自己以外的存活玩家，不可連續兩晚魅惑同一人。除「與騎士決鬥出局（`knight_duel`）」外，狼美人以任何方式出局（夜死、放逐、開槍，包含作為最後一狼出局），前一晚魅惑之存活對象皆跟著殉情（`wolf_beauty_charm`）且無法發動技能；若因殉情達成屠邊，狼人獲勝。
+   - **騎士（`knight`）**：整局限一次，白天翻牌決鬥一名存活玩家：撞狼則該狼即時出局（`knight_duel`）且不能發動死亡技能（狼王不開槍、狼美人不殉情），未結束則直接進入夜晚；撞好人（或非狼）則騎士以死謝罪（`knight_duel_fail`），繼續白天流程。
+   - **攝夢人（`dream_catcher`）**：每晚強制選擇自己以外一名存活玩家成為夢遊者（當晚免疫狼刀與女巫毒藥，且不觸發奶穿）。若連續兩晚夢同一人，該夢遊者於天亮夢死（`dream_catcher_consecutive`）且無技能；若攝夢人本晚夜死，當晚夢遊者牽連共死（`dream_catcher_link`）且無技能。
+   - **熊（`bear`）**：每次天亮於所有夜間死亡結算完畢後自動判定：熊死亡則不咆哮；熊存活則尋找其順時針（左）與逆時針（右）最近之兩位存活玩家，若任一人為狼人陣營（機械狼若已學習好人身分則視同好人不咆哮），則熊咆哮，否則不咆哮。
+
 ---
 
 ## 6. 開發階段規劃（Roadmap）
@@ -357,6 +525,10 @@ export interface GameState {
    - 實作純函式規則引擎（夜間結算、開槍判定、白痴免死、機械狼學習／查驗／入隊、狼刀在先勝負判定）並完成完整 Vitest 測試套件（`npm run test` 全綠）。
    - 建立 Zustand + `persist` Store（含暱稱保留／清空重開機制）。
    - 實作 Mobile-First 暗黑 UI：開局選板子（人數篩選＋關鍵字搜尋＋規則開關）、座位暱稱與身分分配、夜間主持控制台（台詞卡＋Q&A 抽屜）、天亮結算與白天投票。
-2. **Phase 2（全量 142 板子匯入與進階角色擴充）**：
-   - 撰寫離線解析腳本，將 `docs/boards-raw.md` 全數 142 個板子的配置、台詞與 77 份 Q&A 自動轉換為結構化資料。
-   - 依角色出現頻率分批擴充高頻進階技能（如攝夢人、騎士、熊、狼美人、白狼王、夢魘、混血兒等），同時支援「純主持台詞模式」讓尚未實作自動結算的特殊板子也能立即使用。
+2. **Phase 1.5（核心引擎與白天完整流程升級）**：
+   - 實作環狀發言順序自動抽取與單人倒數計時引擎（`src/logic/speakingOrder.ts` & `gameStore.ts`）。
+   - 實作白天完整行為與投票紀錄系統（警長競選、吞警徽、警徽移交／撕毀、放逐投票明細與烏鴉 `+1` 票接口、白天突發技能與結構化復盤時間軸）。
+   - 擴充 5 個高頻進階角色自動結算規則（白狼王、狼美人、騎士、攝夢人、熊），並補齊對應 Vitest 單元測試門禁。
+3. **Phase 2（全量 142 板子匯入與進階角色持續擴充）**：
+   - 維護離線解析腳本，將 `docs/boards-raw.md` 全數 142 個板子的配置、台詞與 77 份 Q&A 自動轉換為結構化資料，並將已支援自動結算的角色步驟對應至專屬 `NightActionType`。
+   - 持續依角色出現頻率擴充其餘進階角色，同時保留「純主持台詞模式」與法官手動調整能力。

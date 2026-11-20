@@ -17,6 +17,12 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   hunter_shoot: '獵人開槍帶走',
   wolf_king_shoot: '狼王開槍帶走',
   self_explode: '狼人自爆出局',
+  white_wolf_king_explode: '白狼王自爆帶走',
+  wolf_beauty_charm: '狼美人殉情帶走',
+  knight_duel: '騎士決鬥撞狼出局',
+  knight_duel_fail: '騎士決鬥撞好人以死謝罪',
+  dream_catcher_consecutive: '攝夢人連續兩晚夢死',
+  dream_catcher_link: '攝夢人夜死牽連共死',
   mech_wolf_poison: '機械狼毒殺',
   mech_wolf_kill: '機械狼額外刀口',
   manual_judge: '法官手動標記出局',
@@ -161,6 +167,15 @@ export function buildGameReplayText(
       }
       if (draft.psychicCheckTarget !== null) {
         lines.push(`  • 通靈師查驗 ${draft.psychicCheckTarget} 號`);
+      }
+      if (draft.wolfBeautyCharmTarget != null) {
+        lines.push(`  • 狼美人魅惑 ${draft.wolfBeautyCharmTarget} 號`);
+      }
+      if (draft.dreamCatcherTarget != null) {
+        lines.push(`  • 攝夢人攝夢 ${draft.dreamCatcherTarget} 號`);
+      }
+      if (nightEntry.bearRoar) {
+        lines.push(`  • 熊判定：${nightEntry.bearRoar.reason}`);
       }
       if (deaths.length === 0) {
         lines.push('  • 天亮結果：平安夜');

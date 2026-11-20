@@ -8,6 +8,7 @@ import type {
   RoleAssignmentValidation,
   RoleSlot,
   RuleOverrides,
+  SheriffState,
 } from './types';
 
 export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
@@ -18,6 +19,8 @@ export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
   victoryMode: 'slaughter_side',
 };
 
+export const DEFAULT_SPEAK_DURATION_SEC = 90;
+
 export function createInitialMechWolfState(): MechWolfRuntimeState {
   return {
     learnedFromSeat: null,
@@ -25,6 +28,19 @@ export function createInitialMechWolfState(): MechWolfRuntimeState {
     hasJoinedWolfTeam: false,
     usedLearnedOneShotSkill: false,
     lastGuardedSeat: null,
+  };
+}
+
+export function createInitialSheriffState(): SheriffState {
+  return {
+    status: 'not_started',
+    sheriffSeat: null,
+    badgeStatus: 'none',
+    candidates: [],
+    withdrawnSeats: [],
+    pkCandidates: [],
+    voteRounds: [],
+    pendingBadgeTransferFrom: null,
   };
 }
 
@@ -39,6 +55,8 @@ export function createEmptyNightDraft(round: number): NightActionDraft {
     psychicCheckTarget: null,
     mechWolfLearnTarget: null,
     mechWolfSkillTarget: null,
+    wolfBeautyCharmTarget: null,
+    dreamCatcherTarget: null,
   };
 }
 

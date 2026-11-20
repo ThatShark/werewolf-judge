@@ -23,6 +23,8 @@ export type NightActionType =
   | 'mech_wolf_learn'
   | 'mech_wolf_reveal_skill'
   | 'mech_wolf_night_action'
+  | 'wolf_beauty_charm'
+  | 'dream_catcher_dream'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -116,6 +118,12 @@ export type DeathReason =
   | 'hunter_shoot'
   | 'wolf_king_shoot'
   | 'self_explode'
+  | 'white_wolf_king_explode'
+  | 'wolf_beauty_charm'
+  | 'knight_duel'
+  | 'knight_duel_fail'
+  | 'dream_catcher_consecutive'
+  | 'dream_catcher_link'
   | 'mech_wolf_poison'
   | 'mech_wolf_kill'
   | 'manual_judge';
@@ -149,6 +157,91 @@ export interface NightActionDraft {
   psychicCheckTarget: number | null;
   mechWolfLearnTarget: number | null;
   mechWolfSkillTarget: number | null;
+  wolfBeautyCharmTarget?: number | null;
+  dreamCatcherTarget?: number | null;
+}
+
+export interface BearRoarResult {
+  bearSeat: number | null;
+  bearAlive: boolean;
+  leftNeighborSeat: number | null;
+  rightNeighborSeat: number | null;
+  roared: boolean;
+  reason: string;
+}
+
+/** 發言順序與單人計時型別 */
+export type SpeakingDirection = 'clockwise' | 'counterclockwise';
+
+export type SpeakingOrderMode =
+  | 'random'
+  | 'sheriff_left'
+  | 'sheriff_right'
+  | 'dead_left'
+  | 'dead_right';
+
+export interface SpeakingOrderOptions {
+  mode: SpeakingOrderMode;
+  /** 隨機模式下可限定候選座位（如警上候選人）；未傳則涵蓋全體存活玩家 */
+  candidateSeats?: number[];
+  /** 現任警長座位（警左／警右必填；死左／死右有警長時自動排最後歸票位） */
+  sheriffSeat?: number | null;
+  /** 基準死者座位（死左／死右必填，多死時由法官指定） */
+  referenceDeadSeat?: number | null;
+  /** 測試可注入之亂數產生器，預設 Math.random */
+  rng?: () => number;
+}
+
+export interface SpeakingOrderResult {
+  mode: SpeakingOrderMode;
+  direction: SpeakingDirection;
+  startSeat: number | null;
+  anchorSeat: number | null;
+  sheriffLastSeat: number | null;
+  queue: number[];
+}
+
+/** 警長競選與投票明細型別 */
+export type SheriffStatus =
+  | 'not_started'
+  | 'sign_up'
+  | 'speaking'
+  | 'voting'
+  | 'pk_speaking'
+  | 'pk_voting'
+  | 'elected'
+  | 'swallowed'
+  | 'no_sheriff';
+
+export type BadgeStatus = 'none' | 'active' | 'destroyed' | 'swallowed';
+
+export interface VoteRoundRecord {
+  roundIndex: number;
+  votes: Record<number, number | null>;
+  totals: Record<number, number>;
+  votersByTarget: Record<number, number[]>;
+  abstainers: number[];
+  extraVotes?: Record<number, number>;
+  tiedSeats: number[];
+  electedSeat: number | null;
+}
+
+export interface SheriffState {
+  status: SheriffStatus;
+  sheriffSeat: number | null;
+  badgeStatus: BadgeStatus;
+  candidates: number[];
+  withdrawnSeats: number[];
+  pkCandidates: number[];
+  voteRounds: VoteRoundRecord[];
+  pendingBadgeTransferFrom: number | null;
+}
+
+export type ExileVoteOutcome = 'exile' | 'tie' | 'no_exile';
+
+export interface ExileVoteTallyResult {
+  outcome: ExileVoteOutcome;
+  record: VoteRoundRecord;
 }
 
 export interface NightDeathRecord {
@@ -160,11 +253,43 @@ export interface NightHistoryEntry {
   round: number;
   draft: NightActionDraft;
   deaths: NightDeathRecord[];
+  bearRoar?: BearRoarResult | null;
+}
+
+export type DayStructuredEventType =
+  | 'sheriff_signup'
+  | 'sheriff_withdraw'
+  | 'sheriff_vote'
+  | 'sheriff_elected'
+  | 'sheriff_swallowed'
+  | 'sheriff_no_winner'
+  | 'badge_transfer'
+  | 'badge_destroy'
+  | 'exile_vote'
+  | 'exile_pk'
+  | 'exile_result'
+  | 'idiot_reveal'
+  | 'hunter_shoot'
+  | 'wolf_king_shoot'
+  | 'self_explode'
+  | 'white_wolf_king_explode'
+  | 'knight_duel'
+  | 'wolf_beauty_charm_death'
+  | 'manual_judge'
+  | 'declare_winner';
+
+export interface DayStructuredEvent {
+  type: DayStructuredEventType;
+  summary: string;
+  actorSeat?: number | null;
+  targetSeat?: number | null;
+  voteRecord?: VoteRoundRecord;
 }
 
 export interface DayHistoryEntry {
   round: number;
   events: string[];
+  structuredEvents?: DayStructuredEvent[];
 }
 
 export interface GameState {
@@ -185,6 +310,24 @@ export interface GameState {
   mechWolfState: MechWolfRuntimeState;
   /** 若白天有狼人自爆，記錄其座位（當晚點刀後正式死亡） */
   pendingSelfExplodeSeat: number | null;
+
+  /** 高頻進階角色運行時狀態 */
+  lastCharmedSeat: number | null;
+  activeCharmedSeat: number | null;
+  lastDreamTarget: number | null;
+  knightDuelUsed: boolean;
+  lastBearRoar: BearRoarResult | null;
+
+  /** 自動發言順序與單人倒數計時引擎 */
+  speakingQueue: number[];
+  currentSpeakerIndex: number;
+  speakingMeta: SpeakingOrderResult | null;
+  defaultSpeakDurationSec: number;
+  remainingSeconds: number;
+
+  /** 警長競選、警徽與白天放逐投票狀態 */
+  sheriffState: SheriffState;
+  exilePkCandidates: number[];
 
   /** 歷史紀錄與勝負 */
   nightHistory: NightHistoryEntry[];
@@ -238,6 +381,8 @@ export interface NightResolutionInput {
   lastGuardedSeat: number | null;
   mechWolfState: MechWolfRuntimeState;
   pendingSelfExplodeSeat: number | null;
+  lastCharmedSeat?: number | null;
+  lastDreamTarget?: number | null;
 }
 
 export interface NightResolutionResult {
@@ -248,6 +393,10 @@ export interface NightResolutionResult {
   lastGuardedSeat: number | null;
   mechWolfState: MechWolfRuntimeState;
   pendingSelfExplodeSeat: number | null;
+  lastCharmedSeat: number | null;
+  activeCharmedSeat: number | null;
+  lastDreamTarget: number | null;
+  bearRoar: BearRoarResult | null;
   seerResult: SeerCheckOutcome | null;
   psychicResult: PsychicCheckOutcome | null;
   mechWolfPsychicResult: PsychicCheckOutcome | null;
@@ -259,6 +408,7 @@ export interface DayExileResult {
   seats: PlayerSeat[];
   exiledSeat: number;
   idiotRevealed: boolean;
+  charmedDeathSeat: number | null;
   shootEligibility: ShootEligibility | null;
   mechWolfState: MechWolfRuntimeState;
   victory: VictoryResult;
@@ -269,6 +419,7 @@ export interface ShootResolutionResult {
   shooterSeat: number;
   targetSeat: number;
   deathReason: 'hunter_shoot' | 'wolf_king_shoot';
+  charmedDeathSeat: number | null;
   chainedShootEligibility: ShootEligibility | null;
   mechWolfState: MechWolfRuntimeState;
   victory: VictoryResult;
@@ -278,4 +429,31 @@ export interface SelfExplodeResult {
   allowed: boolean;
   reason?: string;
   pendingSelfExplodeSeat: number | null;
+}
+
+export interface WhiteWolfKingExplodeResult {
+  allowed: boolean;
+  reason?: string;
+  seats: PlayerSeat[];
+  wolfSeat: number;
+  targetSeat: number | null;
+  charmedDeathSeat: number | null;
+  pendingSelfExplodeSeat: number | null;
+  mechWolfState: MechWolfRuntimeState;
+  victory: VictoryResult;
+}
+
+export interface KnightDuelResult {
+  allowed: boolean;
+  reason?: string;
+  seats: PlayerSeat[];
+  knightSeat: number;
+  targetSeat: number;
+  targetWasWolf: boolean;
+  eliminatedSeat: number | null;
+  deathReason: 'knight_duel' | 'knight_duel_fail' | null;
+  enterNightImmediately: boolean;
+  knightDuelUsed: boolean;
+  mechWolfState: MechWolfRuntimeState;
+  victory: VictoryResult;
 }

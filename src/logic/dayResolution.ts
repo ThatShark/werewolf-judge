@@ -1,14 +1,17 @@
 import { getRoleById } from '../data/roles';
+import { applyWolfBeautyCharmDeath } from './advancedRoles';
 import { syncMechWolfTeamStatus } from './mechWolf';
 import type {
   DayExileResult,
   DeathReason,
+  KnightDuelResult,
   MechWolfRuntimeState,
   PlayerSeat,
   RuleOverrides,
   SelfExplodeResult,
   ShootEligibility,
   ShootResolutionResult,
+  WhiteWolfKingExplodeResult,
 } from './types';
 import { checkVictory } from './victory';
 
@@ -120,6 +123,7 @@ export function resolveShoot(
   round: number,
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
+  activeCharmedSeat: number | null = null,
 ): ShootResolutionResult {
   const eligibility = checkCanShoot(seats, shooterSeat, shooterDeathReason);
   if (!eligibility || !eligibility.canShoot) {
@@ -137,7 +141,7 @@ export function resolveShoot(
   const shootReason: 'hunter_shoot' | 'wolf_king_shoot' =
     eligibility.roleId === 'hunter' ? 'hunter_shoot' : 'wolf_king_shoot';
 
-  const updatedSeats = seats.map((seat) =>
+  let updatedSeats = seats.map((seat) =>
     seat.seatNumber === targetSeat
       ? {
           ...seat,
@@ -148,8 +152,23 @@ export function resolveShoot(
       : seat,
   );
 
+  // 若開槍帶走狼美人，前一晚魅惑對象跟著殉情（且無法發動技能）
+  const charmResult = applyWolfBeautyCharmDeath(
+    updatedSeats,
+    targetSeat,
+    shootReason,
+    activeCharmedSeat,
+    round,
+  );
+  updatedSeats = charmResult.seats;
+
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
-  const victory = checkVictory(updatedSeats, ruleOverrides);
+  const victory = checkVictory(
+    updatedSeats,
+    charmResult.charmedDeathSeat !== null
+      ? { ...ruleOverrides, wolfKillPriority: true }
+      : ruleOverrides,
+  );
   const chainedShootEligibility =
     victory.winner === null ? checkCanShoot(updatedSeats, targetSeat, shootReason) : null;
 
@@ -158,6 +177,7 @@ export function resolveShoot(
     shooterSeat,
     targetSeat,
     deathReason: shootReason,
+    charmedDeathSeat: charmResult.charmedDeathSeat,
     chainedShootEligibility,
     mechWolfState: nextMechWolfState,
     victory,
@@ -170,6 +190,7 @@ export function resolveDayExile(
   round: number,
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
+  activeCharmedSeat: number | null = null,
 ): DayExileResult {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.isAlive) {
@@ -193,13 +214,14 @@ export function resolveDayExile(
       seats: updatedSeats,
       exiledSeat: targetSeat,
       idiotRevealed: true,
+      charmedDeathSeat: null,
       shootEligibility: null,
       mechWolfState,
       victory,
     };
   }
 
-  const updatedSeats = seats.map((seat) =>
+  let updatedSeats = seats.map((seat) =>
     seat.seatNumber === targetSeat
       ? {
           ...seat,
@@ -210,14 +232,30 @@ export function resolveDayExile(
       : seat,
   );
 
+  // 若放逐出局者為狼美人，前一晚魅惑對象跟著殉情（無技能）
+  const charmResult = applyWolfBeautyCharmDeath(
+    updatedSeats,
+    targetSeat,
+    'exiled',
+    activeCharmedSeat,
+    round,
+  );
+  updatedSeats = charmResult.seats;
+
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
   const shootEligibility = checkCanShoot(updatedSeats, targetSeat, 'exiled');
-  const victory = checkVictory(updatedSeats, ruleOverrides);
+  const victory = checkVictory(
+    updatedSeats,
+    charmResult.charmedDeathSeat !== null
+      ? { ...ruleOverrides, wolfKillPriority: true }
+      : ruleOverrides,
+  );
 
   return {
     seats: updatedSeats,
     exiledSeat: targetSeat,
     idiotRevealed: false,
+    charmedDeathSeat: charmResult.charmedDeathSeat,
     shootEligibility,
     mechWolfState: nextMechWolfState,
     victory,
@@ -245,6 +283,14 @@ export function resolveSelfExplode(
     };
   }
 
+  if (player.roleId === 'wolf_beauty') {
+    return {
+      allowed: false,
+      reason: '狼美人不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
   const role = getRoleById(player.roleId);
   if (!role || role.faction !== 'wolf') {
     return {
@@ -257,5 +303,249 @@ export function resolveSelfExplode(
   return {
     allowed: true,
     pendingSelfExplodeSeat: wolfSeat,
+  };
+}
+
+/**
+ * 白狼王白天自爆帶走一名存活玩家（被帶走者無法發動技能，強制進入夜晚；白狼王於當晚點刀後死亡）。
+ */
+export function resolveWhiteWolfKingExplode(
+  seats: PlayerSeat[],
+  wolfSeat: number,
+  targetSeat: number | null,
+  round: number,
+  ruleOverrides: RuleOverrides,
+  mechWolfState: MechWolfRuntimeState,
+  activeCharmedSeat: number | null = null,
+): WhiteWolfKingExplodeResult {
+  const wolf = seats.find((seat) => seat.seatNumber === wolfSeat);
+  if (!wolf || !wolf.isAlive) {
+    return {
+      allowed: false,
+      reason: '該玩家不存在或已出局',
+      seats,
+      wolfSeat,
+      targetSeat,
+      charmedDeathSeat: null,
+      pendingSelfExplodeSeat: null,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
+  if (wolf.roleId !== 'white_wolf_king') {
+    return {
+      allowed: false,
+      reason: '僅白狼王可發動自爆帶人技能',
+      seats,
+      wolfSeat,
+      targetSeat,
+      charmedDeathSeat: null,
+      pendingSelfExplodeSeat: null,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
+  let updatedSeats = seats.map((seat) => ({ ...seat }));
+  let charmedDeathSeat: number | null = null;
+
+  if (targetSeat !== null) {
+    if (targetSeat === wolfSeat) {
+      return {
+        allowed: false,
+        reason: '白狼王不可指定自己作為帶走目標',
+        seats,
+        wolfSeat,
+        targetSeat,
+        charmedDeathSeat: null,
+        pendingSelfExplodeSeat: null,
+        mechWolfState,
+        victory: { winner: null, winReason: null },
+      };
+    }
+    const target = updatedSeats.find((seat) => seat.seatNumber === targetSeat);
+    if (!target || !target.isAlive) {
+      return {
+        allowed: false,
+        reason: '帶走目標不存在或已出局',
+        seats,
+        wolfSeat,
+        targetSeat,
+        charmedDeathSeat: null,
+        pendingSelfExplodeSeat: null,
+        mechWolfState,
+        victory: { winner: null, winReason: null },
+      };
+    }
+
+    updatedSeats = updatedSeats.map((seat) =>
+      seat.seatNumber === targetSeat
+        ? {
+            ...seat,
+            isAlive: false,
+            deathReason: 'white_wolf_king_explode' as const,
+            deathRound: round,
+          }
+        : seat,
+    );
+
+    const charmResult = applyWolfBeautyCharmDeath(
+      updatedSeats,
+      targetSeat,
+      'white_wolf_king_explode',
+      activeCharmedSeat,
+      round,
+    );
+    updatedSeats = charmResult.seats;
+    charmedDeathSeat = charmResult.charmedDeathSeat;
+  }
+
+  const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
+  const victory = checkVictory(updatedSeats, ruleOverrides);
+
+  return {
+    allowed: true,
+    seats: updatedSeats,
+    wolfSeat,
+    targetSeat,
+    charmedDeathSeat,
+    pendingSelfExplodeSeat: wolfSeat,
+    mechWolfState: nextMechWolfState,
+    victory,
+  };
+}
+
+/**
+ * 騎士白天翻牌決鬥一名存活玩家（整局限一次）：
+ * - 撞狼：對方即時出局（knight_duel）且不能發動死亡技能（狼王不開槍、狼美人不殉情），未結束則直接入夜。
+ * - 撞好人（或非狼）：騎士以死謝罪（knight_duel_fail），未結束則繼續白天流程。
+ */
+export function resolveKnightDuel(
+  seats: PlayerSeat[],
+  knightSeat: number,
+  targetSeat: number,
+  knightDuelUsed: boolean,
+  round: number,
+  ruleOverrides: RuleOverrides,
+  mechWolfState: MechWolfRuntimeState,
+): KnightDuelResult {
+  const knight = seats.find((seat) => seat.seatNumber === knightSeat);
+  if (!knight || !knight.isAlive) {
+    return {
+      allowed: false,
+      reason: '騎士不存在或已出局',
+      seats,
+      knightSeat,
+      targetSeat,
+      targetWasWolf: false,
+      eliminatedSeat: null,
+      deathReason: null,
+      enterNightImmediately: false,
+      knightDuelUsed,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+  if (knight.roleId !== 'knight') {
+    return {
+      allowed: false,
+      reason: '僅騎士可發動翻牌決鬥',
+      seats,
+      knightSeat,
+      targetSeat,
+      targetWasWolf: false,
+      eliminatedSeat: null,
+      deathReason: null,
+      enterNightImmediately: false,
+      knightDuelUsed,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+  if (knightDuelUsed) {
+    return {
+      allowed: false,
+      reason: '騎士本局已使用過決鬥技能',
+      seats,
+      knightSeat,
+      targetSeat,
+      targetWasWolf: false,
+      eliminatedSeat: null,
+      deathReason: null,
+      enterNightImmediately: false,
+      knightDuelUsed,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+  if (targetSeat === knightSeat) {
+    return {
+      allowed: false,
+      reason: '騎士不可與自己決鬥',
+      seats,
+      knightSeat,
+      targetSeat,
+      targetWasWolf: false,
+      eliminatedSeat: null,
+      deathReason: null,
+      enterNightImmediately: false,
+      knightDuelUsed,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
+  const target = seats.find((seat) => seat.seatNumber === targetSeat);
+  if (!target || !target.isAlive) {
+    return {
+      allowed: false,
+      reason: '決鬥目標不存在或已出局',
+      seats,
+      knightSeat,
+      targetSeat,
+      targetWasWolf: false,
+      eliminatedSeat: null,
+      deathReason: null,
+      enterNightImmediately: false,
+      knightDuelUsed,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
+  const targetRole = getRoleById(target.roleId);
+  const targetWasWolf = targetRole?.faction === 'wolf';
+  const eliminatedSeat = targetWasWolf ? targetSeat : knightSeat;
+  const deathReason: 'knight_duel' | 'knight_duel_fail' = targetWasWolf
+    ? 'knight_duel'
+    : 'knight_duel_fail';
+
+  const updatedSeats = seats.map((seat) =>
+    seat.seatNumber === eliminatedSeat
+      ? {
+          ...seat,
+          isAlive: false,
+          deathReason,
+          deathRound: round,
+        }
+      : seat,
+  );
+
+  const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
+  const victory = checkVictory(updatedSeats, ruleOverrides);
+
+  return {
+    allowed: true,
+    seats: updatedSeats,
+    knightSeat,
+    targetSeat,
+    targetWasWolf,
+    eliminatedSeat,
+    deathReason,
+    enterNightImmediately: targetWasWolf && victory.winner === null,
+    knightDuelUsed: true,
+    mechWolfState: nextMechWolfState,
+    victory,
   };
 }

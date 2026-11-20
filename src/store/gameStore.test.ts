@@ -204,4 +204,93 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().phase).toBe('game_over');
     expect(useGameStore.getState().winner).toBe('third_party');
   });
+
+  it('Store 層支援發言順序抽取、下一位發言、即時加減秒數（+10s/-10s）與持久化', async () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    CLASSIC_ROLES.forEach((roleId, idx) => {
+      useGameStore.getState().assignRole(idx + 1, roleId);
+    });
+    useGameStore.getState().startGame();
+    useGameStore.getState().updateNightDraft({ wolfTarget: 5 });
+    useGameStore.getState().finishNight();
+
+    // 調整預設發言時間為 120 秒
+    useGameStore.getState().setDefaultSpeakDuration(120);
+    expect(useGameStore.getState().defaultSpeakDurationSec).toBe(120);
+    expect(useGameStore.getState().remainingSeconds).toBe(120);
+
+    // 警長競選：9 號當選警長
+    useGameStore.getState().startSheriffElection([9]);
+    expect(useGameStore.getState().sheriffState.sheriffSeat).toBe(9);
+
+    // 生成「死左（基準死者 5 號）」發言佇列，警長 9 號應排在最後一位
+    const order = useGameStore.getState().generateSpeakingOrder({
+      mode: 'dead_left',
+      referenceDeadSeat: 5,
+    });
+    expect(order.queue[0]).toBe(6);
+    expect(order.queue[order.queue.length - 1]).toBe(9);
+    expect(order.queue).not.toContain(5);
+    expect(useGameStore.getState().currentSpeakerIndex).toBe(0);
+
+    // 倒數與即時加減秒數（+10s / -10s）
+    useGameStore.getState().tickSpeakerTimer();
+    expect(useGameStore.getState().remainingSeconds).toBe(119);
+    useGameStore.getState().adjustSpeakerTime(10);
+    expect(useGameStore.getState().remainingSeconds).toBe(129);
+    useGameStore.getState().adjustSpeakerTime(-10);
+    expect(useGameStore.getState().remainingSeconds).toBe(119);
+
+    // 切換下一位發言 -> 重置為 120 秒
+    useGameStore.getState().nextSpeaker();
+    expect(useGameStore.getState().currentSpeakerIndex).toBe(1);
+    expect(useGameStore.getState().remainingSeconds).toBe(120);
+
+    // 確認發言佇列與秒數已持久化至 localStorage
+    const raw = localStorage.getItem(GAME_STORAGE_KEY);
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.speakingQueue).toEqual(order.queue);
+    expect(parsed.state.currentSpeakerIndex).toBe(1);
+    expect(parsed.state.defaultSpeakDurationSec).toBe(120);
+  });
+
+  it('Store 層支援警上自爆吞警徽、放逐投票明細（烏鴉+1票接口）與白痴翻牌寫入復盤時間軸', () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    CLASSIC_ROLES.forEach((roleId, idx) => {
+      useGameStore.getState().assignRole(idx + 1, roleId);
+    });
+    useGameStore.getState().startGame();
+    useGameStore.getState().updateNightDraft({ wolfTarget: null });
+    useGameStore.getState().finishNight();
+
+    // 1、9 號上警 -> 1 號狼人於警上自爆 -> 自動吞警徽並強制進入第 2 晚
+    useGameStore.getState().startSheriffElection([1, 9]);
+    const explode = useGameStore.getState().selfExplode(1);
+    expect(explode.allowed).toBe(true);
+    expect(explode.swallowedBadge).toBe(true);
+    expect(useGameStore.getState().sheriffState.status).toBe('swallowed');
+    expect(useGameStore.getState().sheriffState.badgeStatus).toBe('swallowed');
+    expect(useGameStore.getState().phase).toBe('night');
+    expect(useGameStore.getState().round).toBe(2);
+
+    // 第 2 晚平安夜（1 號自爆狼死亡）
+    useGameStore.getState().updateNightDraft({ wolfTarget: null });
+    useGameStore.getState().finishNight();
+    useGameStore.getState().proceedToDayVote();
+
+    // 白天放逐投票：12 號（白痴）靠烏鴉 +1 票成為最高票 -> 觸發翻牌免死並記錄於結構化事件
+    const voteRes = useGameStore.getState().submitExileVotes(
+      { 2: 12, 3: 12, 5: 2, 6: 2 },
+      { extraVotes: { 12: 1 } },
+    );
+    expect(voteRes.outcome).toBe('exile');
+    expect(voteRes.record.electedSeat).toBe(12);
+    expect(useGameStore.getState().seats[11].isAlive).toBe(true);
+    expect(useGameStore.getState().seats[11].idiotRevealed).toBe(true);
+
+    const day2 = useGameStore.getState().dayHistory.find((d) => d.round === 2);
+    expect(day2?.structuredEvents?.some((e) => e.type === 'idiot_reveal')).toBe(true);
+  });
 });

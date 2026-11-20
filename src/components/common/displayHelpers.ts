@@ -7,6 +7,8 @@ import type {
   GameState,
   PlayerSeat,
   RuleOverrides,
+  SheriffState,
+  VoteRoundRecord,
 } from '../../logic/types';
 
 export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
@@ -102,11 +104,59 @@ export function getRoleBadgeClasses(roleId: string | null): string {
   return 'border-amber-400/40 bg-amber-950/60 text-amber-200';
 }
 
+export function formatSheriffStatusSummary(
+  sheriffState?: SheriffState,
+  seats?: PlayerSeat[],
+): string | null {
+  if (!sheriffState || sheriffState.status === 'not_started') {
+    return null;
+  }
+  if (sheriffState.badgeStatus === 'active' && sheriffState.sheriffSeat !== null) {
+    const seatObj = seats?.find((s) => s.seatNumber === sheriffState.sheriffSeat);
+    const label = seatObj ? formatSeatDisplay(seatObj) : `${sheriffState.sheriffSeat} 號`;
+    return `警長：${label}（警徽有效）`;
+  }
+  if (sheriffState.badgeStatus === 'swallowed') {
+    return '警徽狀態：警上自爆吞警徽（本局無警長）';
+  }
+  if (sheriffState.badgeStatus === 'destroyed') {
+    return '警徽狀態：警長出局撕毀警徽';
+  }
+  if (sheriffState.status === 'no_sheriff') {
+    return '警徽狀態：本局無警長';
+  }
+  return '警徽狀態：警長競選未完成即結束';
+}
+
+export function formatVoteRecordLines(record: VoteRoundRecord): string[] {
+  const lines: string[] = [];
+  const entries = Object.entries(record.totals).sort(
+    ([seatA, scoreA], [seatB, scoreB]) => scoreB - scoreA || Number(seatA) - Number(seatB),
+  );
+
+  for (const [targetKey, score] of entries) {
+    const targetSeat = Number(targetKey);
+    const voters = record.votersByTarget[targetSeat] ?? [];
+    const voterText =
+      voters.length > 0 ? voters.map((s) => `${s} 號`).join('、') : '無玩家投票';
+    const extra = record.extraVotes?.[targetSeat];
+    const extraText = extra ? `；額外 +${extra} 票` : '';
+    lines.push(`${targetSeat} 號：${score} 票（${voterText}${extraText}）`);
+  }
+
+  const abstainerText =
+    record.abstainers.length > 0
+      ? record.abstainers.map((s) => `${s} 號`).join('、')
+      : '無';
+  lines.push(`棄票：${abstainerText}`);
+  return lines;
+}
+
 export function buildGameReplayText(
   state: Pick<
     GameState,
     'round' | 'winner' | 'winReason' | 'seats' | 'nightHistory' | 'dayHistory'
-  >,
+  > & { sheriffState?: SheriffState },
   board?: BoardDefinition,
 ): string {
   const lines: string[] = [];
@@ -114,6 +164,10 @@ export function buildGameReplayText(
   lines.push(`勝利陣營：${formatFactionLabel(state.winner)}`);
   if (state.winReason) {
     lines.push(`獲勝原因：${state.winReason}`);
+  }
+  const sheriffSummary = formatSheriffStatusSummary(state.sheriffState, state.seats);
+  if (sheriffSummary) {
+    lines.push(sheriffSummary);
   }
 
   lines.push('');
@@ -189,8 +243,20 @@ export function buildGameReplayText(
 
     if (dayEntry && dayEntry.events.length > 0) {
       lines.push(`第 ${r} 天：`);
+      const remainingVoteEvents = [...(dayEntry.structuredEvents ?? [])].filter(
+        (s) => s.voteRecord,
+      );
       for (const evt of dayEntry.events) {
         lines.push(`  • ${evt}`);
+        const matchIdx = remainingVoteEvents.findIndex((s) => s.summary === evt);
+        if (matchIdx !== -1) {
+          const [matched] = remainingVoteEvents.splice(matchIdx, 1);
+          if (matched.voteRecord) {
+            for (const voteLine of formatVoteRecordLines(matched.voteRecord)) {
+              lines.push(`      - ${voteLine}`);
+            }
+          }
+        }
       }
     }
   }

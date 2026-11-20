@@ -384,11 +384,32 @@ export const useGameStore = create<GameStore>()(
           sheriffSeat,
         });
 
+        const modeLabels: Record<SpeakingOrderOptions['mode'], string> = {
+          random: '隨機抽取',
+          sheriff_left: '警左',
+          sheriff_right: '警右',
+          dead_left: '死左',
+          dead_right: '死右',
+        };
+        const dirLabel = result.direction === 'clockwise' ? '順時針' : '逆時針';
+        const anchorNote =
+          (result.mode === 'dead_left' || result.mode === 'dead_right') &&
+          result.anchorSeat !== null
+            ? `·基準 ${result.anchorSeat} 號`
+            : '';
+        const summary = `發言順序（${modeLabels[result.mode]}${anchorNote}·${dirLabel}）：${result.queue
+          .map((s) => `${s} 號`)
+          .join(' → ')}`;
+
         set({
           speakingQueue: result.queue,
           currentSpeakerIndex: 0,
           speakingMeta: result,
           remainingSeconds: state.defaultSpeakDurationSec,
+          dayHistory:
+            result.queue.length > 0
+              ? appendDayEvent(state.dayHistory, state.round, summary)
+              : state.dayHistory,
         });
 
         return result;

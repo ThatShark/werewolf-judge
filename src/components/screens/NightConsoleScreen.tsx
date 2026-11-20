@@ -3,11 +3,13 @@ import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import {
   applyMechWolfLearn,
+  canDreamCatcherDream,
   canGuardTarget,
   canMechWolfLearn,
   canMechWolfUseLearnedSkill,
   canWitchUseAntidote,
   canWitchUsePoison,
+  canWolfBeautyCharm,
   findMechWolfSeat,
   getNightSteps,
   getPsychicCheckResult,
@@ -30,6 +32,8 @@ export function NightConsoleScreen() {
   const lastGuardedSeat = useGameStore((s) => s.lastGuardedSeat);
   const mechWolfState = useGameStore((s) => s.mechWolfState);
   const pendingSelfExplodeSeat = useGameStore((s) => s.pendingSelfExplodeSeat);
+  const lastCharmedSeat = useGameStore((s) => s.lastCharmedSeat);
+  const lastDreamTarget = useGameStore((s) => s.lastDreamTarget);
 
   const updateNightDraft = useGameStore((s) => s.updateNightDraft);
   const nextNightStep = useGameStore((s) => s.nextNightStep);
@@ -76,12 +80,22 @@ export function NightConsoleScreen() {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex >= steps.length - 1;
 
-  // 檢查機械狼首夜強制學習是否未選
+  // 檢查機械狼首夜強制學習與攝夢人強制選擇目標
   const mechWolfSeat = findMechWolfSeat(seats);
   const mechWolfLearnCheck =
     currentStep.actionType === 'mech_wolf_learn' && round === 1 && mechWolfSeat?.isAlive
       ? canMechWolfLearn(seats, currentNightDraft.mechWolfLearnTarget, ruleOverrides, round)
       : { allowed: true };
+
+  const dreamCatcherSeat = seats.find((s) => s.roleId === 'dream_catcher');
+  const dreamCatcherCheck =
+    currentStep.actionType === 'dream_catcher_dream' && dreamCatcherSeat?.isAlive
+      ? canDreamCatcherDream(seats, currentNightDraft.dreamCatcherTarget ?? null)
+      : { allowed: true };
+
+  const stepValidationCheck = !mechWolfLearnCheck.allowed
+    ? mechWolfLearnCheck
+    : dreamCatcherCheck;
 
   // 女巫解藥檢核
   const antidoteCheck = canWitchUseAntidote(
@@ -137,10 +151,11 @@ export function NightConsoleScreen() {
 
     switch (currentStep.actionType) {
       case 'wolf_kill': {
+        const isWolfBeauty = isAlive && seat?.roleId === 'wolf_beauty';
         return {
           selected: currentNightDraft.wolfTarget === seatNumber,
-          disabled: !isAlive,
-          reason: !isAlive ? '已出局' : undefined,
+          disabled: !isAlive || isWolfBeauty,
+          reason: !isAlive ? '已出局' : isWolfBeauty ? '狼美人不可自刀' : undefined,
           onSelect: () =>
             updateNightDraft({
               wolfTarget: currentNightDraft.wolfTarget === seatNumber ? null : seatNumber,
@@ -234,6 +249,34 @@ export function NightConsoleScreen() {
         };
       }
 
+      case 'wolf_beauty_charm': {
+        const check = canWolfBeautyCharm(seats, lastCharmedSeat, seatNumber);
+        return {
+          selected: currentNightDraft.wolfBeautyCharmTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: () =>
+            updateNightDraft({
+              wolfBeautyCharmTarget:
+                currentNightDraft.wolfBeautyCharmTarget === seatNumber ? null : seatNumber,
+            }),
+        };
+      }
+
+      case 'dream_catcher_dream': {
+        const check = canDreamCatcherDream(seats, seatNumber);
+        return {
+          selected: currentNightDraft.dreamCatcherTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: () =>
+            updateNightDraft({
+              dreamCatcherTarget:
+                currentNightDraft.dreamCatcherTarget === seatNumber ? null : seatNumber,
+            }),
+        };
+      }
+
       default:
         return {
           selected: false,
@@ -261,6 +304,8 @@ export function NightConsoleScreen() {
   const hasWolfKillStep = steps.some((s) => s.actionType === 'wolf_kill');
   const hasWitchStep = steps.some((s) => s.actionType === 'witch_action');
   const hasGuardStep = steps.some((s) => s.actionType === 'guard_protect');
+  const hasWolfBeautyStep = steps.some((s) => s.actionType === 'wolf_beauty_charm');
+  const hasDreamCatcherStep = steps.some((s) => s.actionType === 'dream_catcher_dream');
 
   // 夜間結算摘要清單
   const summaryLines = [
@@ -282,6 +327,15 @@ export function NightConsoleScreen() {
           }`,
         ]
       : []),
+    ...(hasDreamCatcherStep
+      ? [
+          `攝夢人攝夢：${
+            currentNightDraft.dreamCatcherTarget != null
+              ? `${currentNightDraft.dreamCatcherTarget} 號`
+              : '未選擇'
+          }`,
+        ]
+      : []),
     ...(round >= 2 && mechWolfSeat?.isAlive && mechWolfState.learnedRoleId
       ? [
           `機械狼技能（${getRoleById(mechWolfState.learnedRoleId)?.name ?? ''}）：${
@@ -295,6 +349,15 @@ export function NightConsoleScreen() {
       ? [
           `狼人點刀：${
             currentNightDraft.wolfTarget !== null ? `${currentNightDraft.wolfTarget} 號` : '空刀'
+          }`,
+        ]
+      : []),
+    ...(hasWolfBeautyStep
+      ? [
+          `狼美人魅惑：${
+            currentNightDraft.wolfBeautyCharmTarget != null
+              ? `${currentNightDraft.wolfBeautyCharmTarget} 號`
+              : '不魅惑'
           }`,
         ]
       : []),
@@ -312,7 +375,11 @@ export function NightConsoleScreen() {
     ...(pendingSelfExplodeSeat !== null
       ? [`自爆出局：${pendingSelfExplodeSeat} 號將於結算後死亡`]
       : []),
-    ...(!hasWolfKillStep && !hasWitchStep && !hasGuardStep
+    ...(!hasWolfKillStep &&
+    !hasWitchStep &&
+    !hasGuardStep &&
+    !hasWolfBeautyStep &&
+    !hasDreamCatcherStep
       ? [`已完成本晚 ${steps.length} 個主持台詞步驟（特殊角色狀態請透過「座位總覽／手動標記」確認）`]
       : []),
   ];
@@ -699,6 +766,63 @@ export function NightConsoleScreen() {
         </section>
       )}
 
+      {currentStep.actionType === 'wolf_beauty_charm' && (
+        <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/90 p-4">
+          <div className="text-xs text-slate-300">
+            昨晚魅惑對象：
+            <span className="font-bold text-amber-300">
+              {lastCharmedSeat !== null ? ` ${lastCharmedSeat} 號（今晚不可連魅）` : ' 無'}
+            </span>
+          </div>
+          {currentNightDraft.wolfBeautyCharmTarget != null && (
+            <div className="rounded-xl border border-rose-500/40 bg-rose-950/30 p-3 text-xs font-semibold text-rose-200">
+              💘 已選擇魅惑 {currentNightDraft.wolfBeautyCharmTarget} 號：若狼美人出局（騎士決鬥除外），該玩家將跟著殉情且無技能。
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={!actorSeatsAlive}
+            onClick={() => updateNightDraft({ wolfBeautyCharmTarget: null })}
+            className={`min-h-12 w-full rounded-xl border px-4 text-sm font-bold transition ${
+              !actorSeatsAlive
+                ? 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-500'
+                : currentNightDraft.wolfBeautyCharmTarget == null
+                  ? 'border-amber-400 bg-amber-500/20 text-amber-200'
+                  : 'border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            {currentNightDraft.wolfBeautyCharmTarget == null
+              ? '✓ 已選擇：本晚不魅惑（空魅）'
+              : '選擇本晚不魅惑（空魅）'}
+          </button>
+        </section>
+      )}
+
+      {currentStep.actionType === 'dream_catcher_dream' && (
+        <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/90 p-4">
+          <div className="text-xs text-slate-300">
+            昨晚夢遊者：
+            <span className="font-bold text-amber-300">
+              {lastDreamTarget !== null ? ` ${lastDreamTarget} 號（若連兩晚夢同一人將夢死）` : ' 無'}
+            </span>
+          </div>
+          {currentNightDraft.dreamCatcherTarget != null &&
+          currentNightDraft.dreamCatcherTarget === lastDreamTarget ? (
+            <div className="rounded-xl border border-rose-500/50 bg-rose-950/40 p-3 text-xs font-bold text-rose-200">
+              ⚠️ 注意：連續兩晚夢 {lastDreamTarget} 號，天亮該玩家將夢死（無任何死亡技能）！
+            </div>
+          ) : currentNightDraft.dreamCatcherTarget != null ? (
+            <div className="rounded-xl border border-indigo-500/40 bg-indigo-950/35 p-3 text-xs font-semibold text-indigo-200">
+              💤 已選擇 {currentNightDraft.dreamCatcherTarget} 號成為今晚夢遊者（免疫狼刀與毒藥；若攝夢人夜死則牽連共死）。
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-400">
+              請點選下方座位選擇一名自己以外的存活玩家成為今晚夢遊者。
+            </div>
+          )}
+        </section>
+      )}
+
       {currentStep.actionType === 'confirm_only' && (
         <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
           <div className="text-xs font-bold text-slate-400">持有此身分的座位：</div>
@@ -815,9 +939,9 @@ export function NightConsoleScreen() {
       )}
 
       {/* 步驟警告 */}
-      {!mechWolfLearnCheck.allowed && (
+      {!stepValidationCheck.allowed && (
         <div className="rounded-xl border border-rose-500/40 bg-rose-950/40 px-3.5 py-2.5 text-xs font-semibold text-rose-200">
-          ⚠️ {mechWolfLearnCheck.reason}
+          ⚠️ {stepValidationCheck.reason}
         </div>
       )}
 
@@ -840,10 +964,10 @@ export function NightConsoleScreen() {
           {!isLastStep ? (
             <button
               type="button"
-              disabled={!mechWolfLearnCheck.allowed}
+              disabled={!stepValidationCheck.allowed}
               onClick={nextNightStep}
               className={`min-h-12 flex-[2] rounded-xl px-4 py-3 text-base font-extrabold transition ${
-                mechWolfLearnCheck.allowed
+                stepValidationCheck.allowed
                   ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 active:scale-[0.99]'
                   : 'cursor-not-allowed bg-slate-800 text-slate-500'
               }`}
@@ -853,10 +977,10 @@ export function NightConsoleScreen() {
           ) : (
             <button
               type="button"
-              disabled={!mechWolfLearnCheck.allowed}
+              disabled={!stepValidationCheck.allowed}
               onClick={() => setConfirmFinishOpen(true)}
               className={`min-h-12 flex-[2] rounded-xl px-4 py-3 text-base font-extrabold transition ${
-                mechWolfLearnCheck.allowed
+                stepValidationCheck.allowed
                   ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.99]'
                   : 'cursor-not-allowed bg-slate-800 text-slate-500'
               }`}

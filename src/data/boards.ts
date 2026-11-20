@@ -1968,18 +1968,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -2056,18 +2053,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -2942,18 +2936,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -3014,18 +3005,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -3746,18 +3734,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -3822,18 +3807,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -3996,18 +3978,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -4071,18 +4050,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -6946,18 +6922,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -7024,18 +6997,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -7248,18 +7218,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         }
       ]
     },
@@ -7397,18 +7364,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_5",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -7501,18 +7465,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -7892,18 +7853,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -8027,18 +7985,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -8255,18 +8210,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -8377,18 +8329,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -8558,18 +8507,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -8621,18 +8567,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -10146,18 +10089,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -10207,18 +10147,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -11103,18 +11040,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -11175,18 +11109,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -11312,18 +11243,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -11384,18 +11312,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -11543,18 +11468,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -11615,18 +11537,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -11763,18 +11682,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -11846,18 +11762,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -13248,18 +13161,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -13323,18 +13233,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -14608,18 +14515,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -14713,18 +14617,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -15744,18 +15645,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "百變狼王手勢為...\n請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -15833,18 +15731,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -17416,18 +17311,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -17519,18 +17411,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "今晚的技能狀態為...\n請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -18792,18 +18681,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         }
       ]
     },
@@ -19105,18 +18991,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -19194,18 +19077,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
           "closePrompt": "攝夢人請閉眼",
           "judgeTips": [
-            "情境條件：煉金魔女尚未使用法老之蛇",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "情境條件：煉金魔女尚未使用法老之蛇"
           ]
         },
         {
@@ -19372,18 +19254,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -19494,18 +19373,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -22114,18 +21990,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
           "closePrompt": "狼美人請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知感染者是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知感染者是誰)"
           ]
         },
         {
@@ -22218,18 +22093,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
           "closePrompt": "狼美人請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知感染者是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知感染者是誰)"
           ]
         },
         {
@@ -23957,18 +23831,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -24077,18 +23948,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_6",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -24217,18 +24085,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -24306,18 +24171,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
           "closePrompt": "攝夢人請閉眼",
           "judgeTips": [
-            "情境條件：煉金魔女尚未使用法老之蛇",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "情境條件：煉金魔女尚未使用法老之蛇"
           ]
         },
         {
@@ -24478,18 +24342,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -24554,18 +24415,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -27781,18 +27639,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_5",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -27911,18 +27766,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -28588,18 +28440,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "機械狼請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_4",
@@ -28738,18 +28587,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "mech_wolf_night_action",
@@ -29024,18 +28870,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "step_6",
@@ -29207,18 +29050,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "wolf_beauty_charm",
           "actorLabel": "狼美人",
           "actorRoleIds": [
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_beauty_charm",
           "openPrompt": "狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -29434,18 +29274,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "咒狐請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_3",
@@ -29605,18 +29442,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "今晚的技能狀態為...\n請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "step_3",
@@ -29838,18 +29672,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -29912,18 +29743,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -31104,18 +30932,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -31191,18 +31016,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
             "dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dream_catcher_dream",
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",

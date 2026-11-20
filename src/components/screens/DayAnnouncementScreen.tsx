@@ -5,6 +5,7 @@ import { checkCanShoot } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { PendingShooterCard } from '../common/PendingShooterCard';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
+import { SheriffBadgeTransferCard } from '../common/SheriffBadgeTransferCard';
 import {
   formatDeathReason,
   formatSeatDisplay,
@@ -16,9 +17,13 @@ export function DayAnnouncementScreen() {
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
   const nightHistory = useGameStore((s) => s.nightHistory);
+  const lastBearRoar = useGameStore((s) => s.lastBearRoar);
+  const sheriffState = useGameStore((s) => s.sheriffState);
   const pendingShooters = useGameStore((s) => s.pendingShooters);
   const triggerShoot = useGameStore((s) => s.triggerShoot);
   const skipShoot = useGameStore((s) => s.skipShoot);
+  const transferSheriffBadge = useGameStore((s) => s.transferSheriffBadge);
+  const destroySheriffBadge = useGameStore((s) => s.destroySheriffBadge);
   const proceedToDayVote = useGameStore((s) => s.proceedToDayVote);
 
   const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
@@ -30,6 +35,7 @@ export function DayAnnouncementScreen() {
   );
 
   const deaths = latestNight?.deaths ?? [];
+  const bearRoar = latestNight?.bearRoar ?? lastBearRoar;
 
   // 檢核昨晚死亡的獵人或狼王是否被禁止開槍
   const disabledShootInfos = useMemo(() => {
@@ -43,6 +49,8 @@ export function DayAnnouncementScreen() {
   }, [deaths, seats]);
 
   const hasPendingShooters = pendingShooters.length > 0;
+  const hasPendingBadgeTransfer = sheriffState.pendingBadgeTransferFrom !== null;
+  const isProceedBlocked = hasPendingShooters || hasPendingBadgeTransfer;
 
   return (
     <div className="space-y-4 pb-28">
@@ -92,6 +100,17 @@ export function DayAnnouncementScreen() {
                     <div className="mt-1 text-xs text-rose-300">
                       法官視角死因：{formatDeathReason(death.reason)}
                     </div>
+                    {death.reason === 'wolf_beauty_charm' && (
+                      <div className="mt-1 inline-block rounded-md border border-rose-500/40 bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-200">
+                        💘 狼美人出局殉情帶走（無開槍／任何死亡技能資格）
+                      </div>
+                    )}
+                    {(death.reason === 'dream_catcher_consecutive' ||
+                      death.reason === 'dream_catcher_link') && (
+                      <div className="mt-1 inline-block rounded-md border border-indigo-500/40 bg-indigo-950/50 px-2 py-0.5 text-[11px] font-bold text-indigo-200">
+                        💤 攝夢人夢死／共死（無開槍／任何死亡技能資格）
+                      </div>
+                    )}
                   </div>
                   {role && (
                     <span
@@ -106,6 +125,54 @@ export function DayAnnouncementScreen() {
           </div>
         )}
       </section>
+
+      {/* 熊咆哮天亮公告卡 */}
+      {bearRoar && (
+        <section
+          className={`rounded-2xl border p-4 ${
+            bearRoar.roared
+              ? 'border-amber-400/60 bg-amber-950/35'
+              : 'border-emerald-500/40 bg-emerald-950/25'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className={`rounded-lg px-2.5 py-0.5 text-xs font-extrabold ${
+                bearRoar.roared
+                  ? 'bg-amber-500/25 text-amber-200'
+                  : 'bg-emerald-500/20 text-emerald-200'
+              }`}
+            >
+              天亮熊咆哮公告
+            </span>
+            {bearRoar.bearSeat !== null && (
+              <span className="text-xs font-semibold text-slate-400">
+                熊座位：{bearRoar.bearSeat} 號
+              </span>
+            )}
+          </div>
+          <div
+            className={`mt-2 text-lg font-extrabold ${
+              bearRoar.roared ? 'text-amber-100' : 'text-emerald-100'
+            }`}
+          >
+            {bearRoar.roared
+              ? '🐻 昨晚熊咆哮了（身邊有狼）'
+              : '🐻 昨晚熊沒有咆哮（身邊無狼）'}
+          </div>
+          <p className="mt-1 text-xs text-slate-300">法官判定依據：{bearRoar.reason}</p>
+        </section>
+      )}
+
+      {/* 警長昨夜出局之警徽交接／撕毀面板 */}
+      {sheriffState.pendingBadgeTransferFrom !== null && (
+        <SheriffBadgeTransferCard
+          fromSeat={sheriffState.pendingBadgeTransferFrom}
+          seats={seats}
+          onTransfer={transferSheriffBadge}
+          onDestroy={destroySheriffBadge}
+        />
+      )}
 
       {/* 禁開槍狀態提示 */}
       {disabledShootInfos.length > 0 && (
@@ -147,17 +214,19 @@ export function DayAnnouncementScreen() {
         <div className="mx-auto max-w-lg">
           <button
             type="button"
-            disabled={hasPendingShooters}
+            disabled={isProceedBlocked}
             onClick={proceedToDayVote}
             className={`min-h-12 w-full rounded-xl px-5 py-3.5 text-base font-extrabold transition ${
-              hasPendingShooters
+              isProceedBlocked
                 ? 'cursor-not-allowed bg-slate-800 text-slate-500'
                 : 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 hover:bg-amber-400 active:scale-[0.99]'
             }`}
           >
             {hasPendingShooters
               ? '請先結算開槍 / 壓槍後再進入白天投票'
-              : '進入白天發言與放逐投票 ➜'}
+              : hasPendingBadgeTransfer
+                ? '請先完成警徽移交 / 撕毀後再進入白天投票'
+                : '進入白天發言與放逐投票 ➜'}
           </button>
         </div>
       </div>

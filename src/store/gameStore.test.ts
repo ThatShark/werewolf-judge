@@ -28,6 +28,7 @@ vi.hoisted(() => {
 
 import { ALL_BOARDS } from '../data/boards';
 import { GAME_STORAGE_KEY, useGameStore } from './gameStore';
+import { buildGameReplayText } from '../components/common/displayHelpers';
 
 const CLASSIC_ROLES = [
   'wolf',
@@ -247,7 +248,10 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().currentSpeakerIndex).toBe(1);
     expect(useGameStore.getState().remainingSeconds).toBe(120);
 
-    // 確認發言佇列與秒數已持久化至 localStorage
+    // 確認發言佇列已寫入當日復盤紀錄與 localStorage
+    const day1 = useGameStore.getState().dayHistory.find((d) => d.round === 1);
+    expect(day1?.events.some((evt) => evt.includes('發言順序') && evt.includes('死左'))).toBe(true);
+
     const raw = localStorage.getItem(GAME_STORAGE_KEY);
     const parsed = JSON.parse(raw!);
     expect(parsed.state.speakingQueue).toEqual(order.queue);
@@ -292,5 +296,10 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
 
     const day2 = useGameStore.getState().dayHistory.find((d) => d.round === 2);
     expect(day2?.structuredEvents?.some((e) => e.type === 'idiot_reveal')).toBe(true);
+
+    // 驗證一鍵複製戰報包含吞警徽與逐票明細
+    const replay = buildGameReplayText(useGameStore.getState());
+    expect(replay).toContain('警上自爆吞警徽');
+    expect(replay).toContain('12 號：3 票（2 號、3 號；額外 +1 票）');
   });
 });

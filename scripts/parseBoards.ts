@@ -1131,6 +1131,26 @@ function inferNightActionType(
     return 'hunter_gesture';
   }
 
+  // 標準狼美人魅惑
+  if (
+    actorRoleIds.includes('wolf_beauty') &&
+    actorRoleIds.length === 1 &&
+    !actorLabel.includes('覺醒狼美人') &&
+    combined.includes('魅惑')
+  ) {
+    return 'wolf_beauty_charm';
+  }
+
+  // 標準攝夢人攝夢
+  if (
+    actorRoleIds.includes('dream_catcher') &&
+    actorRoleIds.length === 1 &&
+    !actorLabel.includes('覺醒攝夢人') &&
+    (combined.includes('攝夢') || combined.includes('夢遊'))
+  ) {
+    return 'dream_catcher_dream';
+  }
+
   return 'confirm_only';
 }
 

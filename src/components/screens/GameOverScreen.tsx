@@ -7,6 +7,8 @@ import {
   formatDeathReason,
   formatFactionLabel,
   formatSeatDisplay,
+  formatSheriffStatusSummary,
+  formatVoteRecordLines,
   getRoleBadgeClasses,
 } from '../common/displayHelpers';
 
@@ -16,6 +18,7 @@ export function GameOverScreen() {
   const seats = useGameStore((s) => s.seats);
   const winner = useGameStore((s) => s.winner);
   const winReason = useGameStore((s) => s.winReason);
+  const sheriffState = useGameStore((s) => s.sheriffState);
   const nightHistory = useGameStore((s) => s.nightHistory);
   const dayHistory = useGameStore((s) => s.dayHistory);
   const restartGame = useGameStore((s) => s.restartGame);
@@ -46,13 +49,18 @@ export function GameOverScreen() {
     return items;
   }, [round, nightHistory, dayHistory]);
 
+  const sheriffSummary = useMemo(
+    () => formatSheriffStatusSummary(sheriffState, seats),
+    [sheriffState, seats],
+  );
+
   const replayText = useMemo(
     () =>
       buildGameReplayText(
-        { round, winner, winReason, seats, nightHistory, dayHistory },
+        { round, winner, winReason, seats, sheriffState, nightHistory, dayHistory },
         board,
       ),
-    [round, winner, winReason, seats, nightHistory, dayHistory, board],
+    [round, winner, winReason, seats, sheriffState, nightHistory, dayHistory, board],
   );
 
   const handleCopyReplay = async () => {
@@ -103,6 +111,11 @@ export function GameOverScreen() {
         </h1>
         {winReason && (
           <p className="mt-2 text-sm font-medium text-slate-200">{winReason}</p>
+        )}
+        {sheriffSummary && (
+          <div className="mt-2.5 inline-block rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-200">
+            👮 {sheriffSummary}
+          </div>
         )}
       </section>
 
@@ -197,6 +210,15 @@ export function GameOverScreen() {
                     {night.draft.psychicCheckTarget !== null && (
                       <li>• 通靈師查驗：{night.draft.psychicCheckTarget} 號</li>
                     )}
+                    {night.draft.wolfBeautyCharmTarget != null && (
+                      <li>• 狼美人魅惑：{night.draft.wolfBeautyCharmTarget} 號</li>
+                    )}
+                    {night.draft.dreamCatcherTarget != null && (
+                      <li>• 攝夢人攝夢：{night.draft.dreamCatcherTarget} 號</li>
+                    )}
+                    {night.bearRoar && (
+                      <li className="text-amber-200">• 熊判定：{night.bearRoar.reason}</li>
+                    )}
                     <li className="font-semibold text-amber-200">
                       • 天亮結果：
                       {night.deaths.length === 0
@@ -212,10 +234,29 @@ export function GameOverScreen() {
               {day && day.events.length > 0 && (
                 <div className={night ? 'border-t border-slate-800 pt-2' : ''}>
                   <div className="font-extrabold text-amber-300">☀️ 第 {r} 天</div>
-                  <ul className="mt-1 space-y-1 text-slate-300">
-                    {day.events.map((evt, idx) => (
-                      <li key={idx}>• {evt}</li>
-                    ))}
+                  <ul className="mt-1.5 space-y-1.5 text-slate-300">
+                    {(() => {
+                      const remainingVoteEvents = [...(day.structuredEvents ?? [])].filter(
+                        (s) => s.voteRecord,
+                      );
+                      return day.events.map((evt, idx) => {
+                        const matchIdx = remainingVoteEvents.findIndex((s) => s.summary === evt);
+                        const matched =
+                          matchIdx !== -1 ? remainingVoteEvents.splice(matchIdx, 1)[0] : undefined;
+                        return (
+                          <li key={idx} className="space-y-1">
+                            <div>• {evt}</div>
+                            {matched?.voteRecord && (
+                              <div className="ml-3 space-y-0.5 rounded-lg border border-slate-800 bg-slate-900/90 px-2.5 py-1.5 text-[11px] text-slate-300">
+                                {formatVoteRecordLines(matched.voteRecord).map((line, lIdx) => (
+                                  <div key={lIdx}>- {line}</div>
+                                ))}
+                              </div>
+                            )}
+                          </li>
+                        );
+                      });
+                    })()}
                   </ul>
                 </div>
               )}

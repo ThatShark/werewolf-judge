@@ -139,4 +139,36 @@ describe('全量 142 板子與 128 角色資料完整性驗證', () => {
       expect(night2Res.seats).toHaveLength(board.playerCount);
     }
   });
+
+  it('所有含標準狼美人魅惑與攝夢人攝夢的板子步驟皆對應至專屬 actionType', () => {
+    let charmStepCount = 0;
+    let dreamStepCount = 0;
+
+    for (const board of ALL_BOARDS) {
+      const steps = [...getNightSteps(board, 1), ...getNightSteps(board, 2)];
+      for (const step of steps) {
+        if (step.actionType === 'wolf_beauty_charm') charmStepCount += 1;
+        if (step.actionType === 'dream_catcher_dream') dreamStepCount += 1;
+
+        const isStandardCharmStep =
+          step.actorRoleIds.includes('wolf_beauty') &&
+          step.actorRoleIds.length === 1 &&
+          step.actionPrompt.includes('魅惑');
+        if (isStandardCharmStep) {
+          expect(step.actionType).toBe('wolf_beauty_charm');
+        }
+
+        const isStandardDreamStep =
+          step.actorRoleIds.includes('dream_catcher') &&
+          step.actorRoleIds.length === 1 &&
+          step.actionPrompt.includes('攝夢');
+        if (isStandardDreamStep) {
+          expect(step.actionType).toBe('dream_catcher_dream');
+        }
+      }
+    }
+
+    expect(charmStepCount).toBeGreaterThan(0);
+    expect(dreamStepCount).toBeGreaterThan(0);
+  });
 });

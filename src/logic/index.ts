@@ -4,3 +4,4 @@ export * from './victory';
 export * from './mechWolf';
 export * from './dayResolution';
 export * from './nightResolution';
+export * from './manualControl';

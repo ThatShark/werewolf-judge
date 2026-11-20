@@ -40,23 +40,43 @@ export function checkVictory(
   seats: PlayerSeat[],
   ruleOverrides: RuleOverrides,
 ): VictoryResult {
+  if (seats.length === 0) {
+    return { winner: null, winReason: null };
+  }
+
+  let hasAnyWolf = false;
+  let hasAnyVillager = false;
+  let hasAnyGod = false;
+  for (const seat of seats) {
+    const role = getRoleById(seat.roleId);
+    if (!role) continue;
+    if (role.faction === 'wolf') hasAnyWolf = true;
+    else if (role.category === 'villager') hasAnyVillager = true;
+    else if (role.category === 'god') hasAnyGod = true;
+  }
+
   const { wolves, villagers, gods } = countAliveFactions(seats, ruleOverrides);
 
-  const wolfWon =
-    ruleOverrides.victoryMode === 'slaughter_all'
-      ? villagers === 0 && gods === 0
-      : villagers === 0 || gods === 0;
+  const villagersEliminated = hasAnyVillager && villagers === 0;
+  const godsEliminated = hasAnyGod && gods === 0;
+  const hasGoodRoles = hasAnyVillager || hasAnyGod;
 
-  const goodWon = wolves === 0;
+  const wolfWon = !hasGoodRoles
+    ? false
+    : ruleOverrides.victoryMode === 'slaughter_all'
+      ? (!hasAnyVillager || villagers === 0) && (!hasAnyGod || gods === 0)
+      : villagersEliminated || godsEliminated;
+
+  const goodWon = hasAnyWolf && wolves === 0;
 
   if (wolfWon && (!goodWon || ruleOverrides.wolfKillPriority)) {
     if (ruleOverrides.victoryMode === 'slaughter_all') {
       return { winner: 'wolf', winReason: '狼人陣營屠城勝利（所有好人已出局）' };
     }
-    if (villagers === 0 && gods === 0) {
+    if (villagersEliminated && godsEliminated) {
       return { winner: 'wolf', winReason: '狼人陣營屠邊勝利（平民與神職皆已出局）' };
     }
-    if (villagers === 0) {
+    if (villagersEliminated) {
       return { winner: 'wolf', winReason: '狼人陣營屠民勝利（所有平民已出局）' };
     }
     return { winner: 'wolf', winReason: '狼人陣營屠神勝利（所有神職已出局）' };

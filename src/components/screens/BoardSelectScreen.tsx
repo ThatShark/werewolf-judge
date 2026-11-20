@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MVP_BOARDS, filterBoards } from '../../data/boards';
+import { ALL_BOARDS, filterBoards } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import type { PlayerCountFilter, RuleOverrides, WitchSelfSaveRule } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
@@ -31,11 +31,11 @@ export function BoardSelectScreen() {
   const [countFilter, setCountFilter] = useState<PlayerCountFilter | 'all'>('all');
   const [query, setQuery] = useState('');
   const [previewBoardId, setPreviewBoardId] = useState<string>(
-    selectedBoardId ?? MVP_BOARDS[0]?.id ?? '',
+    selectedBoardId ?? ALL_BOARDS[0]?.id ?? '',
   );
 
   const filteredBoards = useMemo(
-    () => filterBoards(MVP_BOARDS, countFilter, query),
+    () => filterBoards(ALL_BOARDS, countFilter, query),
     [countFilter, query],
   );
 
@@ -216,7 +216,13 @@ export function BoardSelectScreen() {
             </button>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div
+            className={`space-y-2.5 ${
+              filteredBoards.length > 4
+                ? 'max-h-[46dvh] overflow-y-auto pr-1'
+                : ''
+            }`}
+          >
             {filteredBoards.map((board) => {
               const isSelected = activeBoard?.id === board.id;
               return (
@@ -234,7 +240,11 @@ export function BoardSelectScreen() {
                     <div>
                       <div className="text-base font-bold text-slate-50">{board.name}</div>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {[...board.composition.wolf, ...board.composition.good].map((slot) => {
+                        {[
+                          ...board.composition.wolf,
+                          ...board.composition.good,
+                          ...(board.composition.thirdParty ?? []),
+                        ].map((slot) => {
                           const role = getRoleById(slot.roleId);
                           return (
                             <span
@@ -247,15 +257,28 @@ export function BoardSelectScreen() {
                         })}
                       </div>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-xl px-2.5 py-1 text-xs font-bold ${
-                        isSelected
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {board.playerCount} 人局
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span
+                        className={`rounded-xl px-2.5 py-1 text-xs font-bold ${
+                          isSelected
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        {board.playerCountRange
+                          ? `${board.playerCountRange[0]}~${board.playerCountRange[1]} 人局`
+                          : `${board.playerCount} 人局`}
+                      </span>
+                      <span
+                        className={`rounded-lg border px-2 py-0.5 text-[10px] font-bold ${
+                          board.automationLevel === 'full'
+                            ? 'border-emerald-500/35 bg-emerald-950/50 text-emerald-300'
+                            : 'border-indigo-500/35 bg-indigo-950/50 text-indigo-300'
+                        }`}
+                      >
+                        {board.automationLevel === 'full' ? '⚡ 自動結算' : '🎙️ 台詞+手動輔助'}
+                      </span>
+                    </div>
                   </div>
                 </button>
               );
@@ -306,7 +329,28 @@ export function BoardSelectScreen() {
                   ))}
                 </div>
               </div>
+              {activeBoard.composition.thirdParty &&
+                activeBoard.composition.thirdParty.length > 0 && (
+                  <div className="sm:col-span-2 rounded-xl border border-amber-500/25 bg-amber-950/20 p-3">
+                    <div className="text-xs font-bold text-amber-300">第三方 / 特殊陣營</div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {activeBoard.composition.thirdParty.map((slot) => (
+                        <span
+                          key={slot.roleId}
+                          className="rounded-lg border border-amber-500/35 bg-amber-950/50 px-2.5 py-1 text-xs font-semibold text-amber-100"
+                        >
+                          {getRoleById(slot.roleId)?.name ?? slot.roleId} ×{slot.count}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
+            {activeBoard.compositionNote && (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-950/25 px-3 py-2 text-xs leading-relaxed text-amber-200">
+                💡 {activeBoard.compositionNote}
+              </div>
+            )}
           </div>
 
           {/* 睜眼順序預覽 */}

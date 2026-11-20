@@ -19,6 +19,7 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   self_explode: '狼人自爆出局',
   mech_wolf_poison: '機械狼毒殺',
   mech_wolf_kill: '機械狼額外刀口',
+  manual_judge: '法官手動標記出局',
 };
 
 export const PHASE_LABELS: Record<GamePhase, string> = {

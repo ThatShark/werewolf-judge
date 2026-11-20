@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOARDS_BY_ID, MVP_BOARDS, filterBoards, getBoardById } from '../data/boards';
+import { ALL_BOARDS, BOARDS_BY_ID, MVP_BOARDS, filterBoards, getBoardById } from '../data/boards';
 import { ROLES_BY_ID } from '../data/roles';
 import {
   createInitialSeats,
@@ -10,11 +10,15 @@ import {
 describe('MVP 板子靜態資料與發牌驗證', () => {
   it('包含 3 個 MVP 板子且所有角色 ID 皆存在於角色字典中', () => {
     expect(MVP_BOARDS).toHaveLength(3);
-    expect(Object.keys(BOARDS_BY_ID)).toEqual([
+    expect(MVP_BOARDS.map((b) => b.id)).toEqual([
       '12p-classic',
       '12p-wolf-king-guard',
       '10p-mech-wolf-psychic',
     ]);
+    expect(ALL_BOARDS).toHaveLength(142);
+    expect(Object.keys(BOARDS_BY_ID)).toEqual(
+      expect.arrayContaining(['12p-classic', '12p-wolf-king-guard', '10p-mech-wolf-psychic']),
+    );
 
     for (const board of MVP_BOARDS) {
       const allSlots = [

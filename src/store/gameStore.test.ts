@@ -26,6 +26,7 @@ vi.hoisted(() => {
   }
 });
 
+import { ALL_BOARDS } from '../data/boards';
 import { GAME_STORAGE_KEY, useGameStore } from './gameStore';
 
 const CLASSIC_ROLES = [
@@ -152,5 +153,55 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().seats[0].deathReason).toBe('self_explode');
     expect(useGameStore.getState().seats[5].isAlive).toBe(false);
     expect(useGameStore.getState().pendingSelfExplodeSeat).toBeNull();
+  });
+
+  it('支援進階 confirm_only 板子與彈性人數調整及法官手動切換存活狀態', () => {
+    const lianliankan = ALL_BOARDS.find((b) => b.name.includes('連連看'))!;
+    expect(lianliankan).toBeDefined();
+
+    useGameStore.getState().selectBoard(lianliankan.id);
+    const roles = [
+      'scent_phantom',
+      'scent_phantom',
+      'scent_phantom',
+      'scent_phantom',
+      'scent_phantom',
+      'scent_phantom',
+      'demon_hunter',
+      'demon_hunter',
+      'demon_hunter',
+      'demon_hunter',
+    ];
+    roles.forEach((roleId, idx) => {
+      useGameStore.getState().assignRole(idx + 1, roleId);
+    });
+    expect(useGameStore.getState().startGame().ok).toBe(true);
+
+    // 跑完第一晚所有 confirm_only 步驟並結算
+    for (let i = 0; i < lianliankan.nightSchedule.firstNight.length - 1; i += 1) {
+      useGameStore.getState().nextNightStep();
+    }
+    useGameStore.getState().finishNight();
+    expect(useGameStore.getState().phase).toBe('day_announcement');
+
+    // 法官手動標記 7 號出局再還原
+    useGameStore.getState().toggleSeatAlive(7);
+    expect(useGameStore.getState().seats[6].isAlive).toBe(false);
+    expect(useGameStore.getState().seats[6].deathReason).toBe('manual_judge');
+
+    useGameStore.getState().toggleSeatAlive(7);
+    expect(useGameStore.getState().seats[6].isAlive).toBe(true);
+
+    // 彈性人數板子（獵殺潛狼 6 -> 10 人）切換
+    const huntBoard = ALL_BOARDS.find((b) => b.name.includes('獵殺潛狼'))!;
+    useGameStore.getState().selectBoard(huntBoard.id);
+    expect(useGameStore.getState().seats).toHaveLength(6);
+    useGameStore.getState().setBoardPlayerCount(10);
+    expect(useGameStore.getState().seats).toHaveLength(10);
+
+    // 手動宣告第三方勝利
+    useGameStore.getState().declareWinner('third_party', '特殊勝利條件達成');
+    expect(useGameStore.getState().phase).toBe('game_over');
+    expect(useGameStore.getState().winner).toBe('third_party');
   });
 });

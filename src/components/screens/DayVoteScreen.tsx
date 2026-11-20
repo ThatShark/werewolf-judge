@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import { countAliveFactions, resolveSelfExplode } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { PendingShooterCard } from '../common/PendingShooterCard';
+import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { formatSeatDisplay, getRoleBadgeClasses } from '../common/displayHelpers';
 
 const TIMER_PRESETS = [60, 90, 120] as const;
 
 export function DayVoteScreen() {
+  const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
@@ -20,6 +23,9 @@ export function DayVoteScreen() {
   const triggerShoot = useGameStore((s) => s.triggerShoot);
   const skipShoot = useGameStore((s) => s.skipShoot);
   const advanceToNextNight = useGameStore((s) => s.advanceToNextNight);
+
+  const board = getBoardById(selectedBoardId);
+  const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
 
   // 發言倒數計時器
   const [durationSeconds, setDurationSeconds] = useState<number>(90);
@@ -148,17 +154,26 @@ export function DayVoteScreen() {
 
       {/* 場上存活與白痴翻牌狀態 */}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3.5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-bold text-slate-300">
             目前存活人數：{aliveSeats.length} / {seats.length}
           </span>
-          <button
-            type="button"
-            onClick={() => setShowFactionCounts((prev) => !prev)}
-            className="min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-2.5 text-xs font-semibold text-slate-300"
-          >
-            {showFactionCounts ? '隱藏法官人數統計' : '顯示法官人數統計'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSeatDrawerOpen(true)}
+              className="min-h-12 rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-3 text-xs font-bold text-indigo-200 hover:bg-indigo-900/50"
+            >
+              👥 座位總覽 / 手動標記
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFactionCounts((prev) => !prev)}
+              className="min-h-12 rounded-xl border border-slate-700 bg-slate-800 px-3 text-xs font-semibold text-slate-300"
+            >
+              {showFactionCounts ? '隱藏統計' : '法官統計'}
+            </button>
+          </div>
         </div>
 
         {showFactionCounts && (
@@ -430,6 +445,12 @@ export function DayVoteScreen() {
           advanceToNextNight();
         }}
         onCancel={() => setConfirmNextNightOpen(false)}
+      />
+
+      <SeatStatusDrawer
+        open={seatDrawerOpen}
+        board={board}
+        onClose={() => setSeatDrawerOpen(false)}
       />
     </div>
   );

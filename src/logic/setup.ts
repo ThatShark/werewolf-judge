@@ -70,6 +70,16 @@ export function getBoardExpectedRoleCounts(board: BoardDefinition): Record<strin
   return expected;
 }
 
+export function isValidPlayerCountForBoard(board: BoardDefinition, count: number): boolean {
+  if (board.presetPlayerCounts && board.presetPlayerCounts.length > 0) {
+    return board.presetPlayerCounts.includes(count);
+  }
+  if (board.playerCountRange) {
+    return count >= board.playerCountRange[0] && count <= board.playerCountRange[1];
+  }
+  return count === board.playerCount;
+}
+
 export function validateRoleAssignment(
   board: BoardDefinition,
   seats: PlayerSeat[],
@@ -78,7 +88,7 @@ export function validateRoleAssignment(
   const missingRoles: Record<string, number> = {};
   const extraRoles: Record<string, number> = {};
 
-  if (seats.length !== board.playerCount) {
+  if (!isValidPlayerCountForBoard(board, seats.length)) {
     errors.push(`座位數量不符：需要 ${board.playerCount} 人，目前為 ${seats.length} 人。`);
   }
 
@@ -99,10 +109,26 @@ export function validateRoleAssignment(
   }
 
   const allRoleIds = new Set([...Object.keys(expectedCounts), ...Object.keys(actualCounts)]);
+  const allowScalingCounts = Boolean(
+    board.presetPlayerCounts?.length || board.playerCountRange,
+  );
+
   for (const roleId of allRoleIds) {
     const expected = expectedCounts[roleId] ?? 0;
     const actual = actualCounts[roleId] ?? 0;
     const roleName = getRoleById(roleId)?.name ?? roleId;
+
+    if (board.isFlexibleComposition) {
+      if (expected === 0 && actual > 0) {
+        extraRoles[roleId] = actual;
+        errors.push(`${roleName} 不屬於本板子可選角色。`);
+      } else if (!allowScalingCounts && actual > expected) {
+        extraRoles[roleId] = actual - expected;
+        errors.push(`${roleName} 人數超出：最多 ${expected} 名，目前 ${actual} 名。`);
+      }
+      continue;
+    }
+
     if (actual < expected) {
       missingRoles[roleId] = expected - actual;
       errors.push(`${roleName} 人數不足：需 ${expected} 名，目前 ${actual} 名。`);

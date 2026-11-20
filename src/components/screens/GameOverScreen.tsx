@@ -76,6 +76,7 @@ export function GameOverScreen() {
   };
 
   const isWolfWin = winner === 'wolf';
+  const isThirdPartyWin = winner === 'third_party';
 
   return (
     <div className="space-y-4 pb-10">
@@ -84,7 +85,9 @@ export function GameOverScreen() {
         className={`rounded-2xl border p-5 text-center shadow-lg ${
           isWolfWin
             ? 'border-rose-500/50 bg-rose-950/40'
-            : 'border-emerald-500/50 bg-emerald-950/40'
+            : isThirdPartyWin
+              ? 'border-amber-500/50 bg-amber-950/40'
+              : 'border-emerald-500/50 bg-emerald-950/40'
         }`}
       >
         <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
@@ -92,10 +95,10 @@ export function GameOverScreen() {
         </p>
         <h1
           className={`mt-1.5 text-2xl font-extrabold ${
-            isWolfWin ? 'text-rose-200' : 'text-emerald-200'
+            isWolfWin ? 'text-rose-200' : isThirdPartyWin ? 'text-amber-200' : 'text-emerald-200'
           }`}
         >
-          {isWolfWin ? '🐺 ' : '✨ '}
+          {isWolfWin ? '🐺 ' : isThirdPartyWin ? '🦊 ' : '✨ '}
           {formatFactionLabel(winner)}勝利！
         </h1>
         {winReason && (

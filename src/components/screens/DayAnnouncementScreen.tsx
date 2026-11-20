@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import { checkCanShoot } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { PendingShooterCard } from '../common/PendingShooterCard';
+import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import {
   formatDeathReason,
   formatSeatDisplay,
@@ -10,6 +12,7 @@ import {
 } from '../common/displayHelpers';
 
 export function DayAnnouncementScreen() {
+  const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
   const nightHistory = useGameStore((s) => s.nightHistory);
@@ -17,6 +20,9 @@ export function DayAnnouncementScreen() {
   const triggerShoot = useGameStore((s) => s.triggerShoot);
   const skipShoot = useGameStore((s) => s.skipShoot);
   const proceedToDayVote = useGameStore((s) => s.proceedToDayVote);
+
+  const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
+  const board = getBoardById(selectedBoardId);
 
   const latestNight = useMemo(
     () => nightHistory.find((entry) => entry.round === round) ?? nightHistory[nightHistory.length - 1],
@@ -42,13 +48,20 @@ export function DayAnnouncementScreen() {
     <div className="space-y-4 pb-28">
       {/* 天亮公告卡 */}
       <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/95 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
               第 {round} 天 · 天亮了
             </span>
             <h1 className="mt-0.5 text-xl font-extrabold text-slate-50">昨夜結算公告</h1>
           </div>
+          <button
+            type="button"
+            onClick={() => setSeatDrawerOpen(true)}
+            className="min-h-12 shrink-0 rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-3 text-xs font-bold text-indigo-200 hover:bg-indigo-900/50"
+          >
+            👥 座位總覽 / 手動標記
+          </button>
         </div>
 
         {deaths.length === 0 ? (
@@ -148,6 +161,12 @@ export function DayAnnouncementScreen() {
           </button>
         </div>
       </div>
+
+      <SeatStatusDrawer
+        open={seatDrawerOpen}
+        board={board}
+        onClose={() => setSeatDrawerOpen(false)}
+      />
     </div>
   );
 }

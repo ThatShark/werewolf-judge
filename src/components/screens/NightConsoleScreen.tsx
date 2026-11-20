@@ -15,6 +15,7 @@ import {
 } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { formatSeatShort, getRoleBadgeClasses } from '../common/displayHelpers';
 
 export function NightConsoleScreen() {
@@ -37,6 +38,7 @@ export function NightConsoleScreen() {
 
   const [maskSeatRoles, setMaskSeatRoles] = useState(false);
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false);
+  const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
 
   const board = getBoardById(selectedBoardId);
   const steps = useMemo(
@@ -46,7 +48,7 @@ export function NightConsoleScreen() {
   const currentStep = steps[currentStepIndex];
 
   const actorSeatsAlive = useMemo(() => {
-    if (!currentStep) return true;
+    if (!currentStep || currentStep.actorRoleIds.length === 0) return true;
     return seats.some(
       (seat) => seat.isAlive && seat.roleId && currentStep.actorRoleIds.includes(seat.roleId),
     );
@@ -256,6 +258,10 @@ export function NightConsoleScreen() {
       ? seats.find((s) => s.seatNumber === currentNightDraft.mechWolfLearnTarget)
       : undefined;
 
+  const hasWolfKillStep = steps.some((s) => s.actionType === 'wolf_kill');
+  const hasWitchStep = steps.some((s) => s.actionType === 'witch_action');
+  const hasGuardStep = steps.some((s) => s.actionType === 'guard_protect');
+
   // 夜間結算摘要清單
   const summaryLines = [
     ...(round === 1 && mechWolfSeat
@@ -267,7 +273,7 @@ export function NightConsoleScreen() {
           }`,
         ]
       : []),
-    ...(board.composition.good.some((s) => s.roleId === 'guard')
+    ...(hasGuardStep
       ? [
           `守衛守護：${
             currentNightDraft.guardTarget !== null
@@ -285,18 +291,29 @@ export function NightConsoleScreen() {
           }`,
         ]
       : []),
-    `狼人點刀：${
-      currentNightDraft.wolfTarget !== null ? `${currentNightDraft.wolfTarget} 號` : '空刀'
-    }`,
-    `女巫用藥：${
-      currentNightDraft.witchUseAntidote
-        ? '使用解藥'
-        : currentNightDraft.witchPoisonTarget !== null
-          ? `毒殺 ${currentNightDraft.witchPoisonTarget} 號`
-          : '雙藥皆未使用'
-    }`,
+    ...(hasWolfKillStep
+      ? [
+          `狼人點刀：${
+            currentNightDraft.wolfTarget !== null ? `${currentNightDraft.wolfTarget} 號` : '空刀'
+          }`,
+        ]
+      : []),
+    ...(hasWitchStep
+      ? [
+          `女巫用藥：${
+            currentNightDraft.witchUseAntidote
+              ? '使用解藥'
+              : currentNightDraft.witchPoisonTarget !== null
+                ? `毒殺 ${currentNightDraft.witchPoisonTarget} 號`
+                : '雙藥皆未使用'
+          }`,
+        ]
+      : []),
     ...(pendingSelfExplodeSeat !== null
       ? [`自爆出局：${pendingSelfExplodeSeat} 號將於結算後死亡`]
+      : []),
+    ...(!hasWolfKillStep && !hasWitchStep && !hasGuardStep
+      ? [`已完成本晚 ${steps.length} 個主持台詞步驟（特殊角色狀態請透過「座位總覽／手動標記」確認）`]
       : []),
   ];
 
@@ -313,15 +330,24 @@ export function NightConsoleScreen() {
               步驟 {currentStepIndex + 1} / {steps.length}：{currentStep.actorLabel}
             </h1>
           </div>
-          <span
-            className={`rounded-xl border px-2.5 py-1 text-xs font-bold ${
-              actorSeatsAlive
-                ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
-                : 'border-slate-700 bg-slate-800 text-slate-400'
-            }`}
-          >
-            {actorSeatsAlive ? '場上存活' : '該職已出局'}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span
+              className={`rounded-xl border px-2.5 py-1 text-xs font-bold ${
+                actorSeatsAlive
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+                  : 'border-slate-700 bg-slate-800 text-slate-400'
+              }`}
+            >
+              {actorSeatsAlive ? '場上存活' : '該職已出局'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSeatDrawerOpen(true)}
+              className="min-h-10 rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-2.5 text-xs font-bold text-indigo-200 hover:bg-indigo-900/50"
+            >
+              👥 座位總覽
+            </button>
+          </div>
         </div>
 
         <div className="mt-3 flex gap-1.5">
@@ -674,22 +700,41 @@ export function NightConsoleScreen() {
       )}
 
       {currentStep.actionType === 'confirm_only' && (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
           <div className="text-xs font-bold text-slate-400">持有此身分的座位：</div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {seats
-              .filter(
-                (seat) => seat.roleId && currentStep.actorRoleIds.includes(seat.roleId),
-              )
-              .map((seat) => (
-                <span
-                  key={seat.seatNumber}
-                  className="rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-3 py-2 text-sm font-bold text-indigo-100"
-                >
-                  {formatSeatShort(seat)}
-                </span>
-              ))}
-          </div>
+          {currentStep.actorRoleIds.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {seats
+                .filter(
+                  (seat) => seat.roleId && currentStep.actorRoleIds.includes(seat.roleId),
+                )
+                .map((seat) => (
+                  <span
+                    key={seat.seatNumber}
+                    className={`rounded-xl border px-3 py-2 text-sm font-bold ${
+                      seat.isAlive
+                        ? 'border-indigo-400/40 bg-indigo-950/50 text-indigo-100'
+                        : 'border-rose-500/35 bg-rose-950/35 text-rose-300 line-through'
+                    }`}
+                  >
+                    {formatSeatShort(seat)}
+                    {!seat.isAlive && '（已出局）'}
+                  </span>
+                ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">
+              此步驟為動態取得身分或全場過渡提示，請依現場實際座位主持。
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setSeatDrawerOpen(true)}
+            className="min-h-12 w-full rounded-xl border border-indigo-400/45 bg-indigo-500/15 px-4 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25"
+          >
+            👥 開啟座位總覽 / 手動標記存活或出局
+          </button>
         </section>
       )}
 
@@ -841,6 +886,12 @@ export function NightConsoleScreen() {
           ))}
         </ul>
       </ConfirmModal>
+
+      <SeatStatusDrawer
+        open={seatDrawerOpen}
+        board={board}
+        onClose={() => setSeatDrawerOpen(false)}
+      />
     </div>
   );
 }

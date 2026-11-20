@@ -81,6 +81,14 @@ export interface BoardDefinition {
     good: RoleSlot[];
     thirdParty?: RoleSlot[];
   };
+  /** 是否為彈性選配／含額外底牌／多預設人數之板子 */
+  isFlexibleComposition?: boolean;
+  /** 特殊配置或額外規則提醒 */
+  compositionNote?: string;
+  /** 多人數板子可選的預設人數列表 */
+  presetPlayerCounts?: number[];
+  /** 自動結算支援層級（full: 全自動結算；partial_manual: 含進階角色需手動標記輔助） */
+  automationLevel?: 'full' | 'partial_manual';
   /** 夜間流程：支援「每晚相同」或「第一晚 / 第二晚之後」 */
   nightSchedule: {
     firstNight: NightStepScript[];
@@ -109,7 +117,8 @@ export type DeathReason =
   | 'wolf_king_shoot'
   | 'self_explode'
   | 'mech_wolf_poison'
-  | 'mech_wolf_kill';
+  | 'mech_wolf_kill'
+  | 'manual_judge';
 
 export interface PlayerSeat {
   seatNumber: number;

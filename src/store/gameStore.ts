@@ -7,14 +7,17 @@ import {
   createInitialMechWolfState,
   createInitialSeats,
   getNightSteps,
+  isValidPlayerCountForBoard,
   resolveDayExile,
   resolveNight,
   resolveSelfExplode,
   resolveShoot,
+  toggleSeatAliveManually,
   validateRoleAssignment,
 } from '../logic';
 import type {
   DeathReason,
+  Faction,
   GameState,
   NightActionDraft,
   RuleOverrides,
@@ -31,6 +34,7 @@ export interface GameStore extends GameState {
   pendingShooters: PendingShooter[];
 
   selectBoard: (boardId: string) => void;
+  setBoardPlayerCount: (playerCount: number) => void;
   updateRuleOverrides: (partial: Partial<RuleOverrides>) => void;
   setSeatNickname: (seatNumber: number, nickname: string) => void;
   assignRole: (seatNumber: number, roleId: string | null) => void;
@@ -48,6 +52,9 @@ export interface GameStore extends GameState {
   exilePlayer: (targetSeat: number) => void;
   selfExplode: (wolfSeat: number) => { allowed: boolean; reason?: string };
   advanceToNextNight: () => void;
+
+  toggleSeatAlive: (seatNumber: number, options?: { reason?: DeathReason }) => void;
+  declareWinner: (winner: Faction, winReason: string) => void;
 
   restartGame: (options: { keepNicknames: boolean }) => void;
 }
@@ -117,6 +124,17 @@ export const useGameStore = create<GameStore>()(
           winner: null,
           winReason: null,
           pendingShooters: [],
+        });
+      },
+
+      setBoardPlayerCount: (playerCount) => {
+        const { selectedBoardId, savedNicknames } = get();
+        const board = getBoardById(selectedBoardId);
+        if (!board || !isValidPlayerCountForBoard(board, playerCount)) {
+          return;
+        }
+        set({
+          seats: createInitialSeats(playerCount, savedNicknames),
         });
       },
 
@@ -374,6 +392,42 @@ export const useGameStore = create<GameStore>()(
           currentNightDraft: createEmptyNightDraft(nextRound),
           pendingShooters: [],
           phase: 'night',
+        });
+      },
+
+      toggleSeatAlive: (seatNumber, options) => {
+        const state = get();
+        const result = toggleSeatAliveManually(
+          state.seats,
+          seatNumber,
+          state.round,
+          state.mechWolfState,
+          state.ruleOverrides,
+          options?.reason ?? 'manual_judge',
+        );
+        const eventText = result.becameAlive
+          ? `法官手動調整：${seatNumber} 號恢復為存活狀態`
+          : `法官手動標記：${seatNumber} 號出局`;
+
+        set({
+          seats: result.seats,
+          mechWolfState: result.mechWolfState,
+          pendingShooters: result.becameAlive
+            ? state.pendingShooters
+            : state.pendingShooters.filter((s) => s.seatNumber !== seatNumber),
+          dayHistory: appendDayEvent(state.dayHistory, state.round, eventText),
+          ...(result.becameAlive && state.winner ? { winner: null, winReason: null } : {}),
+        });
+      },
+
+      declareWinner: (winner, winReason) => {
+        const state = get();
+        set({
+          winner,
+          winReason,
+          pendingShooters: [],
+          dayHistory: appendDayEvent(state.dayHistory, state.round, `法官宣告勝負：${winReason}`),
+          phase: 'game_over',
         });
       },
 

@@ -83,8 +83,10 @@ export function QADrawer({ open, board, highlightRoleIds = [], onClose }: QADraw
                       key={qa.id}
                       className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3.5"
                     >
-                      <h3 className="text-sm font-bold text-amber-200">Q：{qa.question}</h3>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-200">
+                      <h3 className="whitespace-pre-line text-sm font-bold text-amber-200">
+                        Q：{qa.question}
+                      </h3>
+                      <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-200">
                         A：{qa.answer}
                       </p>
                     </div>
@@ -104,8 +106,10 @@ export function QADrawer({ open, board, highlightRoleIds = [], onClose }: QADraw
                       key={qa.id}
                       className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5"
                     >
-                      <h4 className="text-sm font-bold text-slate-100">Q：{qa.question}</h4>
-                      <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
+                      <h4 className="whitespace-pre-line text-sm font-bold text-slate-100">
+                        Q：{qa.question}
+                      </h4>
+                      <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-slate-300">
                         A：{qa.answer}
                       </p>
                     </div>
@@ -134,7 +138,7 @@ export function QADrawer({ open, board, highlightRoleIds = [], onClose }: QADraw
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-300">
                       {role.description}
                     </p>
                     {role.warnings && role.warnings.length > 0 && (

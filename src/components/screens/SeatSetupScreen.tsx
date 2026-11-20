@@ -10,6 +10,7 @@ const CLEAR_ROLE_TOOL = '__CLEAR__';
 export function SeatSetupScreen() {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const seats = useGameStore((s) => s.seats);
+  const setBoardPlayerCount = useGameStore((s) => s.setBoardPlayerCount);
   const setSeatNickname = useGameStore((s) => s.setSeatNickname);
   const assignRole = useGameStore((s) => s.assignRole);
   const startGame = useGameStore((s) => s.startGame);
@@ -60,16 +61,47 @@ export function SeatSetupScreen() {
   }
 
   const handleRandomDeal = () => {
-    const pool: string[] = [];
-    for (const [roleId, count] of Object.entries(expectedCounts)) {
-      for (let i = 0; i < count; i += 1) {
-        pool.push(roleId);
+    const wolfPool: string[] = [];
+    for (const slot of board.composition.wolf) {
+      for (let i = 0; i < slot.count; i += 1) {
+        wolfPool.push(slot.roleId);
       }
     }
-    for (let i = pool.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+    const otherPool: string[] = [];
+    for (const slot of [...board.composition.good, ...(board.composition.thirdParty ?? [])]) {
+      for (let i = 0; i < slot.count; i += 1) {
+        otherPool.push(slot.roleId);
+      }
     }
+
+    const shuffle = (arr: string[]) => {
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    };
+
+    let pool: string[] = [];
+    if (board.name.includes('獵殺潛狼')) {
+      const wolfCount = seats.length === 12 ? 4 : seats.length === 10 ? 3 : 2;
+      const hunterCount = seats.length - wolfCount;
+      pool = [
+        ...Array<string>(wolfCount).fill('wolf'),
+        ...Array<string>(hunterCount).fill('hunter'),
+      ];
+    } else if (wolfPool.length + otherPool.length >= seats.length) {
+      shuffle(otherPool);
+      const neededOthers = Math.max(0, seats.length - wolfPool.length);
+      pool = [...wolfPool, ...otherPool.slice(0, neededOthers)].slice(0, seats.length);
+    } else {
+      pool = [...wolfPool, ...otherPool];
+      const fillerRole = otherPool[0] ?? 'villager';
+      while (pool.length < seats.length) {
+        pool.push(fillerRole);
+      }
+    }
+
+    shuffle(pool);
     seats.forEach((seat, idx) => {
       assignRole(seat.seatNumber, pool[idx] ?? null);
     });
@@ -151,6 +183,37 @@ export function SeatSetupScreen() {
             {hideRoles ? '🙈 目前：隱藏身分' : '👁️ 目前：顯示身分'}
           </button>
         </div>
+
+        {board.presetPlayerCounts && board.presetPlayerCounts.length > 0 && (
+          <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+            <div className="text-xs font-bold text-slate-300">選擇本局玩家人數</div>
+            <div className="flex flex-wrap gap-2">
+              {board.presetPlayerCounts.map((cnt) => (
+                <button
+                  key={cnt}
+                  type="button"
+                  onClick={() => {
+                    setBoardPlayerCount(cnt);
+                    setStartError(null);
+                  }}
+                  className={`min-h-12 min-w-14 rounded-xl border px-3 text-sm font-extrabold transition ${
+                    seats.length === cnt
+                      ? 'border-amber-400 bg-amber-500 text-slate-950'
+                      : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                  }`}
+                >
+                  {cnt} 人
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {board.compositionNote && (
+          <div className="rounded-xl border border-amber-500/35 bg-amber-950/25 px-3 py-2 text-xs leading-relaxed text-amber-200">
+            💡 {board.compositionNote}
+          </div>
+        )}
 
         {statusNotice && (
           <div className="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs text-amber-200">

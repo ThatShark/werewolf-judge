@@ -13,12 +13,13 @@ import {
   createInitialMechWolfState,
   createInitialSeats,
   createInitialSheriffState,
+  createManualVictoryResult,
   dealRandomRoles,
   destroySheriffBadge as destroySheriffBadgeLogic,
   finalizePhysicalDealVillagers,
   generateSpeakingOrder as generateSpeakingOrderLogic,
   getNightSteps,
-  isSheriffElectionActive,
+  handleSheriffElectionExplode,
   isValidPlayerCountForBoard,
   resolveDayExile,
   resolveKnightDuel,
@@ -27,8 +28,9 @@ import {
   resolveSheriffVoteRound,
   resolveShoot,
   resolveWhiteWolfKingExplode,
+  resumeDeferredSheriffElection,
+  shouldTriggerAutoVictory,
   startSheriffElection as startSheriffElectionLogic,
-  swallowSheriffBadge,
   syncSheriffBadgeOnDeaths,
   tallyExileVotes,
   toggleSeatAliveManually,
@@ -43,16 +45,18 @@ import type {
   DayStructuredEvent,
   DeathReason,
   ExileVoteTallyResult,
-  Faction,
   GameState,
+  GameWinner,
   HostModeConfig,
   KnightDuelResult,
+  ManualVictoryOverrideKind,
   NightActionDraft,
   OnlineJudgeSettings,
   RuleOverrides,
   ShootEligibility,
   SpeakingOrderOptions,
   SpeakingOrderResult,
+  VoteInputMode,
   WhiteWolfKingExplodeResult,
 } from '../logic/types';
 
@@ -119,21 +123,29 @@ export interface GameStore extends GameState {
   proceedToDayVote: () => void;
 
   /** 白天放逐投票明細與突發技能 */
+  setVoteInputMode: (mode: VoteInputMode) => void;
   submitExileVotes: (
     votes: Record<number, number | null>,
     options?: SubmitExileVotesOptions,
   ) => ExileVoteTallyResult;
   exilePlayer: (targetSeat: number) => void;
-  selfExplode: (wolfSeat: number) => { allowed: boolean; reason?: string; swallowedBadge?: boolean };
+  selfExplode: (wolfSeat: number) => {
+    allowed: boolean;
+    reason?: string;
+    swallowedBadge?: boolean;
+    deferredBadge?: boolean;
+  };
   whiteWolfKingExplode: (
     wolfSeat: number,
     targetSeat: number | null,
-  ) => WhiteWolfKingExplodeResult & { swallowedBadge?: boolean };
+  ) => WhiteWolfKingExplodeResult & { swallowedBadge?: boolean; deferredBadge?: boolean };
   knightDuel: (knightSeat: number, targetSeat: number) => KnightDuelResult;
   advanceToNextNight: () => void;
 
   toggleSeatAlive: (seatNumber: number, options?: { reason?: DeathReason }) => void;
-  declareWinner: (winner: Faction, winReason: string) => void;
+  declareWinner: (winner: GameWinner, winReason: string) => void;
+  overrideVictory: (kind: ManualVictoryOverrideKind, customReason?: string) => void;
+  forceContinueGame: () => void;
 
   restartGame: (options: { keepNicknames: boolean }) => void;
 }
@@ -173,10 +185,13 @@ function createInitialGameState(): GameState & {
     remainingSeconds: DEFAULT_SPEAK_DURATION_SEC,
     sheriffState: createInitialSheriffState(),
     exilePkCandidates: [],
+    voteInputMode: 'by_voter',
     nightHistory: [],
     dayHistory: [],
     winner: null,
     winReason: null,
+    forceContinueAfterVictory: false,
+    preGameOverPhase: null,
     pendingShooters: [],
   };
 }
@@ -442,6 +457,8 @@ export const useGameStore = create<GameStore>()(
           dayHistory: [],
           winner: null,
           winReason: null,
+          forceContinueAfterVictory: false,
+          preGameOverPhase: null,
           pendingShooters: [],
           passRevealConfirmedSeats: [],
         };
@@ -528,7 +545,41 @@ export const useGameStore = create<GameStore>()(
             deathReason: deathMap.get(item.seatNumber) ?? 'wolf_kill',
           }));
 
-        const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, result.seats);
+        const syncedSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, result.seats);
+        const resumedElection = resumeDeferredSheriffElection(syncedSheriffState, result.seats);
+        const nextSheriffState = resumedElection.sheriffState;
+
+        let nextDayHistory = state.dayHistory;
+        if (resumedElection.resumed) {
+          if (resumedElection.outcome === 'voting') {
+            const summary = `雙爆吞警徽首爆延續：跳過警上發言，直接進入退水與警下投票（候選人：${nextSheriffState.candidates.join('、')} 號）`;
+            nextDayHistory = appendDayEvent(nextDayHistory, state.round, summary, {
+              type: 'sheriff_signup',
+              summary,
+            });
+          } else if (
+            resumedElection.outcome === 'elected' &&
+            nextSheriffState.sheriffSeat !== null
+          ) {
+            const summary = `雙爆吞警徽首爆延續：僅餘 ${nextSheriffState.sheriffSeat} 號存活候選人，自動當選警長`;
+            nextDayHistory = appendDayEvent(nextDayHistory, state.round, summary, {
+              type: 'sheriff_elected',
+              summary,
+              targetSeat: nextSheriffState.sheriffSeat,
+            });
+          } else if (resumedElection.outcome === 'no_sheriff') {
+            const summary = '雙爆吞警徽首爆延續：已無存活上警候選人，本局無警長';
+            nextDayHistory = appendDayEvent(nextDayHistory, state.round, summary, {
+              type: 'sheriff_no_winner',
+              summary,
+            });
+          }
+        }
+
+        const triggerGameOver = shouldTriggerAutoVictory(
+          result.victory,
+          state.forceContinueAfterVictory,
+        );
 
         set({
           seats: result.seats,
@@ -556,10 +607,12 @@ export const useGameStore = create<GameStore>()(
               bearRoar: result.bearRoar,
             },
           ],
+          dayHistory: nextDayHistory,
           pendingShooters,
-          winner: result.victory.winner,
-          winReason: result.victory.winReason,
-          phase: result.victory.winner ? 'game_over' : 'day_announcement',
+          winner: triggerGameOver ? result.victory.winner : null,
+          winReason: triggerGameOver ? result.victory.winReason : null,
+          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : 'day_announcement',
         });
       },
 
@@ -825,6 +878,10 @@ export const useGameStore = create<GameStore>()(
         }
 
         const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, result.seats);
+        const triggerGameOver = shouldTriggerAutoVictory(
+          result.victory,
+          state.forceContinueAfterVictory,
+        );
 
         set({
           seats: result.seats,
@@ -834,9 +891,13 @@ export const useGameStore = create<GameStore>()(
           sheriffState: nextSheriffState,
           pendingShooters: remainingShooters,
           dayHistory: nextDayHistory,
-          winner: result.victory.winner,
-          winReason: result.victory.winReason,
-          phase: result.victory.winner ? 'game_over' : state.phase,
+          winner: triggerGameOver ? result.victory.winner : state.winner,
+          winReason: triggerGameOver ? result.victory.winReason : state.winReason,
+          preGameOverPhase:
+            triggerGameOver && (state.phase === 'day_announcement' || state.phase === 'day_vote')
+              ? state.phase
+              : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
         });
       },
 
@@ -855,6 +916,10 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({
           phase: state.winner ? 'game_over' : 'day_vote',
         }));
+      },
+
+      setVoteInputMode: (mode) => {
+        set({ voteInputMode: mode });
       },
 
       submitExileVotes: (votes, options = {}) => {
@@ -938,8 +1003,13 @@ export const useGameStore = create<GameStore>()(
           });
         }
 
+        const triggerGameOver = shouldTriggerAutoVictory(
+          exileResult.victory,
+          state.forceContinueAfterVictory,
+        );
+
         const pendingShooters: PendingShooter[] =
-          exileResult.shootEligibility?.canShoot && !exileResult.victory.winner
+          exileResult.shootEligibility?.canShoot && !triggerGameOver
             ? [{ ...exileResult.shootEligibility, deathReason: 'exiled' }]
             : [];
 
@@ -954,9 +1024,10 @@ export const useGameStore = create<GameStore>()(
           exilePkCandidates: [],
           dayHistory: nextDayHistory,
           pendingShooters,
-          winner: exileResult.victory.winner,
-          winReason: exileResult.victory.winReason,
-          phase: exileResult.victory.winner ? 'game_over' : state.phase,
+          winner: triggerGameOver ? exileResult.victory.winner : state.winner,
+          winReason: triggerGameOver ? exileResult.victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
         });
 
         return tally;
@@ -993,8 +1064,13 @@ export const useGameStore = create<GameStore>()(
           });
         }
 
+        const triggerGameOver = shouldTriggerAutoVictory(
+          result.victory,
+          state.forceContinueAfterVictory,
+        );
+
         const pendingShooters: PendingShooter[] =
-          result.shootEligibility?.canShoot && !result.victory.winner
+          result.shootEligibility?.canShoot && !triggerGameOver
             ? [{ ...result.shootEligibility, deathReason: 'exiled' }]
             : [];
 
@@ -1009,9 +1085,10 @@ export const useGameStore = create<GameStore>()(
           exilePkCandidates: [],
           dayHistory: nextDayHistory,
           pendingShooters,
-          winner: result.victory.winner,
-          winReason: result.victory.winReason,
-          phase: result.victory.winner ? 'game_over' : state.phase,
+          winner: triggerGameOver ? result.victory.winner : state.winner,
+          winReason: triggerGameOver ? result.victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
         });
       },
 
@@ -1022,10 +1099,13 @@ export const useGameStore = create<GameStore>()(
           return { allowed: false, reason: result.reason };
         }
 
-        const swallowedBadge = isSheriffElectionActive(state.sheriffState);
-        const nextSheriffState = swallowedBadge
-          ? swallowSheriffBadge(state.sheriffState)
-          : state.sheriffState;
+        const explodeBadge = handleSheriffElectionExplode(
+          state.sheriffState,
+          state.ruleOverrides.badgeSwallowRule,
+        );
+        const swallowedBadge = explodeBadge.swallowed;
+        const deferredBadge = explodeBadge.deferred;
+        const nextSheriffState = explodeBadge.sheriffState;
 
         const nextRound = state.round + 1;
         const explodeSummary = `${wolfSeat} 號狼人自爆，強制進入第 ${nextRound} 晚（當晚點刀後正式死亡）`;
@@ -1036,10 +1116,21 @@ export const useGameStore = create<GameStore>()(
         });
 
         if (swallowedBadge) {
-          const swallowSummary = '警上階段發生狼人自爆，吞警徽（本局無警長）';
+          const swallowSummary =
+            state.ruleOverrides.badgeSwallowRule === 'double_explode'
+              ? '警上階段發生第二次狼人自爆，正式吞警徽（本局無警長）'
+              : '警上階段發生狼人自爆，吞警徽（本局無警長）';
           nextDayHistory = appendDayEvent(nextDayHistory, state.round, swallowSummary, {
             type: 'sheriff_swallowed',
             summary: swallowSummary,
+            actorSeat: wolfSeat,
+          });
+        } else if (deferredBadge) {
+          const deferSummary =
+            '雙爆吞警徽：警上首次狼人自爆入夜，隔天天亮將跳過警上發言直接進入退水與警下投票';
+          nextDayHistory = appendDayEvent(nextDayHistory, state.round, deferSummary, {
+            type: 'sheriff_deferred_explode',
+            summary: deferSummary,
             actorSeat: wolfSeat,
           });
         }
@@ -1060,7 +1151,7 @@ export const useGameStore = create<GameStore>()(
           phase: 'night',
         });
 
-        return { allowed: true, swallowedBadge };
+        return { allowed: true, swallowedBadge, deferredBadge };
       },
 
       whiteWolfKingExplode: (wolfSeat, targetSeat) => {
@@ -1076,14 +1167,16 @@ export const useGameStore = create<GameStore>()(
         );
 
         if (!result.allowed) {
-          return { ...result, swallowedBadge: false };
+          return { ...result, swallowedBadge: false, deferredBadge: false };
         }
 
-        const swallowedBadge = isSheriffElectionActive(state.sheriffState);
-        let nextSheriffState = swallowedBadge
-          ? swallowSheriffBadge(state.sheriffState)
-          : state.sheriffState;
-        nextSheriffState = syncSheriffBadgeOnDeaths(nextSheriffState, result.seats);
+        const explodeBadge = handleSheriffElectionExplode(
+          state.sheriffState,
+          state.ruleOverrides.badgeSwallowRule,
+        );
+        const swallowedBadge = explodeBadge.swallowed;
+        const deferredBadge = explodeBadge.deferred;
+        const nextSheriffState = syncSheriffBadgeOnDeaths(explodeBadge.sheriffState, result.seats);
 
         const nextRound = state.round + 1;
         const summary =
@@ -1099,15 +1192,31 @@ export const useGameStore = create<GameStore>()(
         });
 
         if (swallowedBadge) {
-          const swallowSummary = '警上階段白狼王自爆，吞警徽（本局無警長）';
+          const swallowSummary =
+            state.ruleOverrides.badgeSwallowRule === 'double_explode'
+              ? '警上階段白狼王觸發第二次自爆，正式吞警徽（本局無警長）'
+              : '警上階段白狼王自爆，吞警徽（本局無警長）';
           nextDayHistory = appendDayEvent(nextDayHistory, state.round, swallowSummary, {
             type: 'sheriff_swallowed',
             summary: swallowSummary,
             actorSeat: wolfSeat,
           });
+        } else if (deferredBadge) {
+          const deferSummary =
+            '雙爆吞警徽：警上首次白狼王自爆入夜，隔天天亮將跳過警上發言直接進入退水與警下投票';
+          nextDayHistory = appendDayEvent(nextDayHistory, state.round, deferSummary, {
+            type: 'sheriff_deferred_explode',
+            summary: deferSummary,
+            actorSeat: wolfSeat,
+          });
         }
 
-        if (result.victory.winner) {
+        const triggerGameOver = shouldTriggerAutoVictory(
+          result.victory,
+          state.forceContinueAfterVictory,
+        );
+
+        if (triggerGameOver) {
           set({
             seats: result.seats,
             mechWolfState: result.mechWolfState,
@@ -1116,6 +1225,7 @@ export const useGameStore = create<GameStore>()(
             pendingShooters: [],
             winner: result.victory.winner,
             winReason: result.victory.winReason,
+            preGameOverPhase: 'day_vote',
             phase: 'game_over',
           });
         } else {
@@ -1138,7 +1248,7 @@ export const useGameStore = create<GameStore>()(
           });
         }
 
-        return { ...result, swallowedBadge };
+        return { ...result, swallowedBadge, deferredBadge };
       },
 
       knightDuel: (knightSeat, targetSeat) => {
@@ -1173,7 +1283,12 @@ export const useGameStore = create<GameStore>()(
           result.targetWasWolf &&
           state.seats.find((s) => s.seatNumber === targetSeat)?.roleId === 'wolf_beauty';
 
-        if (result.victory.winner) {
+        const triggerGameOver = shouldTriggerAutoVictory(
+          result.victory,
+          state.forceContinueAfterVictory,
+        );
+
+        if (triggerGameOver) {
           set({
             seats: result.seats,
             mechWolfState: result.mechWolfState,
@@ -1184,6 +1299,7 @@ export const useGameStore = create<GameStore>()(
             pendingShooters: [],
             winner: result.victory.winner,
             winReason: result.victory.winReason,
+            preGameOverPhase: 'day_vote',
             phase: 'game_over',
           });
         } else if (result.enterNightImmediately) {
@@ -1280,7 +1396,33 @@ export const useGameStore = create<GameStore>()(
             type: 'declare_winner',
             summary,
           }),
+          preGameOverPhase:
+            state.phase === 'day_announcement' || state.phase === 'day_vote'
+              ? state.phase
+              : state.preGameOverPhase,
           phase: 'game_over',
+        });
+      },
+
+      overrideVictory: (kind, customReason) => {
+        const result = createManualVictoryResult(kind, customReason);
+        if (!result.winner) return;
+        get().declareWinner(result.winner, result.winReason ?? '法官手動宣告勝負');
+      },
+
+      forceContinueGame: () => {
+        const state = get();
+        const resumePhase = state.preGameOverPhase ?? 'day_vote';
+        const summary = '法官手動覆蓋：解除勝負結束鎖定，強制繼續對局';
+        set({
+          forceContinueAfterVictory: true,
+          winner: null,
+          winReason: null,
+          phase: resumePhase,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'victory_override_continue',
+            summary,
+          }),
         });
       },
 
@@ -1296,6 +1438,7 @@ export const useGameStore = create<GameStore>()(
             onlineJudgeSettings: { ...state.onlineJudgeSettings },
             ambientAudio: { ...state.ambientAudio },
             ruleOverrides: { ...state.ruleOverrides },
+            voteInputMode: state.voteInputMode,
             savedNicknames: { ...state.savedNicknames },
             defaultSpeakDurationSec: state.defaultSpeakDurationSec,
             remainingSeconds: state.defaultSpeakDurationSec,
@@ -1335,6 +1478,13 @@ export const useGameStore = create<GameStore>()(
             ...DEFAULT_RULE_OVERRIDES,
             ...(persisted.ruleOverrides ?? {}),
           },
+          sheriffState: {
+            ...createInitialSheriffState(),
+            ...(persisted.sheriffState ?? {}),
+          },
+          voteInputMode: persisted.voteInputMode ?? 'by_voter',
+          forceContinueAfterVictory: persisted.forceContinueAfterVictory ?? false,
+          preGameOverPhase: persisted.preGameOverPhase ?? null,
           passRevealConfirmedSeats: persisted.passRevealConfirmedSeats ?? [],
         };
       },

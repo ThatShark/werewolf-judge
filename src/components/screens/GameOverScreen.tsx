@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import { useGameStore } from '../../store/gameStore';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   buildGameReplayText,
   formatDeathReason,
@@ -22,8 +23,10 @@ export function GameOverScreen() {
   const nightHistory = useGameStore((s) => s.nightHistory);
   const dayHistory = useGameStore((s) => s.dayHistory);
   const restartGame = useGameStore((s) => s.restartGame);
+  const forceContinueGame = useGameStore((s) => s.forceContinueGame);
 
   const [copied, setCopied] = useState(false);
+  const [confirmContinueOpen, setConfirmContinueOpen] = useState(false);
 
   const board = getBoardById(selectedBoardId);
 
@@ -85,6 +88,7 @@ export function GameOverScreen() {
 
   const isWolfWin = winner === 'wolf';
   const isThirdPartyWin = winner === 'third_party';
+  const isDraw = winner === 'draw';
 
   return (
     <div className="space-y-4 pb-10">
@@ -95,7 +99,9 @@ export function GameOverScreen() {
             ? 'border-rose-500/50 bg-rose-950/40'
             : isThirdPartyWin
               ? 'border-amber-500/50 bg-amber-950/40'
-              : 'border-emerald-500/50 bg-emerald-950/40'
+              : isDraw
+                ? 'border-slate-500/60 bg-slate-900/90'
+                : 'border-emerald-500/50 bg-emerald-950/40'
         }`}
       >
         <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
@@ -103,11 +109,17 @@ export function GameOverScreen() {
         </p>
         <h1
           className={`mt-1.5 text-2xl font-extrabold ${
-            isWolfWin ? 'text-rose-200' : isThirdPartyWin ? 'text-amber-200' : 'text-emerald-200'
+            isWolfWin
+              ? 'text-rose-200'
+              : isThirdPartyWin
+                ? 'text-amber-200'
+                : isDraw
+                  ? 'text-slate-100'
+                  : 'text-emerald-200'
           }`}
         >
-          {isWolfWin ? '🐺 ' : isThirdPartyWin ? '🦊 ' : '✨ '}
-          {formatFactionLabel(winner)}勝利！
+          {isWolfWin ? '🐺 ' : isThirdPartyWin ? '🦊 ' : isDraw ? '🤝 ' : '✨ '}
+          {isDraw ? '本局平局結束' : `${formatFactionLabel(winner)}勝利！`}
         </h1>
         {winReason && (
           <p className="mt-2 text-sm font-medium text-slate-200">{winReason}</p>
@@ -119,7 +131,7 @@ export function GameOverScreen() {
         )}
       </section>
 
-      {/* 一鍵複製復盤文字 */}
+      {/* 一鍵複製復盤文字 ＋ 法官強制繼續對局 */}
       <section className="flex flex-col sm:flex-row gap-2.5">
         <button
           type="button"
@@ -132,7 +144,27 @@ export function GameOverScreen() {
         >
           {copied ? '✓ 已複製完整復盤文字！' : '📋 一鍵複製完整復盤文字'}
         </button>
+        <button
+          type="button"
+          onClick={() => setConfirmContinueOpen(true)}
+          className="min-h-12 rounded-xl border border-indigo-400/50 bg-indigo-950/50 px-4 py-3 text-sm font-extrabold text-indigo-200 hover:bg-indigo-900/50 active:scale-[0.99]"
+        >
+          ⚖️ 法官強制繼續對局
+        </button>
       </section>
+
+      <ConfirmModal
+        open={confirmContinueOpen}
+        title="解除結束鎖定並強制繼續對局？"
+        description="系統將清除目前的勝負狀態並返回原本的白天階段，後續對局改由法官手動控制結算（可透過「勝負覆蓋」隨時結束）。"
+        confirmLabel="確認強制繼續"
+        tone="warning"
+        onConfirm={() => {
+          setConfirmContinueOpen(false);
+          forceContinueGame();
+        }}
+        onCancel={() => setConfirmContinueOpen(false)}
+      />
 
       {/* 全場身分與存活總覽 */}
       <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/90 p-4">

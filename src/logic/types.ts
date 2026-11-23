@@ -1,6 +1,19 @@
 export type Faction = 'wolf' | 'good' | 'third_party';
+export type GameWinner = Faction | 'draw';
 export type RoleCategory = 'wolf' | 'god' | 'villager' | 'third_party';
 export type PlayerCountFilter = '6' | '7' | '8' | '9' | '10' | '12' | 'multi';
+
+/** [V2.0 新增] 中央操作雙模式投票紀錄器模式 */
+export type VoteInputMode = 'by_voter' | 'by_candidate';
+
+/** [V2.0 新增] 法官手動勝負覆蓋類型 */
+export type ManualVictoryOverrideKind =
+  | 'good_surrender'
+  | 'wolf_surrender'
+  | 'force_draw'
+  | 'good_win'
+  | 'wolf_win'
+  | 'third_party_win';
 
 export interface RoleDefinition {
   id: string;
@@ -287,6 +300,7 @@ export type SheriffStatus =
   | 'voting'
   | 'pk_speaking'
   | 'pk_voting'
+  | 'deferred_after_first_explode'
   | 'elected'
   | 'swallowed'
   | 'no_sheriff';
@@ -313,6 +327,8 @@ export interface SheriffState {
   pkCandidates: number[];
   voteRounds: VoteRoundRecord[];
   pendingBadgeTransferFrom: number | null;
+  /** 警上累計自爆次數（搭配 badgeSwallowRule 判定單爆／雙爆吞警徽） */
+  explodeCountDuringElection: number;
 }
 
 export type ExileVoteOutcome = 'exile' | 'tie' | 'no_exile';
@@ -340,6 +356,7 @@ export type DayStructuredEventType =
   | 'sheriff_vote'
   | 'sheriff_elected'
   | 'sheriff_swallowed'
+  | 'sheriff_deferred_explode'
   | 'sheriff_no_winner'
   | 'badge_transfer'
   | 'badge_destroy'
@@ -354,6 +371,7 @@ export type DayStructuredEventType =
   | 'knight_duel'
   | 'wolf_beauty_charm_death'
   | 'manual_judge'
+  | 'victory_override_continue'
   | 'declare_winner';
 
 export interface DayStructuredEvent {
@@ -411,12 +429,18 @@ export interface GameState {
   /** 警長競選、警徽與白天放逐投票狀態 */
   sheriffState: SheriffState;
   exilePkCandidates: number[];
+  /** 中央操作雙模式投票紀錄器模式 */
+  voteInputMode: VoteInputMode;
 
   /** 歷史紀錄與勝負 */
   nightHistory: NightHistoryEntry[];
   dayHistory: DayHistoryEntry[];
-  winner: Faction | null;
+  winner: GameWinner | null;
   winReason: string | null;
+  /** 法官於自動勝負觸發後選擇強制繼續（解除自動結束鎖定） */
+  forceContinueAfterVictory: boolean;
+  /** 自動進入 game_over 前的階段（供強制繼續返回） */
+  preGameOverPhase: 'day_announcement' | 'day_vote' | null;
 }
 
 /** 規則引擎純函式共用結果型別 */
@@ -433,7 +457,7 @@ export interface RoleAssignmentValidation {
 }
 
 export interface VictoryResult {
-  winner: Faction | null;
+  winner: GameWinner | null;
   winReason: string | null;
 }
 

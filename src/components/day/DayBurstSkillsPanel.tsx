@@ -12,6 +12,8 @@ interface DayBurstSkillsPanelProps {
 export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelProps) {
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
+  const hostMode = useGameStore((s) => s.hostMode);
+  const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const knightDuelUsed = useGameStore((s) => s.knightDuelUsed);
 
@@ -33,8 +35,14 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
   const [confirmKnightOpen, setConfirmKnightOpen] = useState(false);
   const [knightNotice, setKnightNotice] = useState<string | null>(null);
 
+  const isOnlineJudge = hostMode.judgeMode === 'online_judge';
   const aliveSeats = useMemo(() => seats.filter((s) => s.isAlive), [seats]);
   const electionActive = isSheriffElectionActive(sheriffState);
+
+  const willSwallowNow =
+    electionActive &&
+    (ruleOverrides.badgeSwallowRule === 'single_explode' ||
+      sheriffState.explodeCountDuringElection >= 1);
 
   const aliveWhiteWolfKing = useMemo(
     () => seats.find((s) => s.isAlive && s.roleId === 'white_wolf_king') ?? null,
@@ -50,23 +58,38 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
   const selectedWwkTargetObj = seats.find((s) => s.seatNumber === selectedWwkTarget);
   const selectedKnightTargetObj = seats.find((s) => s.seatNumber === selectedKnightTarget);
 
+  const explodeBadgeNotice = electionActive
+    ? willSwallowNow
+      ? '（警上自爆將正式吞警徽，本局無警長）'
+      : '（雙爆吞警徽首爆：入夜後隔天天亮將直接進入退水與警下投票）'
+    : '';
+
   return (
-    <section className="space-y-4 rounded-2xl border border-rose-500/35 bg-rose-950/20 p-4">
+    <section className="space-y-3.5 rounded-2xl border border-rose-500/35 bg-rose-950/20 p-3.5">
       <div>
         <span className="text-xs font-bold uppercase tracking-wider text-rose-300">
           高風險突發操作區
         </span>
-        <h2 className="text-base font-bold text-rose-100">⚡ 白天突發技能與狼人自爆</h2>
+        <h2 className="text-base font-bold text-rose-100">
+          ⚡ {isOnlineJudge ? '狼人自爆入夜' : '白天突發技能與狼人自爆'}
+        </h2>
         {electionActive && (
           <div className="mt-2 rounded-xl border border-amber-400/50 bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-200">
-            ⚠️ 目前正處警上競選階段：任何狼人或白狼王自爆將自動判定「吞警徽（本局無警長）」並強制入夜！
+            {willSwallowNow
+              ? '⚠️ 目前正處警上競選階段：此時自爆將正式判定「吞警徽（本局無警長）」並強制入夜！'
+              : '⚠️ 雙爆吞警徽規則（首爆）：此時自爆將強制入夜，隔天天亮跳過發言直進退水與警下投票。'}
+          </div>
+        )}
+        {isOnlineJudge && (
+          <div className="mt-2 rounded-xl border border-indigo-400/40 bg-indigo-950/35 px-3 py-2 text-xs text-indigo-200">
+            🔒 線上法官視野防護：中央螢幕已自動隱藏「騎士決鬥、白狼王自爆帶人」等個人白天技能按鈕，避免暴露身分。
           </div>
         )}
       </div>
 
-      {/* 1. 騎士翻牌決鬥 */}
-      {hasKnightInBoard && (
-        <div className="space-y-2.5 rounded-xl border border-indigo-400/35 bg-slate-950/75 p-3.5">
+      {/* 1. 騎士翻牌決鬥（僅實體法官顯示） */}
+      {!isOnlineJudge && hasKnightInBoard && (
+        <div className="space-y-2.5 rounded-xl border border-indigo-400/35 bg-slate-950/75 p-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-extrabold text-indigo-200">⚔️ 騎士翻牌決鬥</h3>
             <span className="text-[11px] font-bold text-slate-400">
@@ -133,9 +156,9 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
         </div>
       )}
 
-      {/* 2. 白狼王自爆帶走目標 */}
-      {aliveWhiteWolfKing && (
-        <div className="space-y-2.5 rounded-xl border border-rose-400/45 bg-slate-950/75 p-3.5">
+      {/* 2. 白狼王自爆帶走目標（僅實體法官顯示） */}
+      {!isOnlineJudge && aliveWhiteWolfKing && (
+        <div className="space-y-2.5 rounded-xl border border-rose-400/45 bg-slate-950/75 p-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-extrabold text-rose-200">
               🐺 白狼王自爆帶人（{aliveWhiteWolfKing.seatNumber} 號）
@@ -189,46 +212,49 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
       {/* 3. 普通狼人自爆 */}
       <div className="space-y-2.5">
         <div>
-          <h3 className="text-sm font-bold text-rose-200">💥 普通狼人自爆強制入夜</h3>
+          <h3 className="text-sm font-bold text-rose-200">💥 狼人自爆強制入夜</h3>
           <p className="mt-0.5 text-xs text-rose-200/75">
-            自爆將立即終止白天並跳至下一晚，該狼人將於當晚點刀後正式出局（機械狼、狼美人不可自爆）。
+            自爆將立即終止白天並跳至下一晚，該狼人將於當晚點刀後正式出局。
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
           {aliveSeats.map((seat) => {
             const explodeCheck = resolveSelfExplode(seats, seat.seatNumber);
             const active = selectedExplodeSeat === seat.seatNumber;
-            const role = getRoleById(seat.roleId);
+            const role = !isOnlineJudge ? getRoleById(seat.roleId) : undefined;
+            const seatDisabled = isOnlineJudge ? disabled : !explodeCheck.allowed || disabled;
 
             return (
               <button
                 key={seat.seatNumber}
                 type="button"
-                disabled={!explodeCheck.allowed || disabled}
+                disabled={seatDisabled}
                 onClick={() => {
                   setExplodeError(null);
                   setSelectedExplodeSeat((prev) =>
                     prev === seat.seatNumber ? null : seat.seatNumber,
                   );
                 }}
-                className={`min-h-14 rounded-xl border p-2.5 text-left transition ${
+                className={`min-h-12 rounded-xl border p-2 text-left transition ${
                   active
                     ? 'border-rose-400 bg-rose-500/30 ring-2 ring-rose-400/50'
-                    : !explodeCheck.allowed || disabled
+                    : seatDisabled
                       ? 'cursor-not-allowed border-slate-800/70 bg-slate-950/50 opacity-45'
                       : 'border-rose-500/30 bg-slate-950/80 hover:border-rose-400/60 active:scale-[0.98]'
                 }`}
               >
-                <div className="text-sm font-extrabold text-slate-100">{seat.seatNumber} 號</div>
-                <div className="truncate text-xs text-slate-400">
-                  {seat.nickname.trim() || `${seat.seatNumber} 號玩家`}
+                <div className="text-xs font-extrabold text-slate-100">{seat.seatNumber} 號</div>
+                <div className="truncate text-[10px] text-slate-400">
+                  {seat.nickname.trim() || `${seat.seatNumber}號`}
                 </div>
                 {role && (
                   <div className="mt-0.5 text-[10px] font-bold text-slate-300">{role.name}</div>
                 )}
-                {!explodeCheck.allowed && explodeCheck.reason && (
-                  <div className="mt-1 text-[10px] text-slate-400">{explodeCheck.reason}</div>
+                {!isOnlineJudge && !explodeCheck.allowed && explodeCheck.reason && (
+                  <div className="mt-0.5 truncate text-[9px] text-slate-400">
+                    {explodeCheck.reason}
+                  </div>
                 )}
               </button>
             );
@@ -263,9 +289,7 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
         title="確認狼人自爆並強制入夜？"
         description={
           selectedExplodeObj
-            ? `${formatSeatDisplay(selectedExplodeObj)} 自爆後將立刻進入第 ${round + 1} 晚${
-                electionActive ? '（警上自爆將自動吞警徽）' : ''
-              }，該玩家將於當晚點刀後正式死亡。`
+            ? `${formatSeatDisplay(selectedExplodeObj)} 自爆後將立刻進入第 ${round + 1} 晚${explodeBadgeNotice}，該玩家將於當晚點刀後正式死亡。`
             : undefined
         }
         confirmLabel="確認自爆入夜"
@@ -286,17 +310,15 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
 
       {/* 確認白狼王自爆帶人 */}
       <ConfirmModal
-        open={confirmWwkOpen && aliveWhiteWolfKing !== null}
+        open={!isOnlineJudge && confirmWwkOpen && aliveWhiteWolfKing !== null}
         title="確認白狼王自爆並強制入夜？"
         description={
           aliveWhiteWolfKing
             ? selectedWwkTargetObj
               ? `${aliveWhiteWolfKing.seatNumber} 號白狼王將自爆並立即帶走 ${formatSeatDisplay(
                   selectedWwkTargetObj,
-                )}（無死亡技能）${electionActive ? '，同時吞警徽' : ''}。`
-              : `${aliveWhiteWolfKing.seatNumber} 號白狼王將空爆並強制入夜${
-                  electionActive ? '（同時吞警徽）' : ''
-                }。`
+                )}（無死亡技能）${explodeBadgeNotice}。`
+              : `${aliveWhiteWolfKing.seatNumber} 號白狼王將空爆並強制入夜${explodeBadgeNotice}。`
             : undefined
         }
         confirmLabel="確認白狼王自爆"
@@ -313,7 +335,12 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
 
       {/* 確認騎士翻牌決鬥 */}
       <ConfirmModal
-        open={confirmKnightOpen && aliveKnight !== null && selectedKnightTargetObj !== undefined}
+        open={
+          !isOnlineJudge &&
+          confirmKnightOpen &&
+          aliveKnight !== null &&
+          selectedKnightTargetObj !== undefined
+        }
         title="確認騎士翻牌決鬥？"
         description={
           aliveKnight && selectedKnightTargetObj

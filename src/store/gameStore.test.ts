@@ -470,4 +470,96 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
       stepBufferSeconds: 6,
     });
   });
+
+  it('Phase A4：雙爆吞警徽跨日流程（首爆跳過發言直進退水與投票、二爆正式吞警徽）與 voteInputMode 切換', () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    store.updateRuleOverrides({ badgeSwallowRule: 'double_explode' });
+    CLASSIC_ROLES.forEach((roleId, idx) => {
+      useGameStore.getState().assignRole(idx + 1, roleId);
+    });
+    useGameStore.getState().startGame();
+    useGameStore.getState().updateNightDraft({ wolfTarget: null });
+    useGameStore.getState().finishNight();
+    useGameStore.getState().proceedToDayVote();
+
+    // 切換投票模式為依候選人唱票並驗證持久化
+    useGameStore.getState().setVoteInputMode('by_candidate');
+    expect(useGameStore.getState().voteInputMode).toBe('by_candidate');
+
+    // 第一天警上：[1, 2, 9, 10] -> 1 號首次自爆入夜（不吞警徽，延後至隔天）
+    useGameStore.getState().startSheriffElection([1, 2, 9, 10]);
+    const explode1 = useGameStore.getState().selfExplode(1);
+    expect(explode1.allowed).toBe(true);
+    expect(explode1.swallowedBadge).toBe(false);
+    expect(explode1.deferredBadge).toBe(true);
+    expect(useGameStore.getState().sheriffState.status).toBe('deferred_after_first_explode');
+    expect(useGameStore.getState().sheriffState.explodeCountDuringElection).toBe(1);
+    expect(useGameStore.getState().phase).toBe('night');
+    expect(useGameStore.getState().round).toBe(2);
+
+    // 第 2 晚結算（1 號自爆狼死亡）：自動跳過警上報名與發言，直接進入 voting（候選人剩 2, 9, 10）
+    useGameStore.getState().updateNightDraft({ wolfTarget: null });
+    useGameStore.getState().finishNight();
+    expect(useGameStore.getState().phase).toBe('day_announcement');
+    expect(useGameStore.getState().sheriffState.status).toBe('voting');
+    expect(useGameStore.getState().sheriffState.candidates).toEqual([2, 9, 10]);
+
+    // 第 2 天白天：2 號狼人於退水／投票前發動第二次自爆 -> 正式吞警徽
+    useGameStore.getState().proceedToDayVote();
+    const explode2 = useGameStore.getState().selfExplode(2);
+    expect(explode2.allowed).toBe(true);
+    expect(explode2.swallowedBadge).toBe(true);
+    expect(explode2.deferredBadge).toBe(false);
+    expect(useGameStore.getState().sheriffState.status).toBe('swallowed');
+    expect(useGameStore.getState().sheriffState.badgeStatus).toBe('swallowed');
+    expect(useGameStore.getState().sheriffState.explodeCountDuringElection).toBe(2);
+  });
+
+  it('Phase A4：法官手動勝負覆蓋（強制繼續解除結束鎖定、好人交牌、狼人交牌、強制結束平局）', () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    CLASSIC_ROLES.forEach((roleId, idx) => {
+      useGameStore.getState().assignRole(idx + 1, roleId);
+    });
+    useGameStore.getState().startGame();
+
+    // 讓所有平民（5, 6, 7 號）先出局，第 1 晚狼刀 8 號達成屠民 -> 自動進入 game_over
+    useGameStore.getState().toggleSeatAlive(5);
+    useGameStore.getState().toggleSeatAlive(6);
+    useGameStore.getState().toggleSeatAlive(7);
+    useGameStore.getState().updateNightDraft({ wolfTarget: 8 });
+    useGameStore.getState().finishNight();
+
+    expect(useGameStore.getState().phase).toBe('game_over');
+    expect(useGameStore.getState().winner).toBe('wolf');
+
+    // 法官強制繼續：解除結束鎖定並返回 day_announcement
+    useGameStore.getState().forceContinueGame();
+    expect(useGameStore.getState().forceContinueAfterVictory).toBe(true);
+    expect(useGameStore.getState().winner).toBeNull();
+    expect(useGameStore.getState().phase).toBe('day_announcement');
+
+    // 進入白天後放逐 9 號，因已強制繼續，不會再自動跳轉 game_over
+    useGameStore.getState().proceedToDayVote();
+    useGameStore.getState().exilePlayer(9);
+    expect(useGameStore.getState().phase).toBe('day_vote');
+    expect(useGameStore.getState().winner).toBeNull();
+
+    // 法官手動覆蓋：強制結束平局
+    useGameStore.getState().overrideVictory('force_draw');
+    expect(useGameStore.getState().phase).toBe('game_over');
+    expect(useGameStore.getState().winner).toBe('draw');
+    expect(useGameStore.getState().winReason).toContain('平局');
+
+    // 法官手動覆蓋：狼人交牌（好人勝）
+    useGameStore.getState().overrideVictory('wolf_surrender');
+    expect(useGameStore.getState().winner).toBe('good');
+    expect(useGameStore.getState().winReason).toContain('狼人陣營交牌');
+
+    // 法官手動覆蓋：好人交牌（狼勝）
+    useGameStore.getState().overrideVictory('good_surrender');
+    expect(useGameStore.getState().winner).toBe('wolf');
+    expect(useGameStore.getState().winReason).toContain('好人陣營交牌');
+  });
 });

@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import { getRoleById } from '../../data/roles';
-import { getEligibleExileVoters, tallyExileVotes } from '../../logic';
+import {
+  getEligibleExileVoters,
+  tallyExileVotes,
+  toggleVoterForCandidate,
+  votesByVoterToByCandidate,
+} from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { formatSeatDisplay, getRoleBadgeClasses } from '../common/displayHelpers';
@@ -11,13 +16,17 @@ interface ExileVotePanelProps {
 
 export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const seats = useGameStore((s) => s.seats);
+  const hostMode = useGameStore((s) => s.hostMode);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const exilePkCandidates = useGameStore((s) => s.exilePkCandidates);
+  const voteInputMode = useGameStore((s) => s.voteInputMode);
 
+  const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
   const submitExileVotes = useGameStore((s) => s.submitExileVotes);
   const exilePlayer = useGameStore((s) => s.exilePlayer);
 
   const [votesDraft, setVotesDraft] = useState<Record<number, number | null>>({});
+  const [selectedCandidateTab, setSelectedCandidateTab] = useState<number | null>(null);
   const [extraVotes, setExtraVotes] = useState<Record<number, number>>({});
   const [showExtraVotes, setShowExtraVotes] = useState(false);
   const [confirmBallotOpen, setConfirmBallotOpen] = useState(false);
@@ -28,6 +37,7 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const [quickExileSeat, setQuickExileSeat] = useState<number | null>(null);
   const [confirmQuickExileOpen, setConfirmQuickExileOpen] = useState(false);
 
+  const isOnlineJudge = hostMode.judgeMode === 'online_judge';
   const aliveSeats = useMemo(() => seats.filter((s) => s.isAlive), [seats]);
   const eligibleVoters = useMemo(() => getEligibleExileVoters(seats), [seats]);
   const revealedIdiots = useMemo(
@@ -55,6 +65,18 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     }
     return result;
   }, [eligibleVoters, votesDraft, targetSeats]);
+
+  const votersByCandidate = useMemo(
+    () => votesByVoterToByCandidate(normalizedVotes, targetSeats),
+    [normalizedVotes, targetSeats],
+  );
+
+  const activeCandidateForTally = useMemo(() => {
+    if (selectedCandidateTab !== null && targetSeats.includes(selectedCandidateTab)) {
+      return selectedCandidateTab;
+    }
+    return targetSeats[0] ?? null;
+  }, [selectedCandidateTab, targetSeats]);
 
   const normalizedExtraVotes = useMemo(() => {
     const validTargets = new Set(targetSeats);
@@ -91,109 +113,221 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const quickExileObj = seats.find((s) => s.seatNumber === quickExileSeat);
 
   return (
-    <section className="space-y-3.5 rounded-2xl border border-slate-800 bg-slate-900/95 p-4">
+    <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5">
       <div className="flex items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-slate-50">
-            {isPkRound ? '⚖️ 放逐平票 PK 投票紀錄' : '🗳️ 逐票放逐投票紀錄器'}
+            {isPkRound ? '⚖️ 放逐平票 PK 投票' : '🗳️ 雙模式放逐投票紀錄器'}
           </h2>
-          <p className="mt-0.5 text-xs text-slate-400">
-            依序點選每位玩家投票對象或棄票，系統自動計票並處理白痴翻牌、警長 1.5 票與平票 PK。
+          <p className="mt-0.5 text-[11px] text-slate-400">
+            自由切換逐人或依候選人唱票，共用同一份票型草稿（自動套用警長 1.5 票與白痴排權）。
           </p>
         </div>
       </div>
 
+      {/* 雙模式切換器 */}
+      <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950 p-1">
+        <button
+          type="button"
+          onClick={() => setVoteInputMode('by_voter')}
+          className={`min-h-10 rounded-lg text-xs font-extrabold transition ${
+            voteInputMode === 'by_voter'
+              ? 'bg-amber-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          方式一：逐人記錄
+        </button>
+        <button
+          type="button"
+          onClick={() => setVoteInputMode('by_candidate')}
+          className={`min-h-10 rounded-lg text-xs font-extrabold transition ${
+            voteInputMode === 'by_candidate'
+              ? 'bg-amber-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          方式二：依候選人唱票
+        </button>
+      </div>
+
       {isPkRound && (
-        <div className="rounded-xl border border-amber-400/50 bg-amber-950/35 px-3 py-2.5 text-xs font-bold text-amber-200">
-          ⚖️ 平票 PK 輪：僅可投票給 {exilePkCandidates.join('、')} 號（若再次平票則為平安日）。
+        <div className="rounded-xl border border-amber-400/50 bg-amber-950/35 px-3 py-2 text-xs font-bold text-amber-200">
+          ⚖️ 平票 PK 輪：僅可投給 {exilePkCandidates.join('、')} 號（再平票即平安日）。
         </div>
       )}
 
       {revealedIdiots.length > 0 && (
         <div className="rounded-xl border border-indigo-400/40 bg-indigo-950/30 px-3 py-2 text-xs text-indigo-200">
-          🃏 已翻牌白痴（無放逐投票權）：
+          🃏 已翻牌白痴（無投票權）：
           {revealedIdiots.map((s) => `${s.seatNumber} 號`).join('、')}
         </div>
       )}
 
       {lastTallyNotice && (
-        <div className="rounded-xl border border-amber-400/45 bg-amber-950/30 px-3 py-2.5 text-xs font-bold text-amber-200">
+        <div className="rounded-xl border border-amber-400/45 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
           {lastTallyNotice}
         </div>
       )}
 
-      {/* 每位具投票權玩家之逐票選擇 */}
-      <div className="space-y-2">
-        {eligibleVoters.map((voterSeat) => {
-          const voterObj = seats.find((s) => s.seatNumber === voterSeat);
-          const isSheriff = activeSheriffSeat === voterSeat;
-          const selectedTarget = normalizedVotes[voterSeat] ?? null;
+      {/* 模式一：逐人記錄 */}
+      {voteInputMode === 'by_voter' ? (
+        <div className="space-y-2">
+          {eligibleVoters.map((voterSeat) => {
+            const voterObj = seats.find((s) => s.seatNumber === voterSeat);
+            const isSheriff = activeSheriffSeat === voterSeat;
+            const selectedTarget = normalizedVotes[voterSeat] ?? null;
 
-          return (
-            <div
-              key={voterSeat}
-              className="rounded-xl border border-slate-800 bg-slate-950/80 p-3"
-            >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-xs font-extrabold text-slate-100">
-                  {voterObj ? formatSeatDisplay(voterObj) : `${voterSeat} 號`}
-                </span>
-                {isSheriff && (
-                  <span className="rounded-md border border-amber-400/50 bg-amber-500/20 px-2 py-0.5 text-[10px] font-extrabold text-amber-200">
-                    👮 警長 1.5票
+            return (
+              <div
+                key={voterSeat}
+                className="rounded-xl border border-slate-800 bg-slate-950/80 p-2.5"
+              >
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-slate-100">
+                    {voterObj ? formatSeatDisplay(voterObj) : `${voterSeat} 號`}
                   </span>
-                )}
+                  {isSheriff && (
+                    <span className="rounded-md border border-amber-400/50 bg-amber-500/20 px-2 py-0.5 text-[10px] font-extrabold text-amber-200">
+                      👮 1.5票
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {targetSeats.map((targetSeat) => {
+                    const picked = selectedTarget === targetSeat;
+                    return (
+                      <button
+                        key={targetSeat}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          setVotesDraft((prev) => ({
+                            ...prev,
+                            [voterSeat]: picked ? null : targetSeat,
+                          }))
+                        }
+                        className={`min-h-10 rounded-lg border px-2.5 text-xs font-extrabold transition ${
+                          picked
+                            ? 'border-amber-400 bg-amber-500 text-slate-950'
+                            : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                        }`}
+                      >
+                        {targetSeat}號
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                      setVotesDraft((prev) => ({
+                        ...prev,
+                        [voterSeat]: null,
+                      }))
+                    }
+                    className={`min-h-10 rounded-lg border px-2.5 text-xs font-bold transition ${
+                      selectedTarget === null
+                        ? 'border-slate-500 bg-slate-700 text-slate-100'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    棄票
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* 模式二：依候選人唱票勾選 */
+        <div className="space-y-2.5">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-300">1. 點選得票候選人：</span>
+              <span className="text-slate-400">
+                棄票 {tallyPreview?.record.abstainers.length ?? 0} 人
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {targetSeats.map((candSeat) => {
+                const score = tallyPreview?.record.totals[candSeat] ?? 0;
+                const voterCount = votersByCandidate[candSeat]?.length ?? 0;
+                const active = activeCandidateForTally === candSeat;
+                return (
+                  <button
+                    key={candSeat}
+                    type="button"
+                    onClick={() => setSelectedCandidateTab(candSeat)}
+                    className={`min-h-11 rounded-xl border px-2.5 text-xs font-extrabold transition ${
+                      active
+                        ? 'border-amber-400 bg-amber-500 text-slate-950'
+                        : voterCount > 0 || score > 0
+                          ? 'border-amber-500/40 bg-amber-950/35 text-amber-200'
+                          : 'border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    {candSeat}號{score > 0 ? ` (${score}票)` : ''}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {activeCandidateForTally !== null && (
+            <div className="space-y-2 rounded-xl border border-amber-500/35 bg-slate-950/80 p-3">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="font-bold text-amber-200">
+                  2. 勾選投給「{activeCandidateForTally} 號」的投票者：
+                </span>
+                <span className="font-bold text-slate-300">
+                  目前 {tallyPreview?.record.totals[activeCandidateForTally] ?? 0} 票
+                </span>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {targetSeats.map((targetSeat) => {
-                  const picked = selectedTarget === targetSeat;
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                {eligibleVoters.map((voterSeat) => {
+                  const votedFor = normalizedVotes[voterSeat] ?? null;
+                  const pickedHere = votedFor === activeCandidateForTally;
+                  const pickedOther = votedFor !== null && !pickedHere;
+                  const isSheriff = activeSheriffSeat === voterSeat;
+
                   return (
                     <button
-                      key={targetSeat}
+                      key={voterSeat}
                       type="button"
                       disabled={disabled}
                       onClick={() =>
-                        setVotesDraft((prev) => ({
-                          ...prev,
-                          [voterSeat]: picked ? null : targetSeat,
-                        }))
+                        setVotesDraft((prev) =>
+                          toggleVoterForCandidate(prev, activeCandidateForTally, voterSeat),
+                        )
                       }
-                      className={`min-h-10 rounded-lg border px-2.5 text-xs font-extrabold transition ${
-                        picked
+                      className={`min-h-11 rounded-xl border px-2 py-1.5 text-xs font-extrabold transition ${
+                        pickedHere
                           ? 'border-amber-400 bg-amber-500 text-slate-950'
-                          : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                          : pickedOther
+                            ? 'border-slate-700 bg-slate-900/70 text-slate-400'
+                            : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
                       }`}
                     >
-                      {targetSeat}號
+                      <div>
+                        {voterSeat}號{isSheriff ? '👮' : ''}
+                      </div>
+                      {pickedOther && (
+                        <div className="text-[10px] font-normal">已投 {votedFor}號</div>
+                      )}
                     </button>
                   );
                 })}
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    setVotesDraft((prev) => ({
-                      ...prev,
-                      [voterSeat]: null,
-                    }))
-                  }
-                  className={`min-h-10 rounded-lg border px-2.5 text-xs font-bold transition ${
-                    selectedTarget === null
-                      ? 'border-slate-500 bg-slate-700 text-slate-100'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800'
-                  }`}
-                >
-                  棄票
-                </button>
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* 預留烏鴉額外 +1 票加票鈕 */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5">
         <button
           type="button"
           onClick={() => setShowExtraVotes((prev) => !prev)}
@@ -212,7 +346,7 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         </button>
 
         {showExtraVotes && (
-          <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-slate-800 pt-2.5">
+          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-800 pt-2">
             {targetSeats.map((targetSeat) => {
               const hasBonus = (normalizedExtraVotes[targetSeat] ?? 0) > 0;
               return (
@@ -240,7 +374,7 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         )}
       </div>
 
-      {/* 送出逐票計票 */}
+      {/* 送出計票 */}
       <button
         type="button"
         disabled={disabled || eligibleVoters.length === 0}
@@ -254,22 +388,22 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         {isPkRound ? '送出 PK 放逐計票' : '一鍵送出放逐計票'}
       </button>
 
-      {/* 快速手動直接放逐（桌面快速略過逐票） */}
+      {/* 快速手動直接放逐 */}
       <div className="border-t border-slate-800 pt-2">
         <button
           type="button"
           onClick={() => setShowQuickExile((prev) => !prev)}
           className="min-h-10 w-full text-center text-xs font-semibold text-slate-400 hover:text-slate-200"
         >
-          {showQuickExile ? '收起快速指定放逐' : '⚡ 略過逐票紀錄，直接指定放逐出局座位'}
+          {showQuickExile ? '收起快速指定放逐' : '⚡ 略過票型紀錄，直接指定放逐出局座位'}
         </button>
 
         {showQuickExile && (
-          <div className="mt-2.5 space-y-2.5">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="mt-2 space-y-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
               {aliveSeats.map((seat) => {
                 const active = quickExileSeat === seat.seatNumber;
-                const role = getRoleById(seat.roleId);
+                const role = !isOnlineJudge ? getRoleById(seat.roleId) : undefined;
                 return (
                   <button
                     key={seat.seatNumber}
@@ -280,21 +414,21 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
                         prev === seat.seatNumber ? null : seat.seatNumber,
                       )
                     }
-                    className={`min-h-14 rounded-xl border p-2.5 text-left transition ${
+                    className={`min-h-12 rounded-xl border p-2 text-left transition ${
                       active
-                        ? 'border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/40'
+                        ? 'border-amber-400 bg-amber-500/20 ring-1 ring-amber-400/40'
                         : 'border-slate-800 bg-slate-950/80 hover:border-slate-600'
                     }`}
                   >
-                    <div className="text-sm font-extrabold text-slate-100">
+                    <div className="text-xs font-extrabold text-slate-100">
                       {seat.seatNumber} 號
                     </div>
-                    <div className="truncate text-xs text-slate-400">
-                      {seat.nickname.trim() || `${seat.seatNumber} 號玩家`}
+                    <div className="truncate text-[10px] text-slate-400">
+                      {seat.nickname.trim() || `${seat.seatNumber}號`}
                     </div>
                     {role && (
                       <span
-                        className={`mt-1 inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${getRoleBadgeClasses(role.id)}`}
+                        className={`mt-1 inline-block rounded border px-1 py-0.5 text-[9px] font-bold ${getRoleBadgeClasses(role.id)}`}
                       >
                         {role.name}
                       </span>
@@ -317,7 +451,7 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         )}
       </div>
 
-      {/* 確認逐票計票 Modal */}
+      {/* 確認計票 Modal */}
       <ConfirmModal
         open={confirmBallotOpen && tallyPreview !== null}
         title={isPkRound ? '確認送出放逐 PK 計票？' : '確認送出放逐投票紀錄？'}

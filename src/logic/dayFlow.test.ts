@@ -4,13 +4,18 @@ import {
   destroySheriffBadge,
   getEligibleExileVoters,
   getEligibleSheriffVoters,
+  handleSheriffElectionExplode,
   isSheriffElectionActive,
   resolveSheriffVoteRound,
+  resumeDeferredSheriffElection,
   startSheriffElection,
   swallowSheriffBadge,
   syncSheriffBadgeOnDeaths,
   tallyExileVotes,
+  toggleVoterForCandidate,
   transferSheriffBadge,
+  votesByCandidateToByVoter,
+  votesByVoterToByCandidate,
   withdrawSheriffCandidate,
 } from './index';
 import type { PlayerSeat } from './types';
@@ -199,5 +204,119 @@ describe('白天完整行為與投票紀錄系統（警長競選／吞警徽／�
     });
     expect(round2.outcome).toBe('no_exile');
     expect(round2.record.electedSeat).toBeNull();
+  });
+
+  it('單爆／雙爆吞警徽狀態機：首爆延後至隔日直進投票、二爆正式吞警徽', () => {
+    const seats = make12Seats();
+
+    // 單爆吞警徽：首爆即吞
+    const singleStart = startSheriffElection(seats, [1, 2, 9]);
+    const singleExplode = handleSheriffElectionExplode(singleStart, 'single_explode');
+    expect(singleExplode.swallowed).toBe(true);
+    expect(singleExplode.deferred).toBe(false);
+    expect(singleExplode.sheriffState.status).toBe('swallowed');
+    expect(singleExplode.sheriffState.badgeStatus).toBe('swallowed');
+    expect(singleExplode.sheriffState.explodeCountDuringElection).toBe(1);
+
+    // 雙爆吞警徽：第 1 次自爆 -> deferred_after_first_explode
+    const doubleStart = startSheriffElection(seats, [1, 2, 9, 10]);
+    const firstExplode = handleSheriffElectionExplode(doubleStart, 'double_explode');
+    expect(firstExplode.swallowed).toBe(false);
+    expect(firstExplode.deferred).toBe(true);
+    expect(firstExplode.sheriffState.status).toBe('deferred_after_first_explode');
+    expect(firstExplode.sheriffState.explodeCountDuringElection).toBe(1);
+
+    // 隔天天亮：1 號自爆狼已出局，候選人自動縮減為 [2, 9, 10]，直接跳過發言進入 voting
+    const nextDaySeats = seats.map((s) => (s.seatNumber === 1 ? { ...s, isAlive: false } : s));
+    const resumed = resumeDeferredSheriffElection(firstExplode.sheriffState, nextDaySeats);
+    expect(resumed.resumed).toBe(true);
+    expect(resumed.outcome).toBe('voting');
+    expect(resumed.sheriffState.status).toBe('voting');
+    expect(resumed.sheriffState.candidates).toEqual([2, 9, 10]);
+
+    // 隔天於 voting 階段再發生第 2 次自爆 -> 正式吞警徽
+    const secondExplode = handleSheriffElectionExplode(resumed.sheriffState, 'double_explode');
+    expect(secondExplode.swallowed).toBe(true);
+    expect(secondExplode.deferred).toBe(false);
+    expect(secondExplode.sheriffState.status).toBe('swallowed');
+    expect(secondExplode.sheriffState.badgeStatus).toBe('swallowed');
+    expect(secondExplode.sheriffState.explodeCountDuringElection).toBe(2);
+
+    // 邊界：隔天天亮僅餘 1 名存活候選人 -> 自動當選警長
+    const onlyOneAliveSeats = seats.map((s) =>
+      [1, 2, 10].includes(s.seatNumber) ? { ...s, isAlive: false } : s,
+    );
+    const autoElected = resumeDeferredSheriffElection(firstExplode.sheriffState, onlyOneAliveSeats);
+    expect(autoElected.outcome).toBe('elected');
+    expect(autoElected.sheriffState.status).toBe('elected');
+    expect(autoElected.sheriffState.sheriffSeat).toBe(9);
+  });
+
+  it('中央雙模式投票等價性：逐人記錄（by_voter）與依候選人唱票（by_candidate）產出完全一致的計票結果', () => {
+    const seats = make12Seats();
+    // 12 號白痴已翻牌（自動排除投票權），9 號為警長（1.5 票）
+    seats[11].idiotRevealed = true;
+    const eligibleVoters = getEligibleExileVoters(seats);
+    const candidateSeats = seats.filter((s) => s.isAlive).map((s) => s.seatNumber);
+
+    // 方式一：逐人記錄
+    const byVoterVotes: Record<number, number | null> = {
+      1: 9,
+      2: null,
+      3: 1,
+      4: 9,
+      5: 1,
+      6: 1,
+      7: null,
+      8: 1,
+      9: 1, // 警長 1.5 票
+      10: 9,
+      11: 1,
+    };
+
+    // 方式二：透過 toggleVoterForCandidate 依候選人勾選建構相同票型
+    let toggledDraft: Record<number, number | null> = {};
+    for (const v of eligibleVoters) toggledDraft[v] = null;
+    for (const voter of [3, 5, 6, 8, 9, 11]) {
+      toggledDraft = toggleVoterForCandidate(toggledDraft, 1, voter);
+    }
+    for (const voter of [1, 4, 10]) {
+      toggledDraft = toggleVoterForCandidate(toggledDraft, 9, voter);
+    }
+    // 額外測試取消勾選再改投（7 號先投 9 號再取消變棄票）
+    toggledDraft = toggleVoterForCandidate(toggledDraft, 9, 7);
+    toggledDraft = toggleVoterForCandidate(toggledDraft, 9, 7);
+
+    // 雙向轉換驗證
+    const grouped = votesByVoterToByCandidate(byVoterVotes, candidateSeats);
+    expect(grouped[1]).toEqual([3, 5, 6, 8, 9, 11]);
+    expect(grouped[9]).toEqual([1, 4, 10]);
+
+    const convertedBack = votesByCandidateToByVoter(
+      { ...grouped, 1: [...grouped[1], 12] }, // 刻意混入無投票權的 12 號白痴，應自動排除
+      eligibleVoters,
+    );
+    expect(convertedBack).toEqual(byVoterVotes);
+    expect(toggledDraft).toEqual(byVoterVotes);
+
+    const tallyByVoter = tallyExileVotes({
+      seats,
+      votes: byVoterVotes,
+      sheriffSeat: 9,
+      extraVotes: { 9: 1 }, // 烏鴉 +1 票
+    });
+    const tallyByCandidate = tallyExileVotes({
+      seats,
+      votes: convertedBack,
+      sheriffSeat: 9,
+      extraVotes: { 9: 1 },
+    });
+
+    expect(tallyByCandidate).toEqual(tallyByVoter);
+    expect(tallyByCandidate.outcome).toBe('exile');
+    expect(tallyByCandidate.record.electedSeat).toBe(1);
+    expect(tallyByCandidate.record.totals[1]).toBe(6.5);
+    expect(tallyByCandidate.record.totals[9]).toBe(4);
+    expect(tallyByCandidate.record.abstainers).toEqual([2, 7]);
   });
 });

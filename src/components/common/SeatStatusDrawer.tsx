@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { getRoleById } from '../../data/roles';
 import { checkVictory } from '../../logic';
-import type { BoardDefinition, Faction } from '../../logic/types';
+import type { BoardDefinition, ManualVictoryOverrideKind } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { formatDeathReason, formatSeatDisplay, getRoleBadgeClasses } from './displayHelpers';
 
@@ -16,6 +16,7 @@ export function SeatStatusDrawer({ open, board, onClose }: SeatStatusDrawerProps
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const toggleSeatAlive = useGameStore((s) => s.toggleSeatAlive);
   const declareWinner = useGameStore((s) => s.declareWinner);
+  const overrideVictory = useGameStore((s) => s.overrideVictory);
 
   const [maskRoles, setMaskRoles] = useState(false);
   const [confirmSeat, setConfirmSeat] = useState<number | null>(null);
@@ -188,41 +189,34 @@ export function SeatStatusDrawer({ open, board, onClose }: SeatStatusDrawerProps
                 {(
                   [
                     {
-                      faction: 'good' as Faction,
-                      label: '宣告：好人陣營勝利',
-                      reason: '法官判定好人陣營達成勝利條件',
+                      kind: 'good_surrender' as ManualVictoryOverrideKind,
+                      label: '🏳️ 宣告好人交牌（狼人陣營勝）',
+                      style: 'border-rose-500/40 bg-rose-950/40 text-rose-200',
+                    },
+                    {
+                      kind: 'wolf_surrender' as ManualVictoryOverrideKind,
+                      label: '🏳️ 宣告狼人交牌（好人陣營勝）',
                       style: 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200',
                     },
                     {
-                      faction: 'wolf' as Faction,
-                      label: '宣告：狼人陣營勝利',
-                      reason: '法官判定狼人陣營達成勝利條件',
-                      style: 'border-rose-500/40 bg-rose-950/40 text-rose-200',
+                      kind: 'force_draw' as ManualVictoryOverrideKind,
+                      label: '🤝 強制結束（判定平局）',
+                      style: 'border-amber-400/40 bg-amber-950/40 text-amber-200',
                     },
-                    ...(hasThirdParty
-                      ? [
-                          {
-                            faction: 'third_party' as Faction,
-                            label: '宣告：第三方陣營勝利',
-                            reason: '法官判定第三方陣營達成獨立勝利條件',
-                            style: 'border-amber-500/40 bg-amber-950/40 text-amber-200',
-                          },
-                        ]
-                      : [
-                          {
-                            faction: 'third_party' as Faction,
-                            label: '宣告：第三方／特殊勝利',
-                            reason: '法官判定特殊／第三方勝利條件達成',
-                            style: 'border-amber-500/40 bg-amber-950/40 text-amber-200',
-                          },
-                        ]),
+                    {
+                      kind: 'third_party_win' as ManualVictoryOverrideKind,
+                      label: hasThirdParty
+                        ? '🦊 宣告：第三方陣營勝利'
+                        : '🦊 宣告：第三方／特殊勝利',
+                      style: 'border-indigo-400/40 bg-indigo-950/40 text-indigo-200',
+                    },
                   ]
                 ).map((item) => (
                   <button
-                    key={item.faction}
+                    key={item.kind}
                     type="button"
                     onClick={() => {
-                      declareWinner(item.faction, item.reason);
+                      overrideVictory(item.kind);
                       onClose();
                     }}
                     className={`min-h-12 rounded-xl border px-4 text-sm font-bold transition hover:brightness-110 ${item.style}`}

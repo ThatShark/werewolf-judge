@@ -1,5 +1,5 @@
 import { createInitialSheriffState } from './setup';
-import type { PlayerSeat, SheriffState, VoteRoundRecord } from './types';
+import type { BadgeSwallowRule, PlayerSeat, SheriffState, VoteRoundRecord } from './types';
 
 const ACTIVE_ELECTION_STATUSES: ReadonlySet<SheriffState['status']> = new Set([
   'sign_up',
@@ -260,7 +260,7 @@ export function resolveSheriffVoteRound(
 }
 
 /**
- * 警上階段發生狼人自爆：自動判定吞警徽（本局無警長）。
+ * 警上階段發生狼人自爆：直接判定吞警徽（本局無警長）。
  */
 export function swallowSheriffBadge(state: SheriffState): SheriffState {
   return {
@@ -270,6 +270,128 @@ export function swallowSheriffBadge(state: SheriffState): SheriffState {
     badgeStatus: 'swallowed',
     pkCandidates: [],
     pendingBadgeTransferFrom: null,
+    explodeCountDuringElection: state.explodeCountDuringElection + 1,
+  };
+}
+
+export interface SheriffExplodeResult {
+  sheriffState: SheriffState;
+  swallowed: boolean;
+  deferred: boolean;
+}
+
+/**
+ * 警上競選階段發生狼人自爆（含白狼王自爆）：
+ * - single_explode：首次自爆直接吞警徽（status = 'swallowed'）。
+ * - double_explode：
+ *   • 第 1 次自爆：標記 deferred_after_first_explode（explodeCountDuringElection = 1），保留上警與退水名單，入夜；
+ *   • 第 2 次自爆：正式吞警徽（status = 'swallowed', explodeCountDuringElection = 2）。
+ */
+export function handleSheriffElectionExplode(
+  state: SheriffState,
+  badgeSwallowRule: BadgeSwallowRule,
+): SheriffExplodeResult {
+  if (!isSheriffElectionActive(state)) {
+    return {
+      sheriffState: state,
+      swallowed: false,
+      deferred: false,
+    };
+  }
+
+  const nextExplodeCount = state.explodeCountDuringElection + 1;
+
+  if (badgeSwallowRule === 'single_explode' || nextExplodeCount >= 2) {
+    return {
+      sheriffState: {
+        ...state,
+        status: 'swallowed',
+        sheriffSeat: null,
+        badgeStatus: 'swallowed',
+        pkCandidates: [],
+        pendingBadgeTransferFrom: null,
+        explodeCountDuringElection: nextExplodeCount,
+      },
+      swallowed: true,
+      deferred: false,
+    };
+  }
+
+  return {
+    sheriffState: {
+      ...state,
+      status: 'deferred_after_first_explode',
+      pkCandidates: [],
+      explodeCountDuringElection: nextExplodeCount,
+    },
+    swallowed: false,
+    deferred: true,
+  };
+}
+
+export interface ResumeDeferredElectionResult {
+  sheriffState: SheriffState;
+  resumed: boolean;
+  outcome: 'none' | 'voting' | 'elected' | 'no_sheriff';
+}
+
+/**
+ * 雙爆吞警徽：首爆入夜後，隔天天亮自動銜接警長競選：
+ * - 自動移除已出局（含首爆狼與夜死）之候選人。
+ * - 剩餘 >= 2 人：跳過上警報名與警上發言，直接進入退水與警下投票（status = 'voting'）。
+ * - 剩餘 1 人：自動當選警長（status = 'elected'）。
+ * - 剩餘 0 人：本局無警長（status = 'no_sheriff'）。
+ */
+export function resumeDeferredSheriffElection(
+  state: SheriffState,
+  seats: PlayerSeat[],
+): ResumeDeferredElectionResult {
+  if (state.status !== 'deferred_after_first_explode') {
+    return { sheriffState: state, resumed: false, outcome: 'none' };
+  }
+
+  const aliveSet = new Set(seats.filter((s) => s.isAlive).map((s) => s.seatNumber));
+  const aliveCandidates = state.candidates.filter((seatNum) => aliveSet.has(seatNum));
+
+  if (aliveCandidates.length === 0) {
+    return {
+      resumed: true,
+      outcome: 'no_sheriff',
+      sheriffState: {
+        ...state,
+        status: 'no_sheriff',
+        sheriffSeat: null,
+        badgeStatus: 'none',
+        candidates: [],
+        pkCandidates: [],
+      },
+    };
+  }
+
+  if (aliveCandidates.length === 1) {
+    return {
+      resumed: true,
+      outcome: 'elected',
+      sheriffState: {
+        ...state,
+        status: 'elected',
+        sheriffSeat: aliveCandidates[0],
+        badgeStatus: 'active',
+        candidates: aliveCandidates,
+        pkCandidates: [],
+      },
+    };
+  }
+
+  return {
+    resumed: true,
+    outcome: 'voting',
+    sheriffState: {
+      ...state,
+      status: 'voting',
+      candidates: aliveCandidates,
+      pkCandidates: [],
+    },
   };
 }
 

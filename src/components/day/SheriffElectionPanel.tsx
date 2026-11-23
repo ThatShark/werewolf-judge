@@ -1,24 +1,38 @@
 import { useMemo, useState } from 'react';
-import { getEligibleSheriffVoters, isSheriffElectionActive } from '../../logic';
+import {
+  getEligibleSheriffVoters,
+  isSheriffElectionActive,
+  toggleVoterForCandidate,
+  votesByVoterToByCandidate,
+} from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { formatSeatDisplay, formatSeatShort } from '../common/displayHelpers';
 
 interface SheriffElectionPanelProps {
   disabled?: boolean;
+  onSwitchToSpeaking?: () => void;
 }
 
-export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelProps) {
+export function SheriffElectionPanel({
+  disabled = false,
+  onSwitchToSpeaking,
+}: SheriffElectionPanelProps) {
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
+  const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const sheriffState = useGameStore((s) => s.sheriffState);
+  const voteInputMode = useGameStore((s) => s.voteInputMode);
 
+  const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
   const startSheriffElection = useGameStore((s) => s.startSheriffElection);
   const withdrawSheriffCandidate = useGameStore((s) => s.withdrawSheriffCandidate);
   const submitSheriffVotes = useGameStore((s) => s.submitSheriffVotes);
+  const generateSpeakingOrder = useGameStore((s) => s.generateSpeakingOrder);
 
   const [selectedSignupSeats, setSelectedSignupSeats] = useState<number[]>([]);
   const [votesDraft, setVotesDraft] = useState<Record<number, number | null>>({});
+  const [selectedCandidateTab, setSelectedCandidateTab] = useState<number | null>(null);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [lastOutcomeNotice, setLastOutcomeNotice] = useState<string | null>(null);
 
@@ -48,12 +62,44 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
     return result;
   }, [eligibleVoters, votesDraft, activeCandidates]);
 
-  // 第二天起若從未開啟過警長競選且不在競選中，隱藏報名面板
-  if (round > 1 && sheriffState.status === 'not_started') {
-    return null;
+  const votersByCandidate = useMemo(
+    () => votesByVoterToByCandidate(normalizedVotes, activeCandidates),
+    [normalizedVotes, activeCandidates],
+  );
+
+  const activeCandidateForTally = useMemo(() => {
+    if (selectedCandidateTab !== null && activeCandidates.includes(selectedCandidateTab)) {
+      return selectedCandidateTab;
+    }
+    return activeCandidates[0] ?? null;
+  }, [selectedCandidateTab, activeCandidates]);
+
+  const abstainerCount = useMemo(
+    () => eligibleVoters.filter((v) => normalizedVotes[v] === null).length,
+    [eligibleVoters, normalizedVotes],
+  );
+
+  if (!ruleOverrides.enableSheriff && sheriffState.status === 'not_started') {
+    return (
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/85 p-4 text-center">
+        <div className="text-sm font-bold text-slate-300">ℹ️ 本局已關閉警長競選</div>
+        <p className="mt-1 text-xs text-slate-400">
+          可直接切換至「發言計時」與「放逐投票」進行白天流程。
+        </p>
+      </section>
+    );
   }
 
-  // 已產生明確警長狀態的精簡顯示列
+  // 第二天起若從未開啟過警長競選且不在競選中
+  if (round > 1 && sheriffState.status === 'not_started') {
+    return (
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/85 p-4 text-center">
+        <div className="text-sm font-bold text-slate-300">ℹ️ 本局未進行警長競選（無警長）</div>
+      </section>
+    );
+  }
+
+  // 已產生明確警長狀態
   if (
     sheriffState.status === 'elected' ||
     sheriffState.status === 'swallowed' ||
@@ -65,7 +111,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         : undefined;
 
     return (
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/85 p-3.5">
+      <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/85 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="font-bold text-slate-400">警徽狀態</span>
           {sheriffState.badgeStatus === 'active' && sheriffSeatObj ? (
@@ -87,7 +133,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
           )}
         </div>
         {lastOutcomeNotice && (
-          <p className="mt-2 text-xs font-semibold text-amber-300">{lastOutcomeNotice}</p>
+          <p className="text-xs font-semibold text-amber-300">{lastOutcomeNotice}</p>
         )}
       </section>
     );
@@ -104,14 +150,15 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
     };
 
     return (
-      <section className="space-y-3 rounded-2xl border border-amber-500/35 bg-slate-900/95 p-4">
+      <section className="space-y-3 rounded-2xl border border-amber-500/35 bg-slate-900/95 p-3.5">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
             第一天 · 警長競選
           </span>
           <h2 className="text-base font-bold text-slate-50">👮 勾選上警名單</h2>
           <p className="mt-0.5 text-xs text-slate-400">
-            點選所有舉手上警的玩家；0 人直接宣告無警長，1 人自動當選，2 人以上進入警上發言與投票。
+            0 人直接無警長、1 人自動當選、2 人以上隨機抽順序發言與投票（吞警徽規則：
+            {ruleOverrides.badgeSwallowRule === 'double_explode' ? '雙爆吞警徽' : '單爆吞警徽'}）。
           </p>
         </div>
 
@@ -162,26 +209,52 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
     );
   }
 
-  // 警長競選進行中：退水與警下逐票投票
+  // 警長競選進行中：退水與警下雙模式投票
   const isPk = sheriffState.pkCandidates.length > 0;
+  const isDeferredContinuation =
+    sheriffState.status === 'voting' && sheriffState.explodeCountDuringElection === 1;
 
   return (
-    <section className="space-y-3.5 rounded-2xl border border-amber-500/40 bg-slate-900/95 p-4">
+    <section className="space-y-3 rounded-2xl border border-amber-500/40 bg-slate-900/95 p-3.5">
       <div className="flex items-center justify-between gap-2">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-            {isPk ? '警長平票 PK' : '警上發言與警下投票'}
+            {isPk
+              ? '警長平票 PK'
+              : isDeferredContinuation
+                ? '雙爆吞警徽 · 隔日直接投票'
+                : '警上發言、退水與警下投票'}
           </span>
           <h2 className="text-base font-bold text-slate-50">
             {isPk
               ? `⚖️ PK 候選人：${activeCandidates.join('、')} 號`
-              : '👮 警長候選人與逐票紀錄'}
+              : '👮 警長候選人與警下投票'}
           </h2>
         </div>
         <span className="rounded-lg bg-amber-500/20 px-2.5 py-1 text-xs font-bold text-amber-200">
           候選 {activeCandidates.length} 人
         </span>
       </div>
+
+      {isDeferredContinuation && (
+        <div className="rounded-xl border border-rose-500/45 bg-rose-950/35 px-3 py-2 text-xs font-bold text-rose-200">
+          💥 昨夜首次警上自爆入夜：今日已自動跳過上警報名與警上發言，直接進入退水與警下投票！若此時再次自爆將正式吞警徽。
+        </div>
+      )}
+
+      {!isDeferredContinuation && (
+        <button
+          type="button"
+          disabled={disabled || activeCandidates.length < 2}
+          onClick={() => {
+            generateSpeakingOrder({ mode: 'random', candidateSeats: activeCandidates });
+            onSwitchToSpeaking?.();
+          }}
+          className="min-h-12 w-full rounded-xl border border-indigo-400/45 bg-indigo-950/45 px-3 text-xs font-extrabold text-indigo-100 hover:bg-indigo-900/50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          🎲 隨機抽取{isPk ? ' PK ' : '警上'}發言順序並前往計時器 ➜
+        </button>
+      )}
 
       {lastOutcomeNotice && (
         <div className="rounded-xl border border-amber-400/45 bg-amber-950/35 px-3 py-2 text-xs font-bold text-amber-200">
@@ -190,15 +263,17 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
       )}
 
       {/* 候選人退水區 */}
-      <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/75 p-3">
-        <div className="text-xs font-bold text-slate-300">上警候選人（點擊「退水」移出競選）：</div>
-        <div className="flex flex-wrap gap-2">
+      <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/75 p-2.5">
+        <div className="text-xs font-bold text-slate-300">
+          上警候選人（退水即失投票權，餘 1 人直選）：
+        </div>
+        <div className="flex flex-wrap gap-1.5">
           {activeCandidates.map((seatNum) => {
             const seatObj = seats.find((s) => s.seatNumber === seatNum);
             return (
               <div
                 key={seatNum}
-                className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-950/30 px-2.5 py-1.5"
+                className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-950/30 px-2.5 py-1"
               >
                 <span className="text-xs font-extrabold text-amber-100">
                   {seatObj ? formatSeatShort(seatObj) : `${seatNum}號`}
@@ -231,16 +306,46 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         )}
       </div>
 
-      {/* 警下投票明細 */}
+      {/* 雙模式切換器 */}
+      <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950 p-1">
+        <button
+          type="button"
+          onClick={() => setVoteInputMode('by_voter')}
+          className={`min-h-10 rounded-lg text-xs font-extrabold transition ${
+            voteInputMode === 'by_voter'
+              ? 'bg-amber-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          方式一：逐人記錄
+        </button>
+        <button
+          type="button"
+          onClick={() => setVoteInputMode('by_candidate')}
+          className={`min-h-10 rounded-lg text-xs font-extrabold transition ${
+            voteInputMode === 'by_candidate'
+              ? 'bg-amber-500 text-slate-950'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          方式二：依候選人唱票
+        </button>
+      </div>
+
+      {/* 警下投票區 */}
       <div className="space-y-2">
-        <div className="text-xs font-bold text-slate-300">
-          警下投票明細（共 {eligibleVoters.length} 位具投票權）：
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-bold text-slate-300">
+            警下具投票權：{eligibleVoters.length} 人
+          </span>
+          <span className="text-slate-400">棄票 {abstainerCount} 人</span>
         </div>
+
         {eligibleVoters.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400">
             所有存活玩家皆曾上警，本輪無警下投票者（送出計票將依流局處理）。
           </div>
-        ) : (
+        ) : voteInputMode === 'by_voter' ? (
           <div className="space-y-2">
             {eligibleVoters.map((voterSeat) => {
               const voterObj = seats.find((s) => s.seatNumber === voterSeat);
@@ -250,7 +355,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
                   key={voterSeat}
                   className="rounded-xl border border-slate-800 bg-slate-950/80 p-2.5"
                 >
-                  <div className="mb-2 text-xs font-bold text-slate-200">
+                  <div className="mb-1.5 text-xs font-bold text-slate-200">
                     {voterObj ? formatSeatDisplay(voterObj) : `${voterSeat} 號`}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -298,6 +403,69 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
                 </div>
               );
             })}
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap gap-1.5">
+              {activeCandidates.map((candSeat) => {
+                const count = votersByCandidate[candSeat]?.length ?? 0;
+                const active = activeCandidateForTally === candSeat;
+                return (
+                  <button
+                    key={candSeat}
+                    type="button"
+                    onClick={() => setSelectedCandidateTab(candSeat)}
+                    className={`min-h-11 rounded-xl border px-3 text-xs font-extrabold transition ${
+                      active
+                        ? 'border-amber-400 bg-amber-500 text-slate-950'
+                        : 'border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    投給 {candSeat} 號（{count} 票）
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeCandidateForTally !== null && (
+              <div className="space-y-2 rounded-xl border border-amber-500/35 bg-slate-950/80 p-3">
+                <div className="text-xs font-bold text-amber-200">
+                  勾選「投給 {activeCandidateForTally} 號」的警下玩家：
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                  {eligibleVoters.map((voterSeat) => {
+                    const votedFor = normalizedVotes[voterSeat] ?? null;
+                    const pickedHere = votedFor === activeCandidateForTally;
+                    const pickedOther = votedFor !== null && !pickedHere;
+
+                    return (
+                      <button
+                        key={voterSeat}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          setVotesDraft((prev) =>
+                            toggleVoterForCandidate(prev, activeCandidateForTally, voterSeat),
+                          )
+                        }
+                        className={`min-h-11 rounded-xl border px-2 py-1.5 text-xs font-extrabold transition ${
+                          pickedHere
+                            ? 'border-amber-400 bg-amber-500 text-slate-950'
+                            : pickedOther
+                              ? 'border-slate-700 bg-slate-900/70 text-slate-400'
+                              : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div>{voterSeat} 號</div>
+                        {pickedOther && (
+                          <div className="text-[10px] font-normal">已投 {votedFor}號</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

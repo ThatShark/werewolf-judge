@@ -97,7 +97,11 @@ function App() {
   };
 
   const isZeroScrollPhase =
-    phase === 'seat_setup' || phase === 'pass_and_reveal' || phase === 'night';
+    phase === 'seat_setup' ||
+    phase === 'pass_and_reveal' ||
+    phase === 'night' ||
+    phase === 'day_announcement' ||
+    phase === 'day_vote';
 
   const renderMainContent = () => {
     switch (activeView) {

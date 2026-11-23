@@ -177,6 +177,7 @@ export function createInitialSheriffState(): SheriffState {
     pkCandidates: [],
     voteRounds: [],
     pendingBadgeTransferFrom: null,
+    explodeCountDuringElection: 0,
   };
 }
 

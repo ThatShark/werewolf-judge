@@ -2,9 +2,9 @@ import { getRoleById } from '../../data/roles';
 import type {
   BoardDefinition,
   DeathReason,
-  Faction,
   GamePhase,
   GameState,
+  GameWinner,
   PlayerSeat,
   RuleOverrides,
   SheriffState,
@@ -97,10 +97,11 @@ export function formatDeathReason(reason?: DeathReason): string {
   return DEATH_REASON_LABELS[reason] ?? reason;
 }
 
-export function formatFactionLabel(faction: Faction | null): string {
+export function formatFactionLabel(faction: GameWinner | null): string {
   if (faction === 'wolf') return '狼人陣營';
   if (faction === 'good') return '好人陣營';
   if (faction === 'third_party') return '第三方陣營';
+  if (faction === 'draw') return '平局';
   return '未知陣營';
 }
 

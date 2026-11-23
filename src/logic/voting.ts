@@ -134,3 +134,78 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
   }
   return { outcome: 'tie', record };
 }
+
+/**
+ * 將「方式一：逐人記錄（voter -> target | null）」轉換為「方式二：依候選人分組（candidate -> voter[]）」。
+ */
+export function votesByVoterToByCandidate(
+  votes: Record<number, number | null>,
+  candidateSeats: number[],
+): Record<number, number[]> {
+  const result: Record<number, number[]> = {};
+  const validCandidates = new Set(candidateSeats);
+
+  for (const cand of candidateSeats) {
+    result[cand] = [];
+  }
+
+  for (const [voterKey, targetSeat] of Object.entries(votes)) {
+    if (targetSeat === null || !validCandidates.has(targetSeat)) continue;
+    const voterSeat = Number(voterKey);
+    result[targetSeat] = [...(result[targetSeat] ?? []), voterSeat];
+  }
+
+  for (const cand of candidateSeats) {
+    result[cand].sort((a, b) => a - b);
+  }
+
+  return result;
+}
+
+/**
+ * 將「方式二：依候選人唱票勾選（candidate -> voter[]）」轉換為標準「方式一：逐人記錄（voter -> target | null）」。
+ * - 僅保留 eligibleVoters 中的具投票權玩家（自動排除翻牌白痴或出局者）。
+ * - 未出現在任何候選人清單中的投票者自動記為 null（棄票）。
+ */
+export function votesByCandidateToByVoter(
+  votersByCandidate: Record<number, number[]>,
+  eligibleVoters: number[],
+): Record<number, number | null> {
+  const eligibleSet = new Set(eligibleVoters);
+  const result: Record<number, number | null> = {};
+
+  for (const voter of eligibleVoters) {
+    result[voter] = null;
+  }
+
+  const sortedCandidates = Object.keys(votersByCandidate)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  for (const candidateSeat of sortedCandidates) {
+    const voters = votersByCandidate[candidateSeat] ?? [];
+    for (const voterSeat of voters) {
+      if (!eligibleSet.has(voterSeat)) continue;
+      result[voterSeat] = candidateSeat;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 在「方式二：依候選人唱票勾選」模式中，切換某位投票者對指定候選人的投票狀態：
+ * - 若該投票者目前已投給 candidateSeat，則取消為 null（棄票）。
+ * - 否則將該投票者改投給 candidateSeat（自動移出原先可能勾選的其他候選人）。
+ */
+export function toggleVoterForCandidate(
+  votes: Record<number, number | null>,
+  candidateSeat: number,
+  voterSeat: number,
+): Record<number, number | null> {
+  const currentlyPicked = votes[voterSeat] === candidateSeat;
+  return {
+    ...votes,
+    [voterSeat]: currentlyPicked ? null : candidateSeat,
+  };
+}

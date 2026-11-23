@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialSeats, generateSpeakingOrder } from './index';
+import {
+  DEFAULT_RULE_OVERRIDES,
+  createInitialSeats,
+  generateNoSheriffDeadSpeakingOrder,
+  generateSpeakingOrder,
+  resolveDaySpeakingRule,
+} from './index';
 import type { PlayerSeat } from './types';
 
 function makeSeats(count: number, deadSeats: number[] = []): PlayerSeat[] {
@@ -121,5 +127,60 @@ describe('發言順序自動抽取引擎（src/logic/speakingOrder.ts）', () =>
     expect(() =>
       generateSpeakingOrder(seats, { mode: 'dead_left', referenceDeadSeat: null }),
     ).toThrow(/基準死者/);
+  });
+
+  it('無警長死訊發言方向房規：從座號最小死者依 noSheriffDeadDirection（順／逆時針）開始發言', () => {
+    // 1..8 號，昨夜 6 號與 2 號死亡 -> 座號最小死者為 2 號
+    const seats = makeSeats(8, [6, 2]);
+
+    const cwRule = resolveDaySpeakingRule({
+      seats,
+      nightDeadSeats: [6, 2],
+      sheriffSeat: null,
+      ruleOverrides: { ...DEFAULT_RULE_OVERRIDES, noSheriffDeadDirection: 'clockwise' },
+    });
+    expect(cwRule.defaultDeadAnchor).toBe(2);
+    expect(cwRule.noSheriffDeadMode).toBe('dead_left');
+
+    const cwOrder = generateNoSheriffDeadSpeakingOrder(seats, [6, 2], 'clockwise');
+    expect(cwOrder.anchorSeat).toBe(2);
+    expect(cwOrder.direction).toBe('clockwise');
+    expect(cwOrder.queue).toEqual([3, 4, 5, 7, 8, 1]);
+
+    const ccwRule = resolveDaySpeakingRule({
+      seats,
+      nightDeadSeats: [6, 2],
+      sheriffSeat: null,
+      ruleOverrides: { ...DEFAULT_RULE_OVERRIDES, noSheriffDeadDirection: 'counterclockwise' },
+    });
+    expect(ccwRule.defaultDeadAnchor).toBe(2);
+    expect(ccwRule.noSheriffDeadMode).toBe('dead_right');
+
+    const ccwOrder = generateNoSheriffDeadSpeakingOrder(seats, [6, 2], 'counterclockwise');
+    expect(ccwOrder.anchorSeat).toBe(2);
+    expect(ccwOrder.direction).toBe('counterclockwise');
+    expect(ccwOrder.queue).toEqual([1, 8, 7, 5, 4, 3]);
+  });
+
+  it('有警長死左／死右房規：有死訊時優先提供死左／死右，平安夜自動切回警左／警右', () => {
+    const seatsWithDeath = makeSeats(8, [5]);
+    const deadSideRec = resolveDaySpeakingRule({
+      seats: seatsWithDeath,
+      nightDeadSeats: [5],
+      sheriffSeat: 3,
+      ruleOverrides: { ...DEFAULT_RULE_OVERRIDES, sheriffUseDeadSideOnDeath: true },
+    });
+    expect(deadSideRec.recommendedModes).toEqual(['dead_left', 'dead_right']);
+    expect(deadSideRec.defaultDeadAnchor).toBe(5);
+
+    const peacefulSeats = makeSeats(8, []);
+    const peacefulRec = resolveDaySpeakingRule({
+      seats: peacefulSeats,
+      nightDeadSeats: [],
+      sheriffSeat: 3,
+      ruleOverrides: { ...DEFAULT_RULE_OVERRIDES, sheriffUseDeadSideOnDeath: true },
+    });
+    expect(peacefulRec.recommendedModes).toEqual(['sheriff_left', 'sheriff_right']);
+    expect(peacefulRec.defaultDeadAnchor).toBeNull();
   });
 });

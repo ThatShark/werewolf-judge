@@ -11,23 +11,31 @@ import {
   formatSeatDisplay,
   getRoleBadgeClasses,
 } from '../common/displayHelpers';
+import { CompactSeatStatusGrid } from '../day/CompactSeatStatusGrid';
+import { ManualVictoryModal } from '../day/ManualVictoryModal';
 
 export function DayAnnouncementScreen() {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
+  const hostMode = useGameStore((s) => s.hostMode);
   const nightHistory = useGameStore((s) => s.nightHistory);
   const lastBearRoar = useGameStore((s) => s.lastBearRoar);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const pendingShooters = useGameStore((s) => s.pendingShooters);
+  const forceContinueAfterVictory = useGameStore((s) => s.forceContinueAfterVictory);
+
   const triggerShoot = useGameStore((s) => s.triggerShoot);
   const skipShoot = useGameStore((s) => s.skipShoot);
   const transferSheriffBadge = useGameStore((s) => s.transferSheriffBadge);
   const destroySheriffBadge = useGameStore((s) => s.destroySheriffBadge);
   const proceedToDayVote = useGameStore((s) => s.proceedToDayVote);
+  const overrideVictory = useGameStore((s) => s.overrideVictory);
 
   const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
+  const [victoryModalOpen, setVictoryModalOpen] = useState(false);
   const board = getBoardById(selectedBoardId);
+  const isOnlineJudge = hostMode.judgeMode === 'online_judge';
 
   const latestNight = useMemo(
     () => nightHistory.find((entry) => entry.round === round) ?? nightHistory[nightHistory.length - 1],
@@ -35,10 +43,11 @@ export function DayAnnouncementScreen() {
   );
 
   const deaths = latestNight?.deaths ?? [];
+  const nightDeadSeats = useMemo(() => deaths.map((d) => d.seat), [deaths]);
   const bearRoar = latestNight?.bearRoar ?? lastBearRoar;
 
-  // 檢核昨晚死亡的獵人或狼王是否被禁止開槍
   const disabledShootInfos = useMemo(() => {
+    if (isOnlineJudge) return [];
     return deaths
       .map((death) => {
         const eligibility = checkCanShoot(seats, death.seat, death.reason);
@@ -46,195 +55,234 @@ export function DayAnnouncementScreen() {
         return { ...eligibility, deathReason: death.reason };
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  }, [deaths, seats]);
+  }, [deaths, seats, isOnlineJudge]);
 
   const hasPendingShooters = pendingShooters.length > 0;
   const hasPendingBadgeTransfer = sheriffState.pendingBadgeTransferFrom !== null;
   const isProceedBlocked = hasPendingShooters || hasPendingBadgeTransfer;
+  const isDeferredElectionNext =
+    sheriffState.status === 'voting' && sheriffState.explodeCountDuringElection === 1;
 
   return (
-    <div className="space-y-4 pb-28">
-      {/* 天亮公告卡 */}
-      <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/95 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-              第 {round} 天 · 天亮了
-            </span>
-            <h1 className="mt-0.5 text-xl font-extrabold text-slate-50">昨夜結算公告</h1>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSeatDrawerOpen(true)}
-            className="min-h-12 shrink-0 rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-3 text-xs font-bold text-indigo-200 hover:bg-indigo-900/50"
-          >
-            👥 座位總覽 / 手動標記
-          </button>
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      {/* 1. 頂部緊湊座位狀態網格 */}
+      <CompactSeatStatusGrid
+        seats={seats}
+        sheriffState={sheriffState}
+        nightDeadSeats={nightDeadSeats}
+        onOpenSeatDrawer={() => setSeatDrawerOpen(true)}
+      />
 
-        {deaths.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/35 p-5 text-center">
-            <div className="text-2xl font-extrabold text-emerald-200">☀️ 昨晚平安夜</div>
-            <p className="mt-1.5 text-sm text-emerald-100/80">
-              昨夜無人出局，請宣告昨晚是平安夜。
-            </p>
+      {/* 2. 中央任務操作區（內部局部可微滾，外框嚴格鎖死 100dvh） */}
+      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
+        {forceContinueAfterVictory && (
+          <div className="rounded-xl border border-amber-400/45 bg-amber-950/35 px-3 py-2 text-xs font-bold text-amber-200">
+            ⚖️ 已解除自動勝負鎖定（法官強制繼續模式）：如需結束請點下方「勝負覆蓋」。
           </div>
-        ) : (
-          <div className="space-y-2.5">
-            <div className="rounded-xl border border-rose-500/35 bg-rose-950/30 px-3.5 py-2.5 text-sm font-bold text-rose-200">
-              昨晚出局玩家（共 {deaths.length} 名，法官請只公佈出局座號，勿唸死因）：
+        )}
+
+        {/* 昨夜死訊公告卡 */}
+        <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                第 {round} 天 · 天亮結算
+              </span>
+              <h1 className="text-lg font-extrabold text-slate-50">昨夜結果公告</h1>
             </div>
+            <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-bold text-slate-300">
+              {deaths.length === 0 ? '平安夜' : `出局 ${deaths.length} 人`}
+            </span>
+          </div>
 
-            {deaths.map((death) => {
-              const seat = seats.find((s) => s.seatNumber === death.seat);
-              const role = getRoleById(seat?.roleId ?? null);
-              return (
-                <div
-                  key={`${death.seat}-${death.reason}`}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/80 p-3.5"
-                >
-                  <div>
-                    <div className="text-base font-extrabold text-slate-50">
-                      {seat ? formatSeatDisplay(seat) : `${death.seat} 號玩家`}
-                    </div>
-                    <div className="mt-1 text-xs text-rose-300">
-                      法官視角死因：{formatDeathReason(death.reason)}
-                    </div>
-                    {death.reason === 'wolf_beauty_charm' && (
-                      <div className="mt-1 inline-block rounded-md border border-rose-500/40 bg-rose-950/50 px-2 py-0.5 text-[11px] font-bold text-rose-200">
-                        💘 狼美人出局殉情帶走（無開槍／任何死亡技能資格）
+          {deaths.length === 0 ? (
+            <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/35 p-4 text-center">
+              <div className="text-xl font-extrabold text-emerald-200">☀️ 昨晚平安夜</div>
+              <p className="mt-1 text-xs text-emerald-100/80">
+                昨夜無人出局，請宣告昨晚是平安夜。
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="rounded-xl border border-rose-500/35 bg-rose-950/30 px-3 py-2 text-xs font-bold text-rose-200">
+                昨晚出局玩家（共 {deaths.length} 名，請只公佈出局座號，勿唸死因）：
+              </div>
+
+              {deaths.map((death) => {
+                const seat = seats.find((s) => s.seatNumber === death.seat);
+                const role = !isOnlineJudge ? getRoleById(seat?.roleId ?? null) : undefined;
+                return (
+                  <div
+                    key={`${death.seat}-${death.reason}`}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3"
+                  >
+                    <div>
+                      <div className="text-sm font-extrabold text-slate-50">
+                        {seat ? formatSeatDisplay(seat) : `${death.seat} 號玩家`}
                       </div>
-                    )}
-                    {(death.reason === 'dream_catcher_consecutive' ||
-                      death.reason === 'dream_catcher_link') && (
-                      <div className="mt-1 inline-block rounded-md border border-indigo-500/40 bg-indigo-950/50 px-2 py-0.5 text-[11px] font-bold text-indigo-200">
-                        💤 攝夢人夢死／共死（無開槍／任何死亡技能資格）
-                      </div>
+                      {!isOnlineJudge && (
+                        <div className="mt-0.5 text-xs text-rose-300">
+                          法官視角死因：{formatDeathReason(death.reason)}
+                        </div>
+                      )}
+                      {!isOnlineJudge && death.reason === 'wolf_beauty_charm' && (
+                        <div className="mt-1 inline-block rounded-md border border-rose-500/40 bg-rose-950/50 px-2 py-0.5 text-[10px] font-bold text-rose-200">
+                          💘 狼美人殉情帶走（無死亡技能）
+                        </div>
+                      )}
+                      {!isOnlineJudge &&
+                        (death.reason === 'dream_catcher_consecutive' ||
+                          death.reason === 'dream_catcher_link') && (
+                          <div className="mt-1 inline-block rounded-md border border-indigo-500/40 bg-indigo-950/50 px-2 py-0.5 text-[10px] font-bold text-indigo-200">
+                            💤 攝夢人夢死／共死（無死亡技能）
+                          </div>
+                        )}
+                    </div>
+                    {role && (
+                      <span
+                        className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-bold ${getRoleBadgeClasses(role.id)}`}
+                      >
+                        {role.name}
+                      </span>
                     )}
                   </div>
-                  {role && (
-                    <span
-                      className={`shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold ${getRoleBadgeClasses(role.id)}`}
-                    >
-                      {role.name}
-                    </span>
-                  )}
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* 雙爆吞警徽隔日續選提示 */}
+        {isDeferredElectionNext && (
+          <section className="rounded-2xl border border-amber-400/50 bg-amber-950/35 p-3 text-xs font-bold text-amber-100">
+            👮 雙爆吞警徽續選：進入白天後將自動跳過「上警報名與警上發言」，直接由候選人（
+            {sheriffState.candidates.join('、')} 號）進入退水與警下投票。
+          </section>
+        )}
+
+        {/* 熊咆哮天亮公告卡 */}
+        {bearRoar && (
+          <section
+            className={`rounded-2xl border p-3.5 ${
+              bearRoar.roared
+                ? 'border-amber-400/60 bg-amber-950/35'
+                : 'border-emerald-500/40 bg-emerald-950/25'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className={`rounded-lg px-2 py-0.5 text-[11px] font-extrabold ${
+                  bearRoar.roared
+                    ? 'bg-amber-500/25 text-amber-200'
+                    : 'bg-emerald-500/20 text-emerald-200'
+                }`}
+              >
+                天亮熊咆哮公告
+              </span>
+              {!isOnlineJudge && bearRoar.bearSeat !== null && (
+                <span className="text-xs font-semibold text-slate-400">
+                  熊：{bearRoar.bearSeat} 號
+                </span>
+              )}
+            </div>
+            <div
+              className={`mt-1.5 text-base font-extrabold ${
+                bearRoar.roared ? 'text-amber-100' : 'text-emerald-100'
+              }`}
+            >
+              {bearRoar.roared
+                ? '🐻 昨晚熊咆哮了（身邊有狼）'
+                : '🐻 昨晚熊沒有咆哮（身邊無狼）'}
+            </div>
+            {!isOnlineJudge && (
+              <p className="mt-1 text-xs text-slate-300">判定依據：{bearRoar.reason}</p>
+            )}
+          </section>
+        )}
+
+        {/* 警長昨夜出局之警徽交接／撕毀面板 */}
+        {sheriffState.pendingBadgeTransferFrom !== null && (
+          <SheriffBadgeTransferCard
+            fromSeat={sheriffState.pendingBadgeTransferFrom}
+            seats={seats}
+            onTransfer={transferSheriffBadge}
+            onDestroy={destroySheriffBadge}
+          />
+        )}
+
+        {/* 禁開槍狀態提示（僅實體法官） */}
+        {disabledShootInfos.length > 0 && (
+          <section className="space-y-2">
+            {disabledShootInfos.map((info) => {
+              const seat = seats.find((s) => s.seatNumber === info.seatNumber);
+              const roleLabel = info.roleId === 'hunter' ? '獵人' : '狼王';
+              return (
+                <div
+                  key={info.seatNumber}
+                  className="rounded-2xl border border-slate-700 bg-slate-900/90 p-3"
+                >
+                  <span className="inline-block rounded-lg bg-rose-500/20 px-2 py-0.5 text-[11px] font-bold text-rose-300">
+                    ❌ 不可開槍
+                  </span>
+                  <div className="mt-1 text-sm font-bold text-slate-100">
+                    {seat ? formatSeatDisplay(seat) : `${info.seatNumber} 號`}（{roleLabel}）
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-300">原因：{info.reason}</p>
                 </div>
               );
             })}
-          </div>
+          </section>
         )}
-      </section>
 
-      {/* 熊咆哮天亮公告卡 */}
-      {bearRoar && (
-        <section
-          className={`rounded-2xl border p-4 ${
-            bearRoar.roared
-              ? 'border-amber-400/60 bg-amber-950/35'
-              : 'border-emerald-500/40 bg-emerald-950/25'
+        {/* 可開槍結算卡片 */}
+        {pendingShooters.map((shooter) => (
+          <PendingShooterCard
+            key={shooter.seatNumber}
+            shooter={shooter}
+            seats={seats}
+            onShoot={triggerShoot}
+            onSkip={skipShoot}
+          />
+        ))}
+      </div>
+
+      {/* 3. 底部固定操作列 */}
+      <div className="flex shrink-0 items-center gap-2 border-t border-slate-800 pt-2">
+        <button
+          type="button"
+          onClick={() => setVictoryModalOpen(true)}
+          className="min-h-12 shrink-0 rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800 active:scale-[0.98]"
+        >
+          ⚖️ 勝負覆蓋
+        </button>
+        <button
+          type="button"
+          disabled={isProceedBlocked}
+          onClick={proceedToDayVote}
+          className={`min-h-12 flex-1 rounded-xl px-4 text-sm font-extrabold transition ${
+            isProceedBlocked
+              ? 'cursor-not-allowed bg-slate-800 text-slate-500'
+              : 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 hover:bg-amber-400 active:scale-[0.99]'
           }`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className={`rounded-lg px-2.5 py-0.5 text-xs font-extrabold ${
-                bearRoar.roared
-                  ? 'bg-amber-500/25 text-amber-200'
-                  : 'bg-emerald-500/20 text-emerald-200'
-              }`}
-            >
-              天亮熊咆哮公告
-            </span>
-            {bearRoar.bearSeat !== null && (
-              <span className="text-xs font-semibold text-slate-400">
-                熊座位：{bearRoar.bearSeat} 號
-              </span>
-            )}
-          </div>
-          <div
-            className={`mt-2 text-lg font-extrabold ${
-              bearRoar.roared ? 'text-amber-100' : 'text-emerald-100'
-            }`}
-          >
-            {bearRoar.roared
-              ? '🐻 昨晚熊咆哮了（身邊有狼）'
-              : '🐻 昨晚熊沒有咆哮（身邊無狼）'}
-          </div>
-          <p className="mt-1 text-xs text-slate-300">法官判定依據：{bearRoar.reason}</p>
-        </section>
-      )}
-
-      {/* 警長昨夜出局之警徽交接／撕毀面板 */}
-      {sheriffState.pendingBadgeTransferFrom !== null && (
-        <SheriffBadgeTransferCard
-          fromSeat={sheriffState.pendingBadgeTransferFrom}
-          seats={seats}
-          onTransfer={transferSheriffBadge}
-          onDestroy={destroySheriffBadge}
-        />
-      )}
-
-      {/* 禁開槍狀態提示 */}
-      {disabledShootInfos.length > 0 && (
-        <section className="space-y-2">
-          {disabledShootInfos.map((info) => {
-            const seat = seats.find((s) => s.seatNumber === info.seatNumber);
-            const roleLabel = info.roleId === 'hunter' ? '獵人' : '狼王';
-            return (
-              <div
-                key={info.seatNumber}
-                className="rounded-2xl border border-slate-700 bg-slate-900/90 p-4"
-              >
-                <span className="inline-block rounded-lg bg-rose-500/20 px-2 py-0.5 text-xs font-bold text-rose-300">
-                  ❌ 不可開槍
-                </span>
-                <div className="mt-1.5 text-sm font-bold text-slate-100">
-                  {seat ? formatSeatDisplay(seat) : `${info.seatNumber} 號`}（{roleLabel}）
-                </div>
-                <p className="mt-1 text-xs text-slate-300">原因：{info.reason}</p>
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-      {/* 可開槍結算卡片（含連鎖開槍） */}
-      {pendingShooters.map((shooter) => (
-        <PendingShooterCard
-          key={shooter.seatNumber}
-          shooter={shooter}
-          seats={seats}
-          onShoot={triggerShoot}
-          onSkip={skipShoot}
-        />
-      ))}
-
-      {/* 前往白天發言與投票 */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-950/95 p-3 backdrop-blur-md">
-        <div className="mx-auto max-w-lg">
-          <button
-            type="button"
-            disabled={isProceedBlocked}
-            onClick={proceedToDayVote}
-            className={`min-h-12 w-full rounded-xl px-5 py-3.5 text-base font-extrabold transition ${
-              isProceedBlocked
-                ? 'cursor-not-allowed bg-slate-800 text-slate-500'
-                : 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 hover:bg-amber-400 active:scale-[0.99]'
-            }`}
-          >
-            {hasPendingShooters
-              ? '請先結算開槍 / 壓槍後再進入白天投票'
-              : hasPendingBadgeTransfer
-                ? '請先完成警徽移交 / 撕毀後再進入白天投票'
-                : '進入白天發言與放逐投票 ➜'}
-          </button>
-        </div>
+          {hasPendingShooters
+            ? '請先結算開槍 / 壓槍'
+            : hasPendingBadgeTransfer
+              ? '請先移交 / 撕毀警徽'
+              : '進入白天發言與投票 ➜'}
+        </button>
       </div>
 
       <SeatStatusDrawer
         open={seatDrawerOpen}
         board={board}
         onClose={() => setSeatDrawerOpen(false)}
+      />
+
+      <ManualVictoryModal
+        open={victoryModalOpen}
+        onSelectOverride={(kind) => overrideVictory(kind)}
+        onClose={() => setVictoryModalOpen(false)}
       />
     </div>
   );

@@ -2,8 +2,8 @@
   "name": "狼人殺法官輔助",
   "short_name": "狼人殺法官",
   "description": "Mobile-First 暗黑模式狼人殺法官輔助工具，支援 142 種板子、128 個角色、夜間流程引導與白天投票結算。",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#020617",
@@ -11,7 +11,7 @@
   "lang": "zh-Hant",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

@@ -57,8 +57,10 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     store.setSeatNickname(1, '阿明');
     store.setSeatNickname(5, '小美');
 
-    // 未分配完角色時不可開局
+    // 預設實體發牌模式允許未預填身分直接開局；但若預填非法角色仍會攔截
+    useGameStore.getState().assignRole(1, 'guard');
     expect(useGameStore.getState().startGame().ok).toBe(false);
+    useGameStore.getState().assignRole(1, null);
 
     // 分配全部 12 名角色
     CLASSIC_ROLES.forEach((roleId, idx) => {
@@ -301,5 +303,113 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     const replay = buildGameReplayText(useGameStore.getState());
     expect(replay).toContain('警上自爆吞警徽');
     expect(replay).toContain('12 號：3 票（2 號、3 號；額外 +1 票）');
+  });
+
+  it('實體發牌模式（模式 1 & 5）：空身分直接進入第一晚，首夜認領並於首夜結束自動補平民', () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+
+    // 預設為模式 (1) 實體法官 / 實體發牌 / 中央操作
+    expect(useGameStore.getState().hostMode).toEqual({
+      judgeMode: 'physical_judge',
+      dealMode: 'physical_deal',
+      controlMode: 'central_control',
+    });
+
+    // 全空身分直接開局進入第一晚
+    expect(useGameStore.getState().seats.every((s) => s.roleId === null)).toBe(true);
+    expect(useGameStore.getState().startGame().ok).toBe(true);
+    expect(useGameStore.getState().phase).toBe('night');
+
+    // 首夜各角色睜眼認領座號
+    expect(useGameStore.getState().claimSeatRole(1, 'wolf').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(2, 'wolf').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(3, 'wolf').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(4, 'wolf').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(5, 'wolf').ok).toBe(false); // 狼人人數超額攔截
+    expect(useGameStore.getState().claimSeatRole(9, 'seer').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(10, 'witch').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(11, 'hunter').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(12, 'idiot').ok).toBe(true);
+
+    // 5~8 號尚未認領，第一晚狼刀 5 號後結算 -> 5~8 號自動補為平民
+    useGameStore.getState().updateNightDraft({ wolfTarget: 5 });
+    useGameStore.getState().finishNight();
+
+    const afterNight = useGameStore.getState();
+    expect(afterNight.phase).toBe('day_announcement');
+    expect(afterNight.seats.slice(4, 8).every((s) => s.roleId === 'villager')).toBe(true);
+    expect(afterNight.seats[4].isAlive).toBe(false);
+    expect(afterNight.seats[4].deathReason).toBe('wolf_kill');
+  });
+
+  it('線上發牌 × 中央操作（模式 2 & 6）：隨機洗牌、傳閱確認、指定重看、重新發牌與解鎖第一晚', () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    store.updateHostMode({ judgeMode: 'online_judge', dealMode: 'online_deal' });
+
+    // 開局自動隨機洗牌並進入 pass_and_reveal 階段
+    const startRes = useGameStore.getState().startGame();
+    expect(startRes.ok).toBe(true);
+    expect(useGameStore.getState().phase).toBe('pass_and_reveal');
+    expect(useGameStore.getState().seats.every((s) => s.roleId !== null)).toBe(true);
+
+    // 尚未全部確認時不可進入第一晚
+    expect(useGameStore.getState().completePassAndReveal().ok).toBe(false);
+
+    // 依序確認 1~12 號
+    for (let seat = 1; seat <= 12; seat += 1) {
+      useGameStore.getState().confirmPassRevealSeat(seat);
+    }
+    expect(useGameStore.getState().passRevealConfirmedSeats).toHaveLength(12);
+
+    // 指定 3 號重新查看 -> 3 號移出已確認清單，此時不可開局
+    useGameStore.getState().resetPassRevealSeat(3);
+    expect(useGameStore.getState().passRevealConfirmedSeats).not.toContain(3);
+    expect(useGameStore.getState().completePassAndReveal().ok).toBe(false);
+
+    // 重新隨機發牌 -> 清空所有已確認進度
+    expect(useGameStore.getState().dealOnlineRoles().ok).toBe(true);
+    expect(useGameStore.getState().passRevealConfirmedSeats).toEqual([]);
+
+    // 再次全體確認後解鎖進入第一晚
+    for (let seat = 1; seat <= 12; seat += 1) {
+      useGameStore.getState().confirmPassRevealSeat(seat);
+    }
+    expect(useGameStore.getState().completePassAndReveal().ok).toBe(true);
+    expect(useGameStore.getState().phase).toBe('night');
+    expect(useGameStore.getState().round).toBe(1);
+  });
+
+  it('多點操作模式攔截提示、清空暱稱與白噪音／新房規持久化', () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    store.setSeatNickname(1, '阿明');
+    store.updateHostMode({ controlMode: 'multi_device' });
+    store.updateAmbientAudio({ presetId: 'rain', volume: 0.6, autoPlayAtNight: true });
+    store.updateRuleOverrides({
+      enableSheriff: false,
+      badgeSwallowRule: 'double_explode',
+      noSheriffDeadDirection: 'counterclockwise',
+      sheriffUseDeadSideOnDeath: true,
+    });
+
+    // 多點操作模式在單機版會回傳友善提示
+    const blocked = useGameStore.getState().startGame();
+    expect(blocked.ok).toBe(false);
+    expect(blocked.errors[0]).toContain('Milestone B');
+
+    // 清空暱稱
+    useGameStore.getState().clearSavedNicknames();
+    expect(useGameStore.getState().savedNicknames).toEqual({});
+    expect(useGameStore.getState().seats[0].nickname).toBe('');
+
+    // 驗證新設定已寫入 localStorage
+    const raw = localStorage.getItem(GAME_STORAGE_KEY);
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.hostMode.controlMode).toBe('multi_device');
+    expect(parsed.state.ambientAudio.presetId).toBe('rain');
+    expect(parsed.state.ruleOverrides.badgeSwallowRule).toBe('double_explode');
+    expect(parsed.state.ruleOverrides.noSheriffDeadDirection).toBe('counterclockwise');
   });
 });

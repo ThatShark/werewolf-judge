@@ -56,6 +56,8 @@ export interface RoleSlot {
 
 /** 規則微調開關 */
 export type WitchSelfSaveRule = 'first_night_only' | 'never' | 'always';
+/** [V2.0 擴充] 吞警徽規則：單爆吞警徽 / 雙爆吞警徽 */
+export type BadgeSwallowRule = 'single_explode' | 'double_explode';
 
 export interface RuleOverrides {
   /** 女巫能否自救：僅首夜可自救 / 全程不可自救 / 全程可自救 */
@@ -68,6 +70,55 @@ export interface RuleOverrides {
   wolfKillPriority: boolean;
   /** 勝利條件：屠邊（預設）或屠城 */
   victoryMode: 'slaughter_side' | 'slaughter_all';
+  /** [V2.0 擴充] 是否開啟警長競選（預設 true） */
+  enableSheriff: boolean;
+  /** [V2.0 擴充] 吞警徽規則：單爆吞警徽 / 雙爆吞警徽 */
+  badgeSwallowRule: BadgeSwallowRule;
+  /** [V2.0 擴充] 無警長時有死訊的發言方向（預設 clockwise 順時針） */
+  noSheriffDeadDirection: SpeakingDirection;
+  /** [V2.0 擴充] 有警長且有死訊時，是否優先採用死左／死右（平安夜切回警左／警右） */
+  sheriffUseDeadSideOnDeath: boolean;
+}
+
+/** [V2.0 新增] 主持三大維度（組合成 8 種主持模式） */
+export type JudgeMode = 'physical_judge' | 'online_judge';
+export type DealMode = 'physical_deal' | 'online_deal';
+export type ControlMode = 'central_control' | 'multi_device';
+
+export interface HostModeConfig {
+  judgeMode: JudgeMode;
+  dealMode: DealMode;
+  controlMode: ControlMode;
+}
+
+export interface HostModeDescriptor {
+  modeNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  milestone: 'A' | 'B';
+  availableInStandalone: boolean;
+  shortTitle: string;
+  description: string;
+}
+
+/** [V2.0 新增] 夜間白噪音播放器設定 */
+export type AmbientPresetId =
+  | 'none'
+  | 'rain'
+  | 'white_noise'
+  | 'pink_noise'
+  | 'campfire'
+  | 'custom';
+
+export interface AmbientAudioSettings {
+  presetId: AmbientPresetId;
+  customFileName?: string | null;
+  volume: number;
+  autoPlayAtNight: boolean;
+}
+
+export interface ClaimSeatRoleResult {
+  ok: boolean;
+  reason?: string;
+  seats: PlayerSeat[];
 }
 
 /** 板子完整定義 */
@@ -105,6 +156,7 @@ export interface BoardDefinition {
 export type GamePhase =
   | 'board_select'
   | 'seat_setup'
+  | 'pass_and_reveal'
   | 'night'
   | 'day_announcement'
   | 'day_vote'
@@ -296,8 +348,12 @@ export interface GameState {
   phase: GamePhase;
   round: number;
   selectedBoardId: string | null;
+  hostMode: HostModeConfig;
+  ambientAudio: AmbientAudioSettings;
   ruleOverrides: RuleOverrides;
   seats: PlayerSeat[];
+  /** 線上發牌 × 中央操作：已完成傳閱確認身分之座號清單 */
+  passRevealConfirmedSeats: number[];
   /** 持久化保存各座位暱稱，供重開新局時「保留上一局暱稱」使用 */
   savedNicknames: Record<number, string>;
 

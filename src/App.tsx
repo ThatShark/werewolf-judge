@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ambientAudioEngine } from './audio/ambientAudioEngine';
 import { getBoardById } from './data/boards';
 import { getNightSteps } from './logic';
 import { useGameStore } from './store/gameStore';
@@ -15,6 +16,7 @@ import { GameOverScreen } from './components/screens/GameOverScreen';
 import { HomeScreen } from './components/screens/HomeScreen';
 import { JoinRoomScreen } from './components/screens/JoinRoomScreen';
 import { NightConsoleScreen } from './components/screens/NightConsoleScreen';
+import { PassAndRevealScreen } from './components/screens/PassAndRevealScreen';
 import { RulesAtlasScreen } from './components/screens/RulesAtlasScreen';
 import { SeatSetupScreen } from './components/screens/SeatSetupScreen';
 
@@ -27,15 +29,39 @@ function App() {
   const currentStepIndex = useGameStore((s) => s.currentStepIndex);
   const nightHistory = useGameStore((s) => s.nightHistory);
   const dayHistory = useGameStore((s) => s.dayHistory);
+  const ambientAudio = useGameStore((s) => s.ambientAudio);
   const restartGame = useGameStore((s) => s.restartGame);
 
   const [qaOpen, setQaOpen] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [restartOpen, setRestartOpen] = useState(false);
+  const wasNightAutoPlayingRef = useRef(false);
 
   const board = getBoardById(selectedBoardId);
   const hasActiveGame = Boolean(selectedBoardId) || phase !== 'board_select';
+
+  useEffect(() => {
+    const shouldAutoPlay =
+      activeView === 'game' &&
+      phase === 'night' &&
+      ambientAudio.autoPlayAtNight &&
+      ambientAudio.presetId !== 'none';
+
+    if (shouldAutoPlay) {
+      ambientAudioEngine.play(ambientAudio.presetId, ambientAudio.volume);
+      wasNightAutoPlayingRef.current = true;
+    } else if (wasNightAutoPlayingRef.current) {
+      ambientAudioEngine.stop();
+      wasNightAutoPlayingRef.current = false;
+    }
+  }, [
+    activeView,
+    phase,
+    ambientAudio.autoPlayAtNight,
+    ambientAudio.presetId,
+    ambientAudio.volume,
+  ]);
 
   const highlightRoleIds = useMemo(() => {
     if (!board || phase !== 'night') return [];
@@ -48,7 +74,9 @@ function App() {
       case 'board_select':
         return <BoardSelectScreen />;
       case 'seat_setup':
-        return <SeatSetupScreen />;
+        return <SeatSetupScreen onOpenQA={() => setQaOpen(true)} />;
+      case 'pass_and_reveal':
+        return <PassAndRevealScreen />;
       case 'night':
         return <NightConsoleScreen />;
       case 'day_announcement':
@@ -59,6 +87,8 @@ function App() {
         return <GameOverScreen />;
     }
   };
+
+  const isZeroScrollPhase = phase === 'seat_setup' || phase === 'pass_and_reveal';
 
   const renderMainContent = () => {
     switch (activeView) {
@@ -75,7 +105,9 @@ function App() {
         return <AboutScreen onBackHome={() => setActiveView('home')} />;
       case 'game':
       default:
-        return (
+        return isZeroScrollPhase ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{renderPhaseScreen()}</div>
+        ) : (
           <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">{renderPhaseScreen()}</div>
         );
     }

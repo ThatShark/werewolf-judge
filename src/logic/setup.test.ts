@@ -2,8 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { ALL_BOARDS, BOARDS_BY_ID, MVP_BOARDS, filterBoards, getBoardById } from '../data/boards';
 import { ROLES_BY_ID } from '../data/roles';
 import {
+  DEFAULT_AMBIENT_AUDIO_SETTINGS,
+  DEFAULT_HOST_MODE,
+  DEFAULT_RULE_OVERRIDES,
+  claimSeatRole,
   createInitialSeats,
+  dealRandomRoles,
+  finalizePhysicalDealVillagers,
+  getHostModeDescriptor,
   getNightSteps,
+  validatePhysicalDealSetup,
   validateRoleAssignment,
 } from './setup';
 
@@ -133,5 +141,136 @@ describe('MVP 板子靜態資料與發牌驗證', () => {
     const validResult = validateRoleAssignment(classic, validSeats);
     expect(validResult.valid).toBe(true);
     expect(validResult.errors).toEqual([]);
+  });
+
+  it('新增房規預設值與 3D 主持矩陣（8 種模式）正確定義', () => {
+    expect(DEFAULT_RULE_OVERRIDES.enableSheriff).toBe(true);
+    expect(DEFAULT_RULE_OVERRIDES.badgeSwallowRule).toBe('single_explode');
+    expect(DEFAULT_RULE_OVERRIDES.noSheriffDeadDirection).toBe('clockwise');
+    expect(DEFAULT_RULE_OVERRIDES.sheriffUseDeadSideOnDeath).toBe(false);
+
+    expect(DEFAULT_HOST_MODE).toEqual({
+      judgeMode: 'physical_judge',
+      dealMode: 'physical_deal',
+      controlMode: 'central_control',
+    });
+    expect(DEFAULT_AMBIENT_AUDIO_SETTINGS).toEqual({
+      presetId: 'none',
+      customFileName: null,
+      volume: 0.4,
+      autoPlayAtNight: true,
+    });
+
+    const mode1 = getHostModeDescriptor(DEFAULT_HOST_MODE);
+    expect(mode1.modeNumber).toBe(1);
+    expect(mode1.availableInStandalone).toBe(true);
+
+    const mode2 = getHostModeDescriptor({
+      judgeMode: 'physical_judge',
+      dealMode: 'online_deal',
+      controlMode: 'central_control',
+    });
+    expect(mode2.modeNumber).toBe(2);
+    expect(mode2.availableInStandalone).toBe(true);
+
+    const mode5 = getHostModeDescriptor({
+      judgeMode: 'online_judge',
+      dealMode: 'physical_deal',
+      controlMode: 'central_control',
+    });
+    expect(mode5.modeNumber).toBe(5);
+    expect(mode5.availableInStandalone).toBe(true);
+
+    const mode6 = getHostModeDescriptor({
+      judgeMode: 'online_judge',
+      dealMode: 'online_deal',
+      controlMode: 'central_control',
+    });
+    expect(mode6.modeNumber).toBe(6);
+    expect(mode6.availableInStandalone).toBe(true);
+
+    const mode4 = getHostModeDescriptor({
+      judgeMode: 'physical_judge',
+      dealMode: 'online_deal',
+      controlMode: 'multi_device',
+    });
+    expect(mode4.modeNumber).toBe(4);
+    expect(mode4.milestone).toBe('B');
+    expect(mode4.availableInStandalone).toBe(false);
+
+    const mode8 = getHostModeDescriptor({
+      judgeMode: 'online_judge',
+      dealMode: 'online_deal',
+      controlMode: 'multi_device',
+    });
+    expect(mode8.modeNumber).toBe(8);
+    expect(mode8.milestone).toBe('B');
+    expect(mode8.availableInStandalone).toBe(false);
+  });
+
+  it('實體發牌首夜動態認領（防重複指派與超額）＋未認領自動補平民', () => {
+    const classic = getBoardById('12p-classic')!;
+    let seats = createInitialSeats(12);
+
+    // 開局全為 null 可通過實體發牌開局檢核
+    expect(validatePhysicalDealSetup(classic, seats).valid).toBe(true);
+
+    // 1~4 號認領狼人
+    for (const num of [1, 2, 3, 4]) {
+      const res = claimSeatRole(classic, seats, num, 'wolf');
+      expect(res.ok).toBe(true);
+      seats = res.seats;
+    }
+
+    // 第 5 隻狼超額 -> 攔截
+    const overWolf = claimSeatRole(classic, seats, 5, 'wolf');
+    expect(overWolf.ok).toBe(false);
+    expect(overWolf.reason).toContain('上限');
+
+    // 1 號已認領狼人 -> 不可重複指派為預言家
+    const duplicateSeat = claimSeatRole(classic, seats, 1, 'seer');
+    expect(duplicateSeat.ok).toBe(false);
+    expect(duplicateSeat.reason).toContain('已認領');
+
+    // 非本板子角色（如守衛）-> 攔截
+    const invalidRole = claimSeatRole(classic, seats, 9, 'guard');
+    expect(invalidRole.ok).toBe(false);
+    expect(invalidRole.reason).toContain('不屬於本板子');
+
+    // 正常認領四神（9~12 號）
+    seats = claimSeatRole(classic, seats, 9, 'seer').seats;
+    seats = claimSeatRole(classic, seats, 10, 'witch').seats;
+    seats = claimSeatRole(classic, seats, 11, 'hunter').seats;
+    seats = claimSeatRole(classic, seats, 12, 'idiot').seats;
+
+    // 解除認領（null）後可重新認領
+    const cleared = claimSeatRole(classic, seats, 9, null);
+    expect(cleared.ok).toBe(true);
+    expect(cleared.seats[8].roleId).toBeNull();
+    seats = claimSeatRole(classic, cleared.seats, 9, 'seer').seats;
+
+    // 第一晚結束結算時，5~8 號未認領自動補為平民
+    const finalized = finalizePhysicalDealVillagers(seats);
+    expect(finalized.slice(4, 8).every((s) => s.roleId === 'villager')).toBe(true);
+    expect(validateRoleAssignment(classic, finalized).valid).toBe(true);
+  });
+
+  it('線上發牌隨機洗牌能產出完全符合板子配置的角色分布', () => {
+    const classic = getBoardById('12p-classic')!;
+    const seats = createInitialSeats(12);
+    let seed = 0.25;
+    const deterministicRng = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    const dealt = dealRandomRoles(classic, seats, deterministicRng);
+    expect(validateRoleAssignment(classic, dealt).valid).toBe(true);
+    expect(dealt.filter((s) => s.roleId === 'wolf')).toHaveLength(4);
+    expect(dealt.filter((s) => s.roleId === 'villager')).toHaveLength(4);
+    expect(dealt.filter((s) => s.roleId === 'seer')).toHaveLength(1);
+    expect(dealt.filter((s) => s.roleId === 'witch')).toHaveLength(1);
+    expect(dealt.filter((s) => s.roleId === 'hunter')).toHaveLength(1);
+    expect(dealt.filter((s) => s.roleId === 'idiot')).toHaveLength(1);
   });
 });

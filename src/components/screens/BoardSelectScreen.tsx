@@ -114,7 +114,11 @@ export function BoardSelectScreen() {
       );
     }
 
-    const boolValue = ruleOverrides[toggleKey];
+    if (toggleKey === 'badgeSwallowRule' || toggleKey === 'noSheriffDeadDirection') {
+      return null;
+    }
+
+    const boolValue = Boolean(ruleOverrides[toggleKey]);
     return (
       <button
         key={toggleKey}

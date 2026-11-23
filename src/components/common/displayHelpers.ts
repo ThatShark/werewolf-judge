@@ -32,7 +32,8 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
 
 export const PHASE_LABELS: Record<GamePhase, string> = {
   board_select: '開局選板',
-  seat_setup: '座位配角',
+  seat_setup: '開局大廳',
+  pass_and_reveal: '傳閱確認',
   night: '夜間主持',
   day_announcement: '天亮結算',
   day_vote: '白天投票',
@@ -62,6 +63,22 @@ export const RULE_TOGGLE_META: Record<
   victoryMode: {
     label: '勝利條件模式',
     description: '屠邊（殺光所有平民或所有神職）或屠城（殺光全部好人）。',
+  },
+  enableSheriff: {
+    label: '開啟警長競選',
+    description: '第一天白天是否進行警長競選流程（上警、退水、警下投票與警徽移交）。',
+  },
+  badgeSwallowRule: {
+    label: '吞警徽規則',
+    description: '警長競選期間狼人自爆時，採單爆立即吞警徽或雙爆吞警徽。',
+  },
+  noSheriffDeadDirection: {
+    label: '無警長有死訊發言方向',
+    description: '無警長且昨夜有死訊時，從座號最小死者出發的預設發言方向。',
+  },
+  sheriffUseDeadSideOnDeath: {
+    label: '有警長有死訊優先死左／死右',
+    description: '開啟後，有警長且昨夜有死訊時優先採死左／死右，平安夜再切回警左／警右。',
   },
 };
 

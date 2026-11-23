@@ -2,13 +2,18 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { getBoardById } from '../data/boards';
 import {
+  DEFAULT_AMBIENT_AUDIO_SETTINGS,
+  DEFAULT_HOST_MODE,
   DEFAULT_RULE_OVERRIDES,
   DEFAULT_SPEAK_DURATION_SEC,
+  claimSeatRole as claimSeatRoleLogic,
   createEmptyNightDraft,
   createInitialMechWolfState,
   createInitialSeats,
   createInitialSheriffState,
+  dealRandomRoles,
   destroySheriffBadge as destroySheriffBadgeLogic,
+  finalizePhysicalDealVillagers,
   generateSpeakingOrder as generateSpeakingOrderLogic,
   getNightSteps,
   isSheriffElectionActive,
@@ -26,16 +31,19 @@ import {
   tallyExileVotes,
   toggleSeatAliveManually,
   transferSheriffBadge as transferSheriffBadgeLogic,
+  validatePhysicalDealSetup,
   validateRoleAssignment,
   withdrawSheriffCandidate as withdrawSheriffCandidateLogic,
 } from '../logic';
 import type { SheriffVoteResolution } from '../logic/sheriff';
 import type {
+  AmbientAudioSettings,
   DayStructuredEvent,
   DeathReason,
   ExileVoteTallyResult,
   Faction,
   GameState,
+  HostModeConfig,
   KnightDuelResult,
   NightActionDraft,
   RuleOverrides,
@@ -65,10 +73,20 @@ export interface GameStore extends GameState {
   setActiveView: (view: AppView) => void;
 
   selectBoard: (boardId: string) => void;
+  goToBoardSelect: () => void;
   setBoardPlayerCount: (playerCount: number) => void;
+  updateHostMode: (partial: Partial<HostModeConfig>) => void;
+  updateAmbientAudio: (partial: Partial<AmbientAudioSettings>) => void;
   updateRuleOverrides: (partial: Partial<RuleOverrides>) => void;
   setSeatNickname: (seatNumber: number, nickname: string) => void;
+  clearSavedNicknames: () => void;
   assignRole: (seatNumber: number, roleId: string | null) => void;
+  claimSeatRole: (seatNumber: number, roleId: string | null) => { ok: boolean; reason?: string };
+  dealOnlineRoles: (rng?: () => number) => { ok: boolean; errors: string[] };
+  confirmPassRevealSeat: (seatNumber: number) => void;
+  resetPassRevealSeat: (seatNumber: number) => void;
+  completePassAndReveal: () => { ok: boolean; reason?: string };
+  returnToLobby: () => void;
   startGame: () => { ok: boolean; errors: string[] };
 
   updateNightDraft: (partial: Partial<NightActionDraft>) => void;
@@ -125,8 +143,11 @@ function createInitialGameState(): GameState & {
     phase: 'board_select',
     round: 1,
     selectedBoardId: null,
+    hostMode: { ...DEFAULT_HOST_MODE },
+    ambientAudio: { ...DEFAULT_AMBIENT_AUDIO_SETTINGS },
     ruleOverrides: { ...DEFAULT_RULE_OVERRIDES },
     seats: [],
+    passRevealConfirmedSeats: [],
     savedNicknames: {},
     currentStepIndex: 0,
     currentNightDraft: createEmptyNightDraft(1),
@@ -197,16 +218,31 @@ export const useGameStore = create<GameStore>()(
         if (!board) {
           throw new Error(`找不到板子：${boardId}`);
         }
-        const { savedNicknames, defaultSpeakDurationSec } = get();
+        const {
+          activeView,
+          savedNicknames,
+          defaultSpeakDurationSec,
+          hostMode,
+          ambientAudio,
+          ruleOverrides,
+        } = get();
         set({
           ...createInitialGameState(),
+          activeView,
           selectedBoardId: board.id,
           phase: 'seat_setup',
+          hostMode: { ...hostMode },
+          ambientAudio: { ...ambientAudio },
+          ruleOverrides: { ...ruleOverrides },
           savedNicknames,
           seats: createInitialSeats(board.playerCount, savedNicknames),
           defaultSpeakDurationSec,
           remainingSeconds: defaultSpeakDurationSec,
         });
+      },
+
+      goToBoardSelect: () => {
+        set({ phase: 'board_select' });
       },
 
       setBoardPlayerCount: (playerCount) => {
@@ -217,7 +253,26 @@ export const useGameStore = create<GameStore>()(
         }
         set({
           seats: createInitialSeats(playerCount, savedNicknames),
+          passRevealConfirmedSeats: [],
         });
+      },
+
+      updateHostMode: (partial) => {
+        set((state) => ({
+          hostMode: {
+            ...state.hostMode,
+            ...partial,
+          },
+        }));
+      },
+
+      updateAmbientAudio: (partial) => {
+        set((state) => ({
+          ambientAudio: {
+            ...state.ambientAudio,
+            ...partial,
+          },
+        }));
       },
 
       updateRuleOverrides: (partial) => {
@@ -241,6 +296,13 @@ export const useGameStore = create<GameStore>()(
         }));
       },
 
+      clearSavedNicknames: () => {
+        set((state) => ({
+          savedNicknames: {},
+          seats: state.seats.map((seat) => ({ ...seat, nickname: '' })),
+        }));
+      },
+
       assignRole: (seatNumber, roleId) => {
         set((state) => ({
           seats: state.seats.map((seat) =>
@@ -249,18 +311,101 @@ export const useGameStore = create<GameStore>()(
         }));
       },
 
-      startGame: () => {
-        const { selectedBoardId, seats, defaultSpeakDurationSec } = get();
+      claimSeatRole: (seatNumber, roleId) => {
+        const { selectedBoardId, seats } = get();
+        const board = getBoardById(selectedBoardId);
+        if (!board) {
+          return { ok: false, reason: '尚未選擇板子' };
+        }
+        const result = claimSeatRoleLogic(board, seats, seatNumber, roleId);
+        if (!result.ok) {
+          return { ok: false, reason: result.reason };
+        }
+        set({ seats: result.seats });
+        return { ok: true };
+      },
+
+      dealOnlineRoles: (rng) => {
+        const { selectedBoardId, seats } = get();
         const board = getBoardById(selectedBoardId);
         if (!board) {
           return { ok: false, errors: ['尚未選擇板子'] };
         }
-        const validation = validateRoleAssignment(board, seats);
+        const dealtSeats = dealRandomRoles(board, seats, rng);
+        const validation = validateRoleAssignment(board, dealtSeats);
         if (!validation.valid) {
           return { ok: false, errors: validation.errors };
         }
         set({
+          seats: dealtSeats,
+          passRevealConfirmedSeats: [],
+        });
+        return { ok: true, errors: [] };
+      },
+
+      confirmPassRevealSeat: (seatNumber) => {
+        set((state) => {
+          if (state.passRevealConfirmedSeats.includes(seatNumber)) {
+            return state;
+          }
+          return {
+            passRevealConfirmedSeats: [...state.passRevealConfirmedSeats, seatNumber].sort(
+              (a, b) => a - b,
+            ),
+          };
+        });
+      },
+
+      resetPassRevealSeat: (seatNumber) => {
+        set((state) => ({
+          passRevealConfirmedSeats: state.passRevealConfirmedSeats.filter(
+            (s) => s !== seatNumber,
+          ),
+        }));
+      },
+
+      completePassAndReveal: () => {
+        const { seats, passRevealConfirmedSeats } = get();
+        const unconfirmed = seats
+          .map((s) => s.seatNumber)
+          .filter((num) => !passRevealConfirmedSeats.includes(num));
+        if (unconfirmed.length > 0) {
+          return {
+            ok: false,
+            reason: `尚有 ${unconfirmed.join('、')} 號玩家尚未確認身分`,
+          };
+        }
+        set({
           phase: 'night',
+          round: 1,
+          currentStepIndex: 0,
+          currentNightDraft: createEmptyNightDraft(1),
+        });
+        return { ok: true };
+      },
+
+      returnToLobby: () => {
+        set({
+          phase: 'seat_setup',
+          passRevealConfirmedSeats: [],
+        });
+      },
+
+      startGame: () => {
+        const { selectedBoardId, seats, hostMode, defaultSpeakDurationSec } = get();
+        const board = getBoardById(selectedBoardId);
+        if (!board) {
+          return { ok: false, errors: ['尚未選擇板子'] };
+        }
+
+        if (hostMode.controlMode === 'multi_device') {
+          return {
+            ok: false,
+            errors: ['多點連線大廳將於 Milestone B 開放，請切換為「中央操作」以開始單機對局。'],
+          };
+        }
+
+        const baseRuntimeReset = {
           round: 1,
           currentStepIndex: 0,
           currentNightDraft: createEmptyNightDraft(1),
@@ -285,6 +430,33 @@ export const useGameStore = create<GameStore>()(
           winner: null,
           winReason: null,
           pendingShooters: [],
+          passRevealConfirmedSeats: [],
+        };
+
+        if (hostMode.dealMode === 'physical_deal') {
+          const physicalCheck = validatePhysicalDealSetup(board, seats);
+          if (!physicalCheck.valid) {
+            return { ok: false, errors: physicalCheck.errors };
+          }
+          set({
+            ...baseRuntimeReset,
+            phase: 'night',
+          });
+          return { ok: true, errors: [] };
+        }
+
+        // online_deal × central_control：若尚未完整發牌則自動隨機洗牌，開局先進入 pass_and_reveal
+        const existingCheck = validateRoleAssignment(board, seats);
+        const finalSeats = existingCheck.valid ? seats : dealRandomRoles(board, seats);
+        const validation = validateRoleAssignment(board, finalSeats);
+        if (!validation.valid) {
+          return { ok: false, errors: validation.errors };
+        }
+
+        set({
+          ...baseRuntimeReset,
+          seats: finalSeats,
+          phase: 'pass_and_reveal',
         });
         return { ok: true, errors: [] };
       },
@@ -316,8 +488,13 @@ export const useGameStore = create<GameStore>()(
 
       finishNight: () => {
         const state = get();
+        const resolvedInputSeats =
+          state.round === 1 && state.hostMode.dealMode === 'physical_deal'
+            ? finalizePhysicalDealVillagers(state.seats)
+            : state.seats;
+
         const result = resolveNight({
-          seats: state.seats,
+          seats: resolvedInputSeats,
           round: state.round,
           draft: state.currentNightDraft,
           ruleOverrides: state.ruleOverrides,
@@ -1102,6 +1279,8 @@ export const useGameStore = create<GameStore>()(
             ...createInitialGameState(),
             activeView: state.activeView,
             selectedBoardId: board ? board.id : null,
+            hostMode: { ...state.hostMode },
+            ambientAudio: { ...state.ambientAudio },
             ruleOverrides: { ...state.ruleOverrides },
             savedNicknames: { ...state.savedNicknames },
             defaultSpeakDurationSec: state.defaultSpeakDurationSec,
@@ -1121,6 +1300,26 @@ export const useGameStore = create<GameStore>()(
     {
       name: GAME_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<GameStore>;
+        return {
+          ...currentState,
+          ...persisted,
+          hostMode: {
+            ...DEFAULT_HOST_MODE,
+            ...(persisted.hostMode ?? {}),
+          },
+          ambientAudio: {
+            ...DEFAULT_AMBIENT_AUDIO_SETTINGS,
+            ...(persisted.ambientAudio ?? {}),
+          },
+          ruleOverrides: {
+            ...DEFAULT_RULE_OVERRIDES,
+            ...(persisted.ruleOverrides ?? {}),
+          },
+          passRevealConfirmedSeats: persisted.passRevealConfirmedSeats ?? [],
+        };
+      },
     },
   ),
 );

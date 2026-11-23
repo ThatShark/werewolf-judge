@@ -59,6 +59,7 @@ const ROLE_ID_MAP: Record<string, string> = {
   狼兄: 'wolf_brother',
   狼巫: 'wolf_witch',
   狼弟: 'wolf_younger_brother',
+  狼女孩: 'wolf_girl',
   狼美人: 'wolf_beauty',
   狼術師: 'wolf_warlock',
   狼僕: 'wolf_maid',
@@ -120,6 +121,7 @@ const ROLE_ID_MAP: Record<string, string> = {
   黑市商人: 'black_market_merchant',
   愚言家: 'fool_seer',
   煉金魔女: 'alchemy_witch',
+  毒師: 'poisoner',
   禁言長老: 'mute_elder',
   蜂之狂獵: 'bee_wild_hunt',
   槓精: 'contrarian',
@@ -1398,10 +1400,12 @@ function parseQAList(
 }
 
 function main() {
-  const rawText = fs.readFileSync(RAW_PATH, 'utf8');
+  const rawText = fs
+    .readFileSync(RAW_PATH, 'utf8')
+    .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n*/gm, '');
   const rawBoards = rawText.split(/(?=^# [^#])/m).filter((b) => b.trim().length > 0);
-  if (rawBoards.length !== 142) {
-    throw new Error(`預期 142 個板子，實際解析到 ${rawBoards.length} 個`);
+  if (rawBoards.length === 0) {
+    throw new Error('未從 docs/boards-raw.md 解析到任何板子');
   }
 
   // 第一輪：掃描全部 128 個角色名稱、別名、陣營與職業介紹
@@ -1483,8 +1487,9 @@ function main() {
 
   // 補上特殊表格配置角色陣營（影子、復仇者、睡美人、狂熱粉、尋香魅影、獵魔人）
   const allRoleNames = [...new Set([...roleDescriptions.keys(), ...Object.keys(ROLE_ID_MAP)])];
-  if (allRoleNames.length !== 128) {
-    throw new Error(`預期 128 個不重複角色，實際得到 ${allRoleNames.length} 個`);
+  const unmappedRoles = allRoleNames.filter((name) => !ROLE_ID_MAP[name]);
+  if (unmappedRoles.length > 0) {
+    throw new Error(`發現未登錄於 ROLE_ID_MAP 的新角色：${unmappedRoles.join('、')}`);
   }
 
   const rolesById: Record<string, RoleDefinition> = {};

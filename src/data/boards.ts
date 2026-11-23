@@ -1,4 +1,4 @@
-// 此檔案由 scripts/parseBoards.ts 自動自 docs/boards-raw.md 解析生成（共 142 個板子）
+// 此檔案由 scripts/parseBoards.ts 自動自 docs/boards-raw.md 解析生成（共 143 個板子）
 import type { BoardDefinition, PlayerCountFilter } from '../logic/types';
 
 export const ALL_BOARDS: BoardDefinition[] = [
@@ -24900,6 +24900,215 @@ export const ALL_BOARDS: BoardDefinition[] = [
     ]
   },
   {
+    "id": "12p-wolf-girl",
+    "name": "12 人局 - 狼女孩",
+    "playerCount": 12,
+    "playerCountFilter": "12",
+    "keywords": [
+      "狼女孩",
+      "12人",
+      "小狼",
+      "普通狼人",
+      "狼人",
+      "平民",
+      "村民",
+      "預言家",
+      "毒師",
+      "獵人",
+      "守衛"
+    ],
+    "composition": {
+      "wolf": [
+        {
+          "roleId": "wolf",
+          "count": 3
+        },
+        {
+          "roleId": "wolf_girl",
+          "count": 1
+        }
+      ],
+      "good": [
+        {
+          "roleId": "villager",
+          "count": 4
+        },
+        {
+          "roleId": "seer",
+          "count": 1
+        },
+        {
+          "roleId": "poisoner",
+          "count": 1
+        },
+        {
+          "roleId": "hunter",
+          "count": 1
+        },
+        {
+          "roleId": "guard",
+          "count": 1
+        }
+      ]
+    },
+    "automationLevel": "partial_manual",
+    "nightSchedule": {
+      "firstNight": [
+        {
+          "stepId": "guard_protect",
+          "actorLabel": "守衛",
+          "actorRoleIds": [
+            "guard"
+          ],
+          "actionType": "guard_protect",
+          "openPrompt": "守衛請睜眼",
+          "actionPrompt": "請選擇要守護的玩家",
+          "closePrompt": "守衛請閉眼"
+        },
+        {
+          "stepId": "step_2",
+          "actorLabel": "狼女孩",
+          "actorRoleIds": [
+            "wolf_girl"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "狼女孩請睜眼",
+          "actionPrompt": "所有小狼請舉手\n請選擇表白的玩家",
+          "closePrompt": "狼女孩請閉眼\n所有小狼手放下",
+          "judgeTips": [
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+          ]
+        },
+        {
+          "stepId": "step_3",
+          "actorLabel": "狼人",
+          "actorRoleIds": [
+            "wolf",
+            "wolf_girl"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "狼人請睜眼",
+          "actionPrompt": "(確認狼人是誰)",
+          "closePrompt": "狼人請閉眼"
+        },
+        {
+          "stepId": "step_4",
+          "actorLabel": "毒師",
+          "actorRoleIds": [
+            "poisoner"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "毒師請睜眼",
+          "actionPrompt": "請選擇要毒的玩家",
+          "closePrompt": "毒師請閉眼",
+          "judgeTips": [
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+          ]
+        },
+        {
+          "stepId": "seer_check",
+          "actorLabel": "預言家",
+          "actorRoleIds": [
+            "seer"
+          ],
+          "actionType": "seer_check",
+          "openPrompt": "預言家請睜眼",
+          "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
+          "closePrompt": "預言家請閉眼"
+        },
+        {
+          "stepId": "hunter_gesture",
+          "actorLabel": "獵人",
+          "actorRoleIds": [
+            "hunter"
+          ],
+          "actionType": "hunter_gesture",
+          "openPrompt": "獵人請睜眼",
+          "actionPrompt": "今晚的開槍手勢是...",
+          "closePrompt": "獵人請閉眼"
+        },
+        {
+          "stepId": "step_7",
+          "actorLabel": "被表白者",
+          "actorRoleIds": [],
+          "actionType": "confirm_only",
+          "openPrompt": "被表白者請睜眼",
+          "actionPrompt": "狼女孩的號碼是...",
+          "closePrompt": "被表白者請閉眼",
+          "judgeTips": [
+            "(法官走若干圈告知被表白者是誰)",
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+          ]
+        }
+      ],
+      "subsequentNights": [
+        {
+          "stepId": "guard_protect",
+          "actorLabel": "守衛",
+          "actorRoleIds": [
+            "guard"
+          ],
+          "actionType": "guard_protect",
+          "openPrompt": "守衛請睜眼",
+          "actionPrompt": "請選擇要守護的玩家",
+          "closePrompt": "守衛請閉眼"
+        },
+        {
+          "stepId": "wolf_kill",
+          "actorLabel": "狼人",
+          "actorRoleIds": [
+            "wolf",
+            "wolf_girl"
+          ],
+          "actionType": "wolf_kill",
+          "openPrompt": "狼人請睜眼",
+          "actionPrompt": "請選擇要擊殺的目標",
+          "closePrompt": "狼人請閉眼"
+        },
+        {
+          "stepId": "step_3",
+          "actorLabel": "毒師",
+          "actorRoleIds": [
+            "poisoner"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "毒師請睜眼",
+          "actionPrompt": "請選擇要毒的玩家",
+          "closePrompt": "毒師請閉眼",
+          "judgeTips": [
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+          ]
+        },
+        {
+          "stepId": "seer_check",
+          "actorLabel": "預言家",
+          "actorRoleIds": [
+            "seer"
+          ],
+          "actionType": "seer_check",
+          "openPrompt": "預言家請睜眼",
+          "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
+          "closePrompt": "預言家請閉眼"
+        },
+        {
+          "stepId": "hunter_gesture",
+          "actorLabel": "獵人",
+          "actorRoleIds": [
+            "hunter"
+          ],
+          "actionType": "hunter_gesture",
+          "openPrompt": "獵人請睜眼",
+          "actionPrompt": "今晚的開槍手勢是...",
+          "closePrompt": "獵人請閉眼"
+        }
+      ]
+    },
+    "qaList": [],
+    "supportedRuleToggles": [
+      "wolfKillPriority"
+    ]
+  },
+  {
     "id": "12p-board-1hb0a89",
     "name": "12 人局 - 青丘夜影",
     "playerCount": 12,
@@ -30863,7 +31072,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
       "村民",
       "通靈師",
       "魔鏡少女",
-      "女巫",
+      "毒師",
       "獵人",
       "攝夢人",
       "蒙面人"
@@ -30889,7 +31098,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "count": 1
         },
         {
-          "roleId": "witch",
+          "roleId": "poisoner",
           "count": 1
         },
         {
@@ -30918,7 +31127,55 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "dream_catcher_dream",
+          "actorLabel": "攝夢人",
+          "actorRoleIds": [
+            "dream_catcher"
+          ],
+          "actionType": "dream_catcher_dream",
+          "openPrompt": "攝夢人請睜眼",
+          "actionPrompt": "請選擇要攝夢的玩家",
+          "closePrompt": "攝夢人請閉眼"
+        },
+        {
+          "stepId": "step_2",
+          "actorLabel": "狼人",
+          "actorRoleIds": [
+            "wolf",
+            "wolf_king"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "狼人請睜眼",
+          "actionPrompt": "(確認狼人、狼王是誰)",
+          "closePrompt": "狼人請閉眼"
+        },
+        {
+          "stepId": "step_3",
+          "actorLabel": "毒師",
+          "actorRoleIds": [
+            "poisoner"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "毒師請睜眼",
+          "actionPrompt": "請選擇要毒的玩家",
+          "closePrompt": "毒師請閉眼",
+          "judgeTips": [
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+          ]
+        },
+        {
+          "stepId": "step_4",
+          "actorLabel": "蒙面人",
+          "actorRoleIds": [
+            "masked_villager"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "蒙面人請睜眼",
+          "actionPrompt": "(確認蒙面人是誰)",
+          "closePrompt": "蒙面人請閉眼"
+        },
+        {
+          "stepId": "step_5",
           "actorLabel": "盜寶大師",
           "actorRoleIds": [
             "treasure_master"
@@ -30932,41 +31189,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "dream_catcher_dream",
-          "actorLabel": "攝夢人",
-          "actorRoleIds": [
-            "dream_catcher"
-          ],
-          "actionType": "dream_catcher_dream",
-          "openPrompt": "攝夢人請睜眼",
-          "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼"
-        },
-        {
-          "stepId": "wolf_kill",
-          "actorLabel": "狼人",
-          "actorRoleIds": [
-            "wolf",
-            "wolf_king"
-          ],
-          "actionType": "wolf_kill",
-          "openPrompt": "狼人請睜眼",
-          "actionPrompt": "請選擇要擊殺的目標",
-          "closePrompt": "狼人請閉眼"
-        },
-        {
-          "stepId": "witch_action",
-          "actorLabel": "女巫",
-          "actorRoleIds": [
-            "witch"
-          ],
-          "actionType": "witch_action",
-          "openPrompt": "女巫請睜眼",
-          "actionPrompt": "昨晚他被殺死了，你要使用解藥嗎？\n你要使用毒藥嗎？你要毒誰呢？",
-          "closePrompt": "女巫請閉眼"
-        },
-        {
-          "stepId": "step_5",
+          "stepId": "step_6",
           "actorLabel": "預言家",
           "actorRoleIds": [],
           "actionType": "confirm_only",
@@ -30987,17 +31210,6 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "openPrompt": "獵人請睜眼",
           "actionPrompt": "今晚的開槍手勢是...",
           "closePrompt": "獵人請閉眼"
-        },
-        {
-          "stepId": "step_7",
-          "actorLabel": "蒙面人",
-          "actorRoleIds": [
-            "masked_villager"
-          ],
-          "actionType": "confirm_only",
-          "openPrompt": "蒙面人請睜眼",
-          "actionPrompt": "(確認蒙面人是誰)",
-          "closePrompt": "蒙面人請閉眼"
         }
       ],
       "subsequentNights": [
@@ -31039,15 +31251,18 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "witch_action",
-          "actorLabel": "女巫",
+          "stepId": "step_4",
+          "actorLabel": "毒師",
           "actorRoleIds": [
-            "witch"
+            "poisoner"
           ],
-          "actionType": "witch_action",
-          "openPrompt": "女巫請睜眼",
-          "actionPrompt": "昨晚他被殺死了，你要使用解藥嗎？\n你要使用毒藥嗎？你要毒誰呢？",
-          "closePrompt": "女巫請閉眼"
+          "actionType": "confirm_only",
+          "openPrompt": "毒師請睜眼",
+          "actionPrompt": "請選擇要毒的玩家",
+          "closePrompt": "毒師請閉眼",
+          "judgeTips": [
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+          ]
         },
         {
           "stepId": "step_5",
@@ -31076,7 +31291,6 @@ export const ALL_BOARDS: BoardDefinition[] = [
     },
     "qaList": [],
     "supportedRuleToggles": [
-      "witchSelfSave",
       "wolfKillPriority",
       "victoryMode"
     ]

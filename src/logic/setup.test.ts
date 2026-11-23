@@ -27,7 +27,7 @@ describe('MVP 板子靜態資料與發牌驗證', () => {
       '12p-wolf-king-guard',
       '10p-mech-wolf-psychic',
     ]);
-    expect(ALL_BOARDS).toHaveLength(142);
+    expect(ALL_BOARDS).toHaveLength(143);
     expect(Object.keys(BOARDS_BY_ID)).toEqual(
       expect.arrayContaining(['12p-classic', '12p-wolf-king-guard', '10p-mech-wolf-psychic']),
     );

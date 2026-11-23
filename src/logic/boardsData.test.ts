@@ -11,12 +11,12 @@ import {
   validateRoleAssignment,
 } from './index';
 
-describe('全量 142 板子與 128 角色資料完整性驗證', () => {
-  it('成功載入全部 142 個不重複板子與 128 個不重複角色', () => {
-    expect(ALL_BOARDS).toHaveLength(142);
-    expect(Object.keys(BOARDS_BY_ID)).toHaveLength(142);
-    expect(ROLE_LIST).toHaveLength(128);
-    expect(Object.keys(ROLES_BY_ID)).toHaveLength(128);
+describe('全量 143 板子與 130 角色資料完整性驗證', () => {
+  it('成功載入全部 143 個不重複板子與 130 個不重複角色', () => {
+    expect(ALL_BOARDS).toHaveLength(143);
+    expect(Object.keys(BOARDS_BY_ID)).toHaveLength(143);
+    expect(ROLE_LIST).toHaveLength(130);
+    expect(Object.keys(ROLES_BY_ID)).toHaveLength(130);
 
     // 驗證人數分類分佈完全符合 SPEC.md
     expect(filterBoards(ALL_BOARDS, '6', '')).toHaveLength(4);
@@ -24,11 +24,11 @@ describe('全量 142 板子與 128 角色資料完整性驗證', () => {
     expect(filterBoards(ALL_BOARDS, '8', '')).toHaveLength(2);
     expect(filterBoards(ALL_BOARDS, '9', '')).toHaveLength(6);
     expect(filterBoards(ALL_BOARDS, '10', '')).toHaveLength(33);
-    expect(filterBoards(ALL_BOARDS, '12', '')).toHaveLength(93);
+    expect(filterBoards(ALL_BOARDS, '12', '')).toHaveLength(94);
     expect(filterBoards(ALL_BOARDS, 'multi', '')).toHaveLength(3);
   });
 
-  it('全部 142 個板子的角色配置加總、角色參考與三段式台詞皆合法完整', () => {
+  it('全部 143 個板子的角色配置加總、角色參考與三段式台詞皆合法完整', () => {
     const qaBoards = ALL_BOARDS.filter((b) => b.qaList.length > 0);
     expect(qaBoards.length).toBeGreaterThanOrEqual(77);
 
@@ -68,7 +68,7 @@ describe('全量 142 板子與 128 角色資料完整性驗證', () => {
     }
   });
 
-  it('全部 142 個板子皆可正常配齊角色並跑完第一晚與第二晚夜間結算不報錯', () => {
+  it('全部 143 個板子皆可正常配齊角色並跑完第一晚與第二晚夜間結算不報錯', () => {
     for (const board of ALL_BOARDS) {
       const wolfPool: string[] = [];
       for (const slot of board.composition.wolf) {

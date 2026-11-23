@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <title>狼人殺法官輔助 — 重新導向中</title>
+    <script>
+      // GitHub Pages SPA 404 fallback redirect（保留專案子路徑、查詢參數與 Hash）
+      (function () {
+        var pathSegmentsToKeep = 1;
+        var l = window.location;
+        var segments = l.pathname.split('/').filter(Boolean);
+        var baseSegments = segments.slice(0, pathSegmentsToKeep);
+        var restSegments = segments.slice(pathSegmentsToKeep);
+        var basePath = '/' + baseSegments.join('/') + (baseSegments.length > 0 ? '/' : '');
+        var encodedRoute = encodeURIComponent(
+          '/' + restSegments.join('/') + (l.search || '') + (l.hash || ''),
+        );
+        l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + basePath + '?spa_redirect=' + encodedRoute);
+      })();
+    </script>
+  </head>
+  <body style="background:#020617;color:#e2e8f0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+    <p>正在前往狼人殺法官輔助主頁…</p>
+  </body>
+</html>

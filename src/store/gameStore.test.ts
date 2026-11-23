@@ -27,10 +27,11 @@ vi.hoisted(() => {
 });
 
 import { ALL_BOARDS } from '../data/boards';
-import { GAME_STORAGE_KEY, useGameStore } from './gameStore';
+import { GAME_STORAGE_KEY, MAX_UNDO_STEPS, useGameStore } from './gameStore';
 import {
   buildGameReplayText,
   buildReplayDownloadFilename,
+  splitSeatsIntoSymmetricColumns,
 } from '../components/common/displayHelpers';
 
 const CLASSIC_ROLES = [
@@ -631,5 +632,70 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(dissolved.selectedBoardId).toBeNull();
     expect(dissolved.savedNicknames).toEqual({});
     expect(dissolved.notebook.freeformText).toBe('');
+  });
+
+  it('Phase A6：全域 undoLastStep 快照還原、最多 10 步上限、不寫入 localStorage 與左右對稱座位拆分', () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    CLASSIC_ROLES.forEach((roleId, idx) => {
+      useGameStore.getState().assignRole(idx + 1, roleId);
+    });
+    expect(useGameStore.getState().startGame().ok).toBe(true);
+    expect(useGameStore.getState().undoStack).toHaveLength(0);
+
+    // 1. 第一晚狼刀 5 號並結算 -> 撤銷後應回到第一晚且 5 號仍存活
+    useGameStore.getState().updateNightDraft({ wolfTarget: 5 });
+    useGameStore.getState().finishNight();
+    expect(useGameStore.getState().phase).toBe('day_announcement');
+    expect(useGameStore.getState().seats[4].isAlive).toBe(false);
+    expect(useGameStore.getState().undoStack.length).toBeGreaterThanOrEqual(2);
+
+    // 確認 undoStack 不會被寫入 localStorage
+    const raw = localStorage.getItem(GAME_STORAGE_KEY);
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.undoStack).toBeUndefined();
+
+    // 執行撤銷：還原 finishNight
+    const undoNightRes = useGameStore.getState().undoLastStep();
+    expect(undoNightRes.ok).toBe(true);
+    expect(undoNightRes.undoneLabel).toContain('結束第 1 晚');
+    expect(useGameStore.getState().phase).toBe('night');
+    expect(useGameStore.getState().seats[4].isAlive).toBe(true);
+    expect(useGameStore.getState().nightHistory).toHaveLength(0);
+
+    // 2. 再次結算並測試警上退水與放逐投票撤銷
+    useGameStore.getState().finishNight();
+    useGameStore.getState().proceedToDayVote();
+    useGameStore.getState().startSheriffElection([1, 9]);
+    useGameStore.getState().withdrawSheriffCandidate(1);
+    expect(useGameStore.getState().sheriffState.sheriffSeat).toBe(9);
+
+    // 撤銷退水 -> 回到 1、9 號競選中
+    const undoWithdraw = useGameStore.getState().undoLastStep();
+    expect(undoWithdraw.ok).toBe(true);
+    expect(useGameStore.getState().sheriffState.sheriffSeat).toBeNull();
+    expect(useGameStore.getState().sheriffState.candidates).toEqual([1, 9]);
+
+    // 3. 連續操作超過 MAX_UNDO_STEPS（10 步），驗證堆疊長度上限為 10
+    for (let i = 1; i <= 15; i += 1) {
+      useGameStore.getState().toggleSeatAlive(5);
+    }
+    expect(useGameStore.getState().undoStack).toHaveLength(MAX_UNDO_STEPS);
+
+    // 連續撤銷 10 次後，第 11 次回傳 ok: false
+    for (let i = 0; i < MAX_UNDO_STEPS; i += 1) {
+      expect(useGameStore.getState().undoLastStep().ok).toBe(true);
+    }
+    expect(useGameStore.getState().undoLastStep().ok).toBe(false);
+
+    // 4. 驗證左右對稱雙欄座位拆分（12 人局 1~6 / 7~12；9 人局 1~5 / 6~9）
+    const split12 = splitSeatsIntoSymmetricColumns([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(split12.left).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(split12.right).toEqual([7, 8, 9, 10, 11, 12]);
+
+    const split9 = splitSeatsIntoSymmetricColumns([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(split9.left).toEqual([1, 2, 3, 4, 5]);
+    expect(split9.right).toEqual([6, 7, 8, 9]);
   });
 });

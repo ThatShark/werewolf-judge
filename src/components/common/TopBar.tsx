@@ -7,6 +7,9 @@ interface TopBarProps {
   phase: GamePhase;
   round: number;
   board?: BoardDefinition;
+  canUndo?: boolean;
+  undoLabel?: string;
+  onUndo?: () => void;
   onGoHome: () => void;
   onOpenQA: () => void;
   onOpenNotebook: () => void;
@@ -25,6 +28,9 @@ export function TopBar({
   phase,
   round,
   board,
+  canUndo = false,
+  undoLabel,
+  onUndo,
   onGoHome,
   onOpenQA,
   onOpenNotebook,
@@ -71,18 +77,29 @@ export function TopBar({
         </div>
 
         {isGame && (
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1">
+            {canUndo && onUndo && (
+              <button
+                type="button"
+                onClick={onUndo}
+                title={undoLabel ? `撤銷：${undoLabel}` : '撤銷上一步'}
+                aria-label="撤銷上一步"
+                className="min-h-12 rounded-xl border border-amber-400/60 bg-amber-500/20 px-2.5 text-xs font-extrabold text-amber-200 shadow-xs shadow-amber-500/15 transition hover:bg-amber-500/30 active:scale-[0.98]"
+              >
+                ↩ 撤銷
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenNotebook}
-              className="min-h-12 rounded-xl border border-slate-700 bg-slate-900 px-2.5 text-xs font-bold text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
+              className="min-h-12 rounded-xl border border-slate-700 bg-slate-900 px-2 text-xs font-bold text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
             >
               筆記
             </button>
             <button
               type="button"
               onClick={onOpenHistory}
-              className="min-h-12 rounded-xl border border-slate-700 bg-slate-900 px-2.5 text-xs font-bold text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
+              className="min-h-12 rounded-xl border border-slate-700 bg-slate-900 px-2 text-xs font-bold text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
             >
               紀錄
             </button>
@@ -90,7 +107,7 @@ export function TopBar({
               <button
                 type="button"
                 onClick={onOpenQA}
-                className={`min-h-12 rounded-xl border px-2.5 text-xs font-bold transition active:scale-[0.98] ${
+                className={`min-h-12 rounded-xl border px-2 text-xs font-bold transition active:scale-[0.98] ${
                   isNight
                     ? 'border-amber-400/60 bg-amber-500/20 text-amber-200 shadow-xs shadow-amber-500/10 hover:bg-amber-500/30'
                     : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
@@ -102,7 +119,7 @@ export function TopBar({
             <button
               type="button"
               onClick={onOpenRestart}
-              className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/50 px-2.5 text-xs font-bold text-rose-200 transition hover:bg-rose-900/60 active:scale-[0.98]"
+              className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/50 px-2 text-xs font-bold text-rose-200 transition hover:bg-rose-900/60 active:scale-[0.98]"
             >
               重開
             </button>

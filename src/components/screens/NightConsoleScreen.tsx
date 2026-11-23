@@ -23,7 +23,11 @@ import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SlideDrawer } from '../common/SlideDrawer';
-import { formatSeatShort, getRoleBadgeClasses } from '../common/displayHelpers';
+import {
+  formatSeatShort,
+  getRoleBadgeClasses,
+  splitSeatsIntoSymmetricColumns,
+} from '../common/displayHelpers';
 import {
   OnlineJudgeOverlay,
   type OnlineJudgeOverlayMode,
@@ -150,6 +154,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   // 實體法官抽屜與遮罩
   const [maskSeatRoles, setMaskSeatRoles] = useState(false);
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false);
+  const [confirmWitchPotionOpen, setConfirmWitchPotionOpen] = useState(false);
   const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
   const [scriptDrawerOpen, setScriptDrawerOpen] = useState(false);
 
@@ -221,10 +226,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     onlineJudgeSettings.ttsRate,
   ]);
 
-  // 元件卸載時停止語音
+  // 元件卸載時停止語音與 iOS 音訊通道保活
   useEffect(() => {
     return () => {
       ttsEngine.cancel();
+      ttsEngine.stopKeepAlive();
     };
   }, []);
 
@@ -253,12 +259,23 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     return () => window.clearTimeout(timer);
   }, [isOnlineJudge, onlinePhase, bufferRemaining, completeBufferTransition]);
 
-  const actorSeatsAlive = useMemo(() => {
-    if (!currentStep || currentStep.actorRoleIds.length === 0) return true;
-    return seats.some(
-      (seat) => seat.isAlive && seat.roleId && currentStep.actorRoleIds.includes(seat.roleId),
+  const matchingActorSeats = useMemo(() => {
+    if (!currentStep || currentStep.actorRoleIds.length === 0) return [];
+    return seats.filter(
+      (seat) => Boolean(seat.roleId) && currentStep.actorRoleIds.includes(seat.roleId!),
     );
   }, [currentStep, seats]);
+
+  const actorSeatsAlive = useMemo(() => {
+    if (!currentStep || currentStep.actorRoleIds.length === 0) return true;
+    return matchingActorSeats.some((seat) => seat.isAlive);
+  }, [currentStep, matchingActorSeats]);
+
+  const showDeadActorWarning =
+    !isOnlineJudge &&
+    !isClaimStage &&
+    matchingActorSeats.length > 0 &&
+    matchingActorSeats.every((seat) => !seat.isAlive);
 
   const relatedQAs = useMemo(() => {
     if (!board || !currentStep) return [];
@@ -564,7 +581,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   // 推進步驟（實體法官直接推進 / 線上法官進入閉眼緩衝＋語音）
   const advanceAfterCommit = () => {
     if (isOnlineJudge) {
-      ttsEngine.speak(currentStep.closePrompt, {
+      ttsEngine.speakFromGesture(currentStep.closePrompt, {
         enabled: onlineJudgeSettings.ttsEnabled,
         rate: onlineJudgeSettings.ttsRate,
       });
@@ -622,14 +639,23 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       return;
     }
 
+    // 女巫用藥（解藥或毒藥）屬於整局僅一次的不可逆動作，強制二次確認
+    if (
+      currentStep.actionType === 'witch_action' &&
+      (pendingUseAntidote || pendingTarget !== null)
+    ) {
+      setConfirmWitchPotionOpen(true);
+      return;
+    }
+
     commitCurrentStepDraft();
     advanceAfterCommit();
   };
 
-  // 線上法官：點擊全黑防窺畫面亮起操作盤
+  // 線上法官：點擊全黑防窺畫面亮起操作盤（於使用者手勢內同步解鎖並播報）
   const handleWakeOnlineScreen = () => {
     setOnlinePhase('active');
-    ttsEngine.speak(currentStep.actionPrompt, {
+    ttsEngine.speakFromGesture(currentStep.actionPrompt, {
       enabled: onlineJudgeSettings.ttsEnabled,
       rate: onlineJudgeSettings.ttsRate,
     });
@@ -639,6 +665,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     const nextEnabled = !onlineJudgeSettings.ttsEnabled;
     if (!nextEnabled) {
       ttsEngine.cancel();
+      ttsEngine.stopKeepAlive();
+    } else {
+      ttsEngine.unlockAudio();
+      ttsEngine.startKeepAlive();
     }
     updateOnlineJudgeSettings({ ttsEnabled: nextEnabled });
   };
@@ -653,7 +683,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           : onlinePhase === 'dawn'
             ? '天亮了，請睜眼'
             : currentStep.actionPrompt;
-    ttsEngine.speak(textToSpeak, {
+    ttsEngine.speakFromGesture(textToSpeak, {
       enabled: true,
       rate: onlineJudgeSettings.ttsRate,
     });
@@ -789,12 +819,82 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     ? pendingClaimSeat === null && !claimSummary?.isComplete && !board.isFlexibleComposition
     : !pendingValidation.allowed;
 
-  const gridColsClass =
-    seats.length <= 6
-      ? 'grid-cols-2 sm:grid-cols-3'
-      : seats.length <= 12
-        ? 'grid-cols-3 sm:grid-cols-4'
-        : 'grid-cols-3 sm:grid-cols-5';
+  const { left: leftSeats, right: rightSeats } = splitSeatsIntoSymmetricColumns(seats);
+
+  const renderNightSeatButton = (seat: (typeof seats)[number]) => {
+    const role = getRoleById(seat.roleId);
+    const control = getSeatControl(seat.seatNumber);
+    const actionIcons = getSeatActionIcons(seat.seatNumber, currentNightDraft, {
+      isOnlineJudge,
+      currentActionType: currentStep.actionType,
+      showWolfTargetToWitch: !witchAntidoteUsed,
+    });
+    const isClaimedAsActive =
+      isClaimStage && seat.roleId === activeClaimRoleId && activeClaimRoleId !== null;
+    const showRoleBadge = !isOnlineJudge
+      ? !maskSeatRoles && Boolean(role)
+      : isClaimedAsActive && Boolean(role);
+
+    return (
+      <button
+        key={seat.seatNumber}
+        type="button"
+        disabled={control.disabled}
+        onClick={control.onSelect}
+        className={`flex min-h-12 w-full flex-col justify-between rounded-xl border px-2.5 py-1.5 text-left transition ${
+          control.selected
+            ? 'border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/50'
+            : isClaimedAsActive
+              ? 'border-emerald-400/60 bg-emerald-950/40'
+              : control.disabled
+                ? 'cursor-not-allowed border-slate-800/80 bg-slate-950/60 opacity-55'
+                : 'border-slate-800 bg-slate-950/85 hover:border-slate-600 active:scale-[0.98]'
+        }`}
+      >
+        <div className="flex w-full items-center justify-between gap-1">
+          <span className="text-sm font-extrabold tabular-nums text-slate-50">
+            {seat.seatNumber}號
+          </span>
+          <div className="flex items-center gap-0.5 text-xs">
+            {!seat.isAlive && <span title="已出局">💀</span>}
+            {seat.isAlive && seat.idiotRevealed && <span title="白痴已翻牌">🤡</span>}
+            {actionIcons.map((icon, i) => (
+              <span key={i}>{icon}</span>
+            ))}
+            {control.selected && (
+              <span className="rounded bg-amber-400 px-1 py-0.5 text-[10px] font-black text-slate-950">
+                預選
+              </span>
+            )}
+            {!control.selected && isClaimedAsActive && (
+              <span className="rounded bg-emerald-500/25 px-1 py-0.5 text-[10px] font-bold text-emerald-200">
+                已認
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-0.5 flex w-full items-center justify-between gap-1">
+          {showRoleBadge && role ? (
+            <span
+              className={`truncate rounded border px-1.5 py-0.2 text-[10px] font-bold ${getRoleBadgeClasses(role.id)}`}
+            >
+              {role.name}
+            </span>
+          ) : (
+            <span className="truncate text-[11px] text-slate-400">
+              {seat.nickname.trim() || `${seat.seatNumber} 號`}
+            </span>
+          )}
+          {control.disabled && control.reason && (
+            <span className="shrink-0 truncate text-[10px] font-medium text-rose-300">
+              🔒 {control.reason}
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
@@ -922,82 +1022,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           )}
         </div>
 
-        <div className={`grid min-h-0 flex-1 content-start gap-1.5 overflow-y-auto ${gridColsClass}`}>
-          {seats.map((seat) => {
-            const role = getRoleById(seat.roleId);
-            const control = getSeatControl(seat.seatNumber);
-            const actionIcons = getSeatActionIcons(seat.seatNumber, currentNightDraft, {
-              isOnlineJudge,
-              currentActionType: currentStep.actionType,
-              showWolfTargetToWitch: !witchAntidoteUsed,
-            });
-            const isClaimedAsActive =
-              isClaimStage && seat.roleId === activeClaimRoleId && activeClaimRoleId !== null;
-            const showRoleBadge = !isOnlineJudge
-              ? !maskSeatRoles && Boolean(role)
-              : isClaimedAsActive && Boolean(role);
-
-            return (
-              <button
-                key={seat.seatNumber}
-                type="button"
-                disabled={control.disabled}
-                onClick={control.onSelect}
-                className={`flex min-h-14 flex-col justify-between rounded-xl border px-2 py-1.5 text-left transition ${
-                  control.selected
-                    ? 'border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/50'
-                    : isClaimedAsActive
-                      ? 'border-emerald-400/60 bg-emerald-950/40'
-                      : control.disabled
-                        ? 'cursor-not-allowed border-slate-800/80 bg-slate-950/60 opacity-55'
-                        : 'border-slate-800 bg-slate-950/85 hover:border-slate-600 active:scale-[0.98]'
-                }`}
-              >
-                <div className="flex w-full items-center justify-between gap-1">
-                  <span className="text-sm font-extrabold text-slate-50">
-                    {seat.seatNumber}號
-                  </span>
-                  <div className="flex items-center gap-0.5 text-xs">
-                    {!seat.isAlive && <span title="已出局">💀</span>}
-                    {seat.isAlive && seat.idiotRevealed && <span title="白痴已翻牌">🤡</span>}
-                    {actionIcons.map((icon, i) => (
-                      <span key={i}>{icon}</span>
-                    ))}
-                    {control.selected && (
-                      <span className="rounded bg-amber-400 px-1 py-0.5 text-[10px] font-black text-slate-950">
-                        預選
-                      </span>
-                    )}
-                    {!control.selected && isClaimedAsActive && (
-                      <span className="rounded bg-emerald-500/25 px-1 py-0.5 text-[10px] font-bold text-emerald-200">
-                        已認
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-0.5 flex w-full items-center justify-between gap-1">
-                  {showRoleBadge && role ? (
-                    <span
-                      className={`truncate rounded border px-1 py-0.2 text-[10px] font-bold ${getRoleBadgeClasses(role.id)}`}
-                    >
-                      {role.name}
-                    </span>
-                  ) : (
-                    <span className="truncate text-[11px] text-slate-400">
-                      {seat.nickname.trim() || `${seat.seatNumber} 號`}
-                    </span>
-                  )}
-                </div>
-
-                {control.disabled && control.reason && (
-                  <span className="mt-0.5 truncate text-[10px] font-medium text-rose-300">
-                    🔒 {control.reason}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pr-0.5">
+          <div className="flex flex-col gap-1.5">{leftSeats.map(renderNightSeatButton)}</div>
+          <div className="flex flex-col gap-1.5">{rightSeats.map(renderNightSeatButton)}</div>
         </div>
       </section>
 
@@ -1045,6 +1072,16 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         {/* 技能階段專屬精簡提示盤 */}
         {!isClaimStage && (
           <div className="space-y-1.5">
+            {/* 實體法官專屬：已出局角色假裝操作紅色警告（置於提詞機上方，絕不跳過步驟） */}
+            {showDeadActorWarning && (
+              <div
+                role="alert"
+                className="rounded-xl border border-rose-500/70 bg-rose-950/75 px-3 py-2 text-xs font-extrabold leading-relaxed text-rose-100 shadow-xs shadow-rose-500/20"
+              >
+                ⚠️ 該角色已出局！請照常唸詞並默數 5 秒假裝操作，切勿跳過暴露資訊
+              </div>
+            )}
+
             {/* 實體法官專屬：精簡台詞條（線上法官完全隱藏逐字稿） */}
             {!isOnlineJudge && (
               <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-950/20 px-2.5 py-2">
@@ -1422,6 +1459,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           onSkipBuffer={completeBufferTransition}
           onConfirmDawn={() => {
             ttsEngine.cancel();
+            ttsEngine.stopKeepAlive();
             finishNight();
           }}
           onToggleTts={handleToggleTts}
@@ -1480,6 +1518,26 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           )}
         </div>
       </SlideDrawer>
+
+      {/* 女巫用藥不可逆二次確認彈窗 */}
+      <ConfirmModal
+        open={confirmWitchPotionOpen}
+        title={pendingUseAntidote ? '確認使用女巫解藥？' : '確認使用女巫毒藥？'}
+        description={
+          pendingUseAntidote
+            ? `確定消耗本局唯一一瓶【解藥】救起 ${currentNightDraft.wolfTarget} 號？（若與守衛同守將觸發奶穿）`
+            : `確定消耗本局唯一一瓶【毒藥】毒殺 ${pendingTarget} 號？被毒殺者無法發動開槍等亡語技能。`
+        }
+        confirmLabel={pendingUseAntidote ? '💊 確認使用解藥' : '☠️ 確認使用毒藥'}
+        cancelLabel="返回修改"
+        tone={pendingUseAntidote ? 'warning' : 'danger'}
+        onConfirm={() => {
+          setConfirmWitchPotionOpen(false);
+          commitCurrentStepDraft();
+          advanceAfterCommit();
+        }}
+        onCancel={() => setConfirmWitchPotionOpen(false)}
+      />
 
       {/* 實體法官：結束今夜結算確認彈窗 */}
       <ConfirmModal

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020617" />
+      <stop offset="55%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+    <radialGradient id="moonGlow" cx="78%" cy="32%" r="36%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.32" />
+      <stop offset="50%" stop-color="#e11d48" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#020617" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="accentBar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#fb7185" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#moonGlow)" />
+
+  <!-- Subtle Grid Frame -->
+  <rect x="36" y="36" width="1128" height="558" rx="32" fill="none" stroke="#1e293b" stroke-width="2" />
+
+  <!-- Eclipse Moon Emblem on Right -->
+  <g transform="translate(930, 230)">
+    <circle cx="0" cy="0" r="126" fill="#f59e0b" opacity="0.12" />
+    <circle cx="0" cy="0" r="96" fill="#fbbf24" opacity="0.92" />
+    <circle cx="34" cy="-16" r="84" fill="#0f172a" />
+    <!-- Minimal Wolf Silhouette Crest -->
+    <path
+      d="M-36 32 L-22 -14 L-8 8 L6 -18 L24 22 L38 42 L10 38 L-10 48 L-36 32 Z"
+      fill="#e11d48"
+      opacity="0.88"
+    />
+    <circle cx="-4" cy="14" r="3.5" fill="#fef3c7" />
+    <circle cx="10" cy="12" r="3.5" fill="#fef3c7" />
+  </g>
+
+  <!-- Top Badge -->
+  <g transform="translate(88, 96)">
+    <rect x="0" y="0" width="290" height="44" rx="22" fill="#f59e0b" fill-opacity="0.14" stroke="#f59e0b" stroke-opacity="0.45" stroke-width="1.5" />
+    <text x="145" y="29" text-anchor="middle" font-family="'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif" font-size="20" font-weight="700" fill="#fcd34d" letter-spacing="2">
+      MOBILE-FIRST 暗黑模式
+    </text>
+  </g>
+
+  <!-- Main Title -->
+  <text x="88" y="246" font-family="'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif" font-size="84" font-weight="900" fill="#f8fafc" letter-spacing="3">
+    狼人殺法官輔助
+  </text>
+
+  <!-- Accent Line -->
+  <rect x="88" y="278" width="220" height="6" rx="3" fill="url(#accentBar)" />
+
+  <!-- Subtitle -->
+  <text x="88" y="344" font-family="'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif" font-size="32" font-weight="700" fill="#cbd5e1">
+    實體面殺・線上語音法官・一鍵復盤戰報
+  </text>
+
+  <!-- Feature Pills -->
+  <g transform="translate(88, 404)">
+    <rect x="0" y="0" width="184" height="54" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="92" y="35" text-anchor="middle" font-family="'Noto Sans TC', 'Microsoft JhengHei', sans-serif" font-size="22" font-weight="700" fill="#fde68a">
+      142 種板子
+    </text>
+
+    <rect x="204" y="0" width="184" height="54" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="296" y="35" text-anchor="middle" font-family="'Noto Sans TC', 'Microsoft JhengHei', sans-serif" font-size="22" font-weight="700" fill="#a7f3d0">
+      128 位角色
+    </text>
+
+    <rect x="408" y="0" width="214" height="54" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="515" y="35" text-anchor="middle" font-family="'Noto Sans TC', 'Microsoft JhengHei', sans-serif" font-size="22" font-weight="700" fill="#c7d2fe">
+      語音防窺主持
+    </text>
+
+    <rect x="642" y="0" width="214" height="54" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
+    <text x="749" y="35" text-anchor="middle" font-family="'Noto Sans TC', 'Microsoft JhengHei', sans-serif" font-size="22" font-weight="700" fill="#fecdd3">
+      雙模式投票器
+    </text>
+  </g>
+
+  <!-- Footer -->
+  <text x="88" y="544" font-family="'Noto Sans TC', 'Microsoft JhengHei', monospace" font-size="22" font-weight="600" fill="#64748b">
+    thatshark.github.io/werewolf-judge · 離線持久化 · 單手零誤觸操作
+  </text>
+</svg>

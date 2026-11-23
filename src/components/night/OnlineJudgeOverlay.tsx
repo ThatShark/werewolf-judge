@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { ttsEngine } from '../../audio/ttsEngine';
 
 export type OnlineJudgeOverlayMode = 'blackout' | 'buffer' | 'dawn';
 
@@ -33,7 +34,19 @@ export function OnlineJudgeOverlay({
 }: OnlineJudgeOverlayProps) {
   const stopAnd = (fn: () => void) => (e: MouseEvent) => {
     e.stopPropagation();
+    ttsEngine.unlockAudio();
+    if (ttsEnabled) {
+      ttsEngine.startKeepAlive();
+    }
     fn();
+  };
+
+  const handleBlackoutClick = () => {
+    ttsEngine.unlockAudio();
+    if (ttsEnabled) {
+      ttsEngine.startKeepAlive();
+    }
+    onWakeScreen();
   };
 
   return (
@@ -47,7 +60,7 @@ export function OnlineJudgeOverlay({
             ? '閉眼緩衝倒數'
             : '天亮了'
       }
-      onClick={mode === 'blackout' ? onWakeScreen : undefined}
+      onClick={mode === 'blackout' ? handleBlackoutClick : undefined}
       className={`fixed inset-0 z-40 flex h-dvh w-full flex-col justify-between bg-black px-6 py-8 text-slate-100 select-none ${
         mode === 'blackout' ? 'cursor-pointer' : ''
       }`}

@@ -3,6 +3,8 @@ import { ambientAudioEngine } from './audio/ambientAudioEngine';
 import { getBoardById } from './data/boards';
 import { getNightSteps } from './logic';
 import { useGameStore } from './store/gameStore';
+import { useWakeLock } from './utils/wakeLock';
+import { ConfirmModal } from './components/common/ConfirmModal';
 import { HistoryDrawer } from './components/common/HistoryDrawer';
 import { NotebookDrawer } from './components/common/NotebookDrawer';
 import { QADrawer } from './components/common/QADrawer';
@@ -33,13 +35,24 @@ function App() {
   const nightHistory = useGameStore((s) => s.nightHistory);
   const dayHistory = useGameStore((s) => s.dayHistory);
   const ambientAudio = useGameStore((s) => s.ambientAudio);
+  const ruleOverrides = useGameStore((s) => s.ruleOverrides);
+  const undoStack = useGameStore((s) => s.undoStack);
+  const undoLastStep = useGameStore((s) => s.undoLastStep);
   const restartGame = useGameStore((s) => s.restartGame);
 
   const [qaOpen, setQaOpen] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [restartOpen, setRestartOpen] = useState(false);
+  const [confirmUndoOpen, setConfirmUndoOpen] = useState(false);
   const wasNightAutoPlayingRef = useRef(false);
+
+  const shouldKeepAwake =
+    activeView === 'game' &&
+    (phase === 'night' || phase === 'pass_and_reveal' || phase === 'day_vote');
+  useWakeLock(shouldKeepAwake);
+
+  const latestUndoLabel = undoStack.length > 0 ? undoStack[undoStack.length - 1].label : undefined;
 
   const board = getBoardById(selectedBoardId);
   const hasActiveGame = Boolean(selectedBoardId) || phase !== 'board_select';
@@ -146,6 +159,9 @@ function App() {
             phase={phase}
             round={round}
             board={board}
+            canUndo={undoStack.length > 0}
+            undoLabel={latestUndoLabel}
+            onUndo={() => setConfirmUndoOpen(true)}
             onGoHome={() => setActiveView('home')}
             onOpenQA={() => setQaOpen(true)}
             onOpenNotebook={() => setNotebookOpen(true)}
@@ -162,8 +178,26 @@ function App() {
       <QADrawer
         open={qaOpen}
         board={board}
+        ruleOverrides={ruleOverrides}
         highlightRoleIds={highlightRoleIds}
         onClose={() => setQaOpen(false)}
+      />
+
+      <ConfirmModal
+        open={confirmUndoOpen && undoStack.length > 0}
+        title="確定撤銷上一步操作？"
+        description={
+          latestUndoLabel
+            ? `即將還原「${latestUndoLabel}」之前的對局狀態（目前共可連續撤銷 ${undoStack.length} 步）。`
+            : '即將還原至上一步的對局狀態。'
+        }
+        confirmLabel="↩ 確認撤銷上一步"
+        tone="warning"
+        onConfirm={() => {
+          undoLastStep();
+          setConfirmUndoOpen(false);
+        }}
+        onCancel={() => setConfirmUndoOpen(false)}
       />
 
       <NotebookDrawer open={notebookOpen} onClose={() => setNotebookOpen(false)} />

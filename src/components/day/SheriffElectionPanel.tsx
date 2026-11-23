@@ -23,18 +23,25 @@ export function SheriffElectionPanel({
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const voteInputMode = useGameStore((s) => s.voteInputMode);
+  const undoStack = useGameStore((s) => s.undoStack);
 
   const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
   const startSheriffElection = useGameStore((s) => s.startSheriffElection);
   const withdrawSheriffCandidate = useGameStore((s) => s.withdrawSheriffCandidate);
   const submitSheriffVotes = useGameStore((s) => s.submitSheriffVotes);
   const generateSpeakingOrder = useGameStore((s) => s.generateSpeakingOrder);
+  const undoLastStep = useGameStore((s) => s.undoLastStep);
 
   const [selectedSignupSeats, setSelectedSignupSeats] = useState<number[]>([]);
   const [votesDraft, setVotesDraft] = useState<Record<number, number | null>>({});
   const [selectedCandidateTab, setSelectedCandidateTab] = useState<number | null>(null);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+  const [pendingWithdrawSeat, setPendingWithdrawSeat] = useState<number | null>(null);
+  const [confirmUndoRecordOpen, setConfirmUndoRecordOpen] = useState(false);
   const [lastOutcomeNotice, setLastOutcomeNotice] = useState<string | null>(null);
+
+  const hasDraftVotes = Object.values(votesDraft).some((v) => v !== null && v !== undefined);
+  const latestUndoLabel = undoStack.length > 0 ? undoStack[undoStack.length - 1].label : undefined;
 
   const aliveSeats = useMemo(() => seats.filter((s) => s.isAlive), [seats]);
   const electionActive = isSheriffElectionActive(sheriffState);
@@ -281,17 +288,8 @@ export function SheriffElectionPanel({
                 <button
                   type="button"
                   disabled={disabled}
-                  onClick={() => {
-                    withdrawSheriffCandidate(seatNum);
-                    setVotesDraft((prev) => {
-                      const next: Record<number, number | null> = {};
-                      for (const [k, v] of Object.entries(prev)) {
-                        next[Number(k)] = v === seatNum ? null : v;
-                      }
-                      return next;
-                    });
-                  }}
-                  className="min-h-8 rounded-lg border border-slate-700 bg-slate-800 px-2 text-[11px] font-bold text-slate-200 hover:bg-rose-900/60 hover:text-rose-100"
+                  onClick={() => setPendingWithdrawSeat(seatNum)}
+                  className="min-h-10 rounded-lg border border-slate-700 bg-slate-800 px-2.5 text-xs font-bold text-slate-200 hover:bg-rose-900/60 hover:text-rose-100"
                 >
                   退水
                 </button>
@@ -479,6 +477,26 @@ export function SheriffElectionPanel({
         送出{isPk ? ' PK ' : '警下'}計票
       </button>
 
+      {/* 明確區分「清空本地草稿」與「放棄／撤銷正式紀錄」 */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={disabled || !hasDraftVotes}
+          onClick={() => setVotesDraft({})}
+          className="min-h-12 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          🧹 清空草稿
+        </button>
+        <button
+          type="button"
+          disabled={disabled || undoStack.length === 0}
+          onClick={() => setConfirmUndoRecordOpen(true)}
+          className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/35 px-3 text-xs font-bold text-rose-200 transition hover:bg-rose-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ↩ 放棄正式紀錄
+        </button>
+      </div>
+
       <ConfirmModal
         open={confirmSubmitOpen}
         title={`確認送出${isPk ? '警長 PK ' : '警下'}投票紀錄？`}
@@ -500,6 +518,51 @@ export function SheriffElectionPanel({
           setConfirmSubmitOpen(false);
         }}
         onCancel={() => setConfirmSubmitOpen(false)}
+      />
+
+      <ConfirmModal
+        open={pendingWithdrawSeat !== null}
+        title="確認警上候選人退水？"
+        description={
+          pendingWithdrawSeat !== null
+            ? `確定讓 ${pendingWithdrawSeat} 號退水？退水後該玩家將立即失去警下投票權；若退水後僅餘 1 位候選人，將自動當選警長。`
+            : undefined
+        }
+        confirmLabel="確認退水"
+        tone="warning"
+        onConfirm={() => {
+          if (pendingWithdrawSeat !== null) {
+            const seatNum = pendingWithdrawSeat;
+            withdrawSheriffCandidate(seatNum);
+            setVotesDraft((prev) => {
+              const next: Record<number, number | null> = {};
+              for (const [k, v] of Object.entries(prev)) {
+                next[Number(k)] = v === seatNum ? null : v;
+              }
+              return next;
+            });
+          }
+          setPendingWithdrawSeat(null);
+        }}
+        onCancel={() => setPendingWithdrawSeat(null)}
+      />
+
+      <ConfirmModal
+        open={confirmUndoRecordOpen && undoStack.length > 0}
+        title="確定放棄／撤銷上一筆正式紀錄？"
+        description={
+          latestUndoLabel
+            ? `將撤銷已送出的正式對局紀錄「${latestUndoLabel}」，不同於僅清空本頁票型草稿。`
+            : '將撤銷上一筆已送出的正式對局紀錄。'
+        }
+        confirmLabel="確認撤銷正式紀錄"
+        tone="danger"
+        onConfirm={() => {
+          undoLastStep();
+          setVotesDraft({});
+          setConfirmUndoRecordOpen(false);
+        }}
+        onCancel={() => setConfirmUndoRecordOpen(false)}
       />
     </section>
   );

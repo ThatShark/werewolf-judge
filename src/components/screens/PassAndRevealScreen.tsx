@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ttsEngine } from '../../audio/ttsEngine';
 import { getRoleById } from '../../data/roles';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -10,6 +11,8 @@ import {
 
 export function PassAndRevealScreen() {
   const seats = useGameStore((s) => s.seats);
+  const hostMode = useGameStore((s) => s.hostMode);
+  const onlineJudgeSettings = useGameStore((s) => s.onlineJudgeSettings);
   const confirmedSeats = useGameStore((s) => s.passRevealConfirmedSeats);
   const dealOnlineRoles = useGameStore((s) => s.dealOnlineRoles);
   const confirmPassRevealSeat = useGameStore((s) => s.confirmPassRevealSeat);
@@ -71,6 +74,12 @@ export function PassAndRevealScreen() {
   };
 
   const handleStartFirstNight = () => {
+    if (hostMode.judgeMode === 'online_judge') {
+      ttsEngine.unlockAudio();
+      if (onlineJudgeSettings.ttsEnabled) {
+        ttsEngine.startKeepAlive();
+      }
+    }
     const res = completePassAndReveal();
     if (!res.ok && res.reason) {
       setNotice(res.reason);

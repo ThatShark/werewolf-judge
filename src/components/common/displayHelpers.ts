@@ -323,3 +323,15 @@ export function buildGameReplayText(
 
   return lines.join('\n');
 }
+
+/**
+ * 將座位陣列拆分為「左欄 1 ~ 半數、右欄 半數+1 ~ N」對稱雙欄，
+ * 對齊實體桌遊桌左右兩排視角。
+ */
+export function splitSeatsIntoSymmetricColumns<T>(seats: T[]): { left: T[]; right: T[] } {
+  const half = Math.ceil(seats.length / 2);
+  return {
+    left: seats.slice(0, half),
+    right: seats.slice(half),
+  };
+}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ttsEngine } from '../../audio/ttsEngine';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import { getHostModeDescriptor } from '../../logic';
@@ -112,6 +113,12 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const isMultiDevice = hostMode.controlMode === 'multi_device';
 
   const handleStartGame = () => {
+    if (hostMode.judgeMode === 'online_judge') {
+      ttsEngine.unlockAudio();
+      if (onlineJudgeSettings.ttsEnabled) {
+        ttsEngine.startKeepAlive();
+      }
+    }
     const result = startGame();
     if (!result.ok) {
       setStartError(result.errors.join(' '));
@@ -366,157 +373,248 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
       <section className="min-h-0 flex-1 overflow-y-auto pr-0.5">
         {activeTab === 'mode' && (
           <div className="space-y-3">
-            {/* 維度一：法官模式 */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-3">
-              <div className="text-xs font-bold text-slate-400">維度一 · 法官模式</div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {(
-                  [
-                    {
-                      value: 'physical_judge' as JudgeMode,
-                      title: '🎙️ 實體法官',
-                      sub: '遊戲外法官口頭主持',
-                    },
-                    {
-                      value: 'online_judge' as JudgeMode,
-                      title: '🔊 線上法官',
-                      sub: '全員下場・語音主持',
-                    },
-                  ] as const
-                ).map((opt) => {
-                  const active = hostMode.judgeMode === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        updateHostMode({ judgeMode: opt.value });
-                        setStartError(null);
-                      }}
-                      className={`min-h-14 rounded-xl border p-2.5 text-left transition active:scale-[0.98] ${
-                        active
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                          : 'border-slate-800 bg-slate-950/75 text-slate-300 hover:bg-slate-800/80'
-                      }`}
-                    >
-                      <div className="text-xs font-extrabold">{opt.title}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">{opt.sub}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 維度二：發牌模式 */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-3">
-              <div className="text-xs font-bold text-slate-400">維度二 · 發牌模式</div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {(
-                  [
-                    {
-                      value: 'physical_deal' as DealMode,
-                      title: '🃏 實體發牌',
-                      sub: '首夜認領・未認領補平民',
-                    },
-                    {
-                      value: 'online_deal' as DealMode,
-                      title: '🎴 線上發牌',
-                      sub: '系統隨機洗牌・傳閱看牌',
-                    },
-                  ] as const
-                ).map((opt) => {
-                  const active = hostMode.dealMode === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        updateHostMode({ dealMode: opt.value });
-                        setStartError(null);
-                      }}
-                      className={`min-h-14 rounded-xl border p-2.5 text-left transition active:scale-[0.98] ${
-                        active
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-100'
-                          : 'border-slate-800 bg-slate-950/75 text-slate-300 hover:bg-slate-800/80'
-                      }`}
-                    >
-                      <div className="text-xs font-extrabold">{opt.title}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">{opt.sub}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 維度三：操作模式 */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-3">
-              <div className="text-xs font-bold text-slate-400">維度三 · 操作模式</div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {(
-                  [
-                    {
-                      value: 'central_control' as ControlMode,
-                      title: '📱 中央操作',
-                      sub: '單機裝置・立即可玩',
-                    },
-                    {
-                      value: 'multi_device' as ControlMode,
-                      title: '🌐 多點操作',
-                      sub: '各手機入房（Milestone B）',
-                    },
-                  ] as const
-                ).map((opt) => {
-                  const active = hostMode.controlMode === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        updateHostMode({ controlMode: opt.value });
-                        setStartError(null);
-                      }}
-                      className={`min-h-14 rounded-xl border p-2.5 text-left transition active:scale-[0.98] ${
-                        active
-                          ? opt.value === 'multi_device'
-                            ? 'border-sky-400 bg-sky-500/20 text-sky-100'
-                            : 'border-amber-400 bg-amber-500/20 text-amber-100'
-                          : 'border-slate-800 bg-slate-950/75 text-slate-300 hover:bg-slate-800/80'
-                      }`}
-                    >
-                      <div className="text-xs font-extrabold">{opt.title}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">{opt.sub}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 即時模式說明卡片 */}
-            <div
-              className={`rounded-2xl border p-3.5 ${
-                modeDescriptor.availableInStandalone
-                  ? 'border-emerald-500/35 bg-emerald-950/25'
-                  : 'border-sky-500/40 bg-sky-950/30'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-extrabold text-slate-50">
-                  模式 ({modeDescriptor.modeNumber}) · {modeDescriptor.shortTitle}
+            {/* 快速開局 2 大常用模式 */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-xs font-extrabold text-slate-300">快速開局模式</span>
+                <span className="text-[11px] font-bold text-amber-300">
+                  目前：模式 ({modeDescriptor.modeNumber})
                 </span>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                    modeDescriptor.availableInStandalone
-                      ? 'bg-emerald-500/25 text-emerald-200'
-                      : 'bg-sky-500/25 text-sky-200'
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateHostMode({
+                      judgeMode: 'physical_judge',
+                      dealMode: 'physical_deal',
+                      controlMode: 'central_control',
+                    });
+                    setStartError(null);
+                  }}
+                  className={`min-h-20 rounded-2xl border p-3.5 text-left transition active:scale-[0.98] ${
+                    modeDescriptor.modeNumber === 1
+                      ? 'border-amber-400 bg-amber-500/20 text-amber-50 ring-2 ring-amber-400/35'
+                      : 'border-slate-800 bg-slate-900/90 text-slate-200 hover:border-slate-700'
                   }`}
                 >
-                  {modeDescriptor.availableInStandalone ? '單機可用' : 'Milestone B 預留'}
-                </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-black">① 實體法官面殺（預設）</span>
+                    {modeDescriptor.modeNumber === 1 && (
+                      <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-slate-950">
+                        已選擇
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                    遊戲外法官口頭主持・實體卡牌發牌・首夜動態認領，開局最快。
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    ttsEngine.unlockAudio();
+                    updateHostMode({
+                      judgeMode: 'online_judge',
+                      dealMode: 'online_deal',
+                      controlMode: 'central_control',
+                    });
+                    setStartError(null);
+                  }}
+                  className={`min-h-20 rounded-2xl border p-3.5 text-left transition active:scale-[0.98] ${
+                    modeDescriptor.modeNumber === 6
+                      ? 'border-indigo-400 bg-indigo-500/20 text-indigo-50 ring-2 ring-indigo-400/35'
+                      : 'border-slate-800 bg-slate-900/90 text-slate-200 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-black">② 線上語音法官（全員下場）</span>
+                    {modeDescriptor.modeNumber === 6 && (
+                      <span className="rounded-full bg-indigo-400 px-2 py-0.5 text-[10px] font-black text-slate-950">
+                        已選擇
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                    系統隨機洗牌傳閱・全黑防窺交接・自動語音播報，無需真人法官。
+                  </p>
+                </button>
               </div>
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
-                {modeDescriptor.description}
-              </p>
             </div>
+
+            {/* 進階折疊面板：其餘 6 種混合模式與完整 2×2×2 矩陣 */}
+            <details
+              open={modeDescriptor.modeNumber !== 1 && modeDescriptor.modeNumber !== 6}
+              className="group rounded-2xl border border-slate-800 bg-slate-900/75"
+            >
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-2.5 text-xs font-extrabold text-slate-200 select-none hover:text-amber-200">
+                <span>⚙️ 進階自訂主持模式（2×2×2 完整矩陣）</span>
+                <span className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] font-bold text-slate-400 group-open:text-amber-300">
+                  {modeDescriptor.modeNumber !== 1 && modeDescriptor.modeNumber !== 6
+                    ? `自訂模式 (${modeDescriptor.modeNumber})`
+                    : '展開 8 模式'}
+                </span>
+              </summary>
+
+              <div className="space-y-2.5 border-t border-slate-800 p-3">
+                {/* 維度一：法官模式 */}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5">
+                  <div className="text-xs font-bold text-slate-400">維度一 · 法官模式</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        {
+                          value: 'physical_judge' as JudgeMode,
+                          title: '🎙️ 實體法官',
+                          sub: '遊戲外法官口頭主持',
+                        },
+                        {
+                          value: 'online_judge' as JudgeMode,
+                          title: '🔊 線上法官',
+                          sub: '全員下場・語音主持',
+                        },
+                      ] as const
+                    ).map((opt) => {
+                      const active = hostMode.judgeMode === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            if (opt.value === 'online_judge') {
+                              ttsEngine.unlockAudio();
+                            }
+                            updateHostMode({ judgeMode: opt.value });
+                            setStartError(null);
+                          }}
+                          className={`min-h-14 rounded-xl border p-2.5 text-left transition active:scale-[0.98] ${
+                            active
+                              ? 'border-amber-400 bg-amber-500/20 text-amber-100'
+                              : 'border-slate-800 bg-slate-950/75 text-slate-300 hover:bg-slate-800/80'
+                          }`}
+                        >
+                          <div className="text-xs font-extrabold">{opt.title}</div>
+                          <div className="mt-0.5 text-[11px] text-slate-400">{opt.sub}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 維度二：發牌模式 */}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5">
+                  <div className="text-xs font-bold text-slate-400">維度二 · 發牌模式</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        {
+                          value: 'physical_deal' as DealMode,
+                          title: '🃏 實體發牌',
+                          sub: '首夜認領・未認領補平民',
+                        },
+                        {
+                          value: 'online_deal' as DealMode,
+                          title: '🎴 線上發牌',
+                          sub: '系統隨機洗牌・傳閱看牌',
+                        },
+                      ] as const
+                    ).map((opt) => {
+                      const active = hostMode.dealMode === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            updateHostMode({ dealMode: opt.value });
+                            setStartError(null);
+                          }}
+                          className={`min-h-14 rounded-xl border p-2.5 text-left transition active:scale-[0.98] ${
+                            active
+                              ? 'border-amber-400 bg-amber-500/20 text-amber-100'
+                              : 'border-slate-800 bg-slate-950/75 text-slate-300 hover:bg-slate-800/80'
+                          }`}
+                        >
+                          <div className="text-xs font-extrabold">{opt.title}</div>
+                          <div className="mt-0.5 text-[11px] text-slate-400">{opt.sub}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 維度三：操作模式 */}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5">
+                  <div className="text-xs font-bold text-slate-400">維度三 · 操作模式</div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        {
+                          value: 'central_control' as ControlMode,
+                          title: '📱 中央操作',
+                          sub: '單機裝置・立即可玩',
+                        },
+                        {
+                          value: 'multi_device' as ControlMode,
+                          title: '🌐 多點操作',
+                          sub: '各手機入房（Milestone B）',
+                        },
+                      ] as const
+                    ).map((opt) => {
+                      const active = hostMode.controlMode === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            updateHostMode({ controlMode: opt.value });
+                            setStartError(null);
+                          }}
+                          className={`min-h-14 rounded-xl border p-2.5 text-left transition active:scale-[0.98] ${
+                            active
+                              ? opt.value === 'multi_device'
+                                ? 'border-sky-400 bg-sky-500/20 text-sky-100'
+                                : 'border-amber-400 bg-amber-500/20 text-amber-100'
+                              : 'border-slate-800 bg-slate-950/75 text-slate-300 hover:bg-slate-800/80'
+                          }`}
+                        >
+                          <div className="text-xs font-extrabold">{opt.title}</div>
+                          <div className="mt-0.5 text-[11px] text-slate-400">{opt.sub}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 即時模式說明卡片 */}
+                <div
+                  className={`rounded-xl border p-3 ${
+                    modeDescriptor.availableInStandalone
+                      ? 'border-emerald-500/35 bg-emerald-950/25'
+                      : 'border-sky-500/40 bg-sky-950/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-extrabold text-slate-50">
+                      模式 ({modeDescriptor.modeNumber}) · {modeDescriptor.shortTitle}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                        modeDescriptor.availableInStandalone
+                          ? 'bg-emerald-500/25 text-emerald-200'
+                          : 'bg-sky-500/25 text-sky-200'
+                      }`}
+                    >
+                      {modeDescriptor.availableInStandalone ? '單機可用' : 'Milestone B 預留'}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
+                    {modeDescriptor.description}
+                  </p>
+                </div>
+              </div>
+            </details>
 
             {hostMode.judgeMode === 'online_judge' && (
               <div className="space-y-2.5 rounded-2xl border border-indigo-500/35 bg-indigo-950/20 p-3">

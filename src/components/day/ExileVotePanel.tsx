@@ -20,17 +20,25 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const sheriffState = useGameStore((s) => s.sheriffState);
   const exilePkCandidates = useGameStore((s) => s.exilePkCandidates);
   const voteInputMode = useGameStore((s) => s.voteInputMode);
+  const undoStack = useGameStore((s) => s.undoStack);
 
   const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
   const submitExileVotes = useGameStore((s) => s.submitExileVotes);
   const exilePlayer = useGameStore((s) => s.exilePlayer);
+  const undoLastStep = useGameStore((s) => s.undoLastStep);
 
   const [votesDraft, setVotesDraft] = useState<Record<number, number | null>>({});
   const [selectedCandidateTab, setSelectedCandidateTab] = useState<number | null>(null);
   const [extraVotes, setExtraVotes] = useState<Record<number, number>>({});
   const [showExtraVotes, setShowExtraVotes] = useState(false);
   const [confirmBallotOpen, setConfirmBallotOpen] = useState(false);
+  const [confirmUndoRecordOpen, setConfirmUndoRecordOpen] = useState(false);
   const [lastTallyNotice, setLastTallyNotice] = useState<string | null>(null);
+
+  const hasDraftInput =
+    Object.values(votesDraft).some((v) => v !== null && v !== undefined) ||
+    Object.values(extraVotes).some((v) => v > 0);
+  const latestUndoLabel = undoStack.length > 0 ? undoStack[undoStack.length - 1].label : undefined;
 
   // 快速直接放逐折疊區
   const [showQuickExile, setShowQuickExile] = useState(false);
@@ -388,6 +396,29 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         {isPkRound ? '送出 PK 放逐計票' : '一鍵送出放逐計票'}
       </button>
 
+      {/* 明確區分「清空本地草稿」與「放棄／撤銷正式紀錄」 */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={disabled || !hasDraftInput}
+          onClick={() => {
+            setVotesDraft({});
+            setExtraVotes({});
+          }}
+          className="min-h-12 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          🧹 清空草稿
+        </button>
+        <button
+          type="button"
+          disabled={disabled || undoStack.length === 0}
+          onClick={() => setConfirmUndoRecordOpen(true)}
+          className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/35 px-3 text-xs font-bold text-rose-200 transition hover:bg-rose-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ↩ 放棄正式紀錄
+        </button>
+      </div>
+
       {/* 快速手動直接放逐 */}
       <div className="border-t border-slate-800 pt-2">
         <button
@@ -532,6 +563,27 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
           setConfirmQuickExileOpen(false);
         }}
         onCancel={() => setConfirmQuickExileOpen(false)}
+      />
+
+      {/* 放棄／撤銷上一筆正式紀錄 Modal */}
+      <ConfirmModal
+        open={confirmUndoRecordOpen && undoStack.length > 0}
+        title="確定放棄／撤銷上一筆正式紀錄？"
+        description={
+          latestUndoLabel
+            ? `即將撤銷已送出的正式對局紀錄「${latestUndoLabel}」（不同於僅清空本頁票型草稿）。`
+            : '即將撤銷上一筆已送出的正式對局紀錄。'
+        }
+        confirmLabel="確認撤銷正式紀錄"
+        tone="danger"
+        onConfirm={() => {
+          undoLastStep();
+          setVotesDraft({});
+          setExtraVotes({});
+          setLastTallyNotice(null);
+          setConfirmUndoRecordOpen(false);
+        }}
+        onCancel={() => setConfirmUndoRecordOpen(false)}
       />
     </section>
   );

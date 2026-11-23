@@ -1,4 +1,5 @@
 import type { PlayerSeat, SheriffState } from '../../logic/types';
+import { splitSeatsIntoSymmetricColumns } from '../common/displayHelpers';
 
 interface CompactSeatStatusGridProps {
   seats: PlayerSeat[];
@@ -20,16 +21,56 @@ export function CompactSeatStatusGrid({
   const activeSheriffSeat =
     sheriffState.badgeStatus === 'active' ? sheriffState.sheriffSeat : null;
 
-  const gridColsClass =
-    seats.length <= 8
-      ? 'grid-cols-4'
-      : seats.length <= 10
-        ? 'grid-cols-5'
-        : 'grid-cols-6';
+  const { left: leftSeats, right: rightSeats } = splitSeatsIntoSymmetricColumns(seats);
+
+  const renderSeatButton = (seat: PlayerSeat) => {
+    const isSheriff = activeSheriffSeat === seat.seatNumber;
+    const isNightDead = nightDeadSet.has(seat.seatNumber);
+    const isSpeaking = currentSpeakerSeat === seat.seatNumber;
+    const isIdiotRevealed = Boolean(seat.roleId === 'idiot' && seat.idiotRevealed);
+
+    return (
+      <button
+        key={seat.seatNumber}
+        type="button"
+        onClick={onOpenSeatDrawer}
+        className={`flex min-h-12 w-full items-center justify-between gap-1.5 rounded-xl border px-2.5 py-1.5 text-left transition active:scale-[0.98] ${
+          isSpeaking
+            ? 'border-amber-400 bg-amber-500/25 text-amber-100 ring-1 ring-amber-400/60'
+            : isNightDead
+              ? 'border-rose-500/70 bg-rose-950/50 text-rose-200'
+              : !seat.isAlive
+                ? 'border-slate-800/80 bg-slate-950/60 text-slate-500 opacity-60'
+                : isSheriff
+                  ? 'border-amber-400/60 bg-amber-950/35 text-amber-100'
+                  : 'border-slate-800 bg-slate-950/90 text-slate-200 hover:border-slate-700'
+        }`}
+      >
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span
+            className={`shrink-0 text-sm font-extrabold tabular-nums ${
+              !seat.isAlive ? 'line-through' : ''
+            }`}
+          >
+            {seat.seatNumber}號
+          </span>
+          <span className="truncate text-[11px] text-slate-400">
+            {seat.nickname.trim() || `${seat.seatNumber}號玩家`}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5 text-xs">
+          {isSheriff && <span title="警長">👮</span>}
+          {isSpeaking && <span title="發言中">🎤</span>}
+          {isIdiotRevealed && <span title="白痴已翻牌">🃏</span>}
+          {!seat.isAlive && <span title="已出局">💀</span>}
+        </div>
+      </button>
+    );
+  };
 
   return (
     <section className="shrink-0 rounded-2xl border border-slate-800 bg-slate-900/90 p-2.5">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs">
           <span className="font-bold text-slate-300">
             存活 {aliveCount}/{seats.length}
@@ -56,52 +97,17 @@ export function CompactSeatStatusGrid({
           <button
             type="button"
             onClick={onOpenSeatDrawer}
-            className="min-h-8 rounded-lg border border-indigo-400/40 bg-indigo-950/50 px-2.5 text-[11px] font-bold text-indigo-200 hover:bg-indigo-900/50 active:scale-[0.98]"
+            className="min-h-10 rounded-lg border border-indigo-400/40 bg-indigo-950/50 px-2.5 text-[11px] font-bold text-indigo-200 hover:bg-indigo-900/50 active:scale-[0.98]"
           >
             👥 座位 / 手動
           </button>
         )}
       </div>
 
-      <div className={`grid ${gridColsClass} gap-1.5`}>
-        {seats.map((seat) => {
-          const isSheriff = activeSheriffSeat === seat.seatNumber;
-          const isNightDead = nightDeadSet.has(seat.seatNumber);
-          const isSpeaking = currentSpeakerSeat === seat.seatNumber;
-          const isIdiotRevealed = Boolean(seat.roleId === 'idiot' && seat.idiotRevealed);
-
-          return (
-            <button
-              key={seat.seatNumber}
-              type="button"
-              onClick={onOpenSeatDrawer}
-              className={`flex min-h-10 flex-col items-center justify-center rounded-xl border px-1 py-1 text-center transition ${
-                isSpeaking
-                  ? 'border-amber-400 bg-amber-500/25 text-amber-100 ring-1 ring-amber-400/60'
-                  : isNightDead
-                    ? 'border-rose-500/70 bg-rose-950/50 text-rose-200'
-                    : !seat.isAlive
-                      ? 'border-slate-800/80 bg-slate-950/60 text-slate-500 opacity-60'
-                      : isSheriff
-                        ? 'border-amber-400/60 bg-amber-950/35 text-amber-100'
-                        : 'border-slate-800 bg-slate-950/90 text-slate-200 hover:border-slate-700'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-0.5 text-xs font-extrabold leading-none">
-                <span className={!seat.isAlive ? 'line-through' : ''}>{seat.seatNumber}</span>
-                {isSheriff && <span className="text-[10px]">👮</span>}
-                {isSpeaking && <span className="text-[10px]">🎤</span>}
-                {isIdiotRevealed && <span className="text-[10px]">🃏</span>}
-                {!seat.isAlive && <span className="text-[10px]">💀</span>}
-              </div>
-              {seat.nickname.trim() && (
-                <span className="mt-0.5 max-w-full truncate text-[9px] leading-tight text-slate-400">
-                  {seat.nickname.trim()}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* 左右對稱雙欄座位（左 1~半數、右 半數+1~N） */}
+      <div className="grid max-h-44 grid-cols-2 gap-2 overflow-y-auto pr-0.5">
+        <div className="flex flex-col gap-1.5">{leftSeats.map(renderSeatButton)}</div>
+        <div className="flex flex-col gap-1.5">{rightSeats.map(renderSeatButton)}</div>
       </div>
     </section>
   );

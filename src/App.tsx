@@ -27,6 +27,9 @@ function App() {
   const round = useGameStore((s) => s.round);
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const currentStepIndex = useGameStore((s) => s.currentStepIndex);
+  const currentNightDraft = useGameStore((s) => s.currentNightDraft);
+  const pendingSelfExplodeSeat = useGameStore((s) => s.pendingSelfExplodeSeat);
+  const hostMode = useGameStore((s) => s.hostMode);
   const nightHistory = useGameStore((s) => s.nightHistory);
   const dayHistory = useGameStore((s) => s.dayHistory);
   const ambientAudio = useGameStore((s) => s.ambientAudio);
@@ -78,7 +81,12 @@ function App() {
       case 'pass_and_reveal':
         return <PassAndRevealScreen />;
       case 'night':
-        return <NightConsoleScreen />;
+        return (
+          <NightConsoleScreen
+            onOpenHistory={() => setHistoryOpen(true)}
+            onOpenQA={() => setQaOpen(true)}
+          />
+        );
       case 'day_announcement':
         return <DayAnnouncementScreen />;
       case 'day_vote':
@@ -88,7 +96,8 @@ function App() {
     }
   };
 
-  const isZeroScrollPhase = phase === 'seat_setup' || phase === 'pass_and_reveal';
+  const isZeroScrollPhase =
+    phase === 'seat_setup' || phase === 'pass_and_reveal' || phase === 'night';
 
   const renderMainContent = () => {
     switch (activeView) {
@@ -159,6 +168,15 @@ function App() {
         onClose={() => setHistoryOpen(false)}
         nightHistory={nightHistory}
         dayHistory={dayHistory}
+        inProgressNight={
+          phase === 'night' && hostMode.judgeMode === 'physical_judge'
+            ? {
+                round,
+                draft: currentNightDraft,
+                pendingSelfExplodeSeat,
+              }
+            : null
+        }
       />
 
       <RestartModal

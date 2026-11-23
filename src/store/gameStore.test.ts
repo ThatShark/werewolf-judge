@@ -412,4 +412,62 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(parsed.state.ruleOverrides.badgeSwallowRule).toBe('double_explode');
     expect(parsed.state.ruleOverrides.noSheriffDeadDirection).toBe('counterclockwise');
   });
+
+  it('線上法官設定持久化與實體發牌首夜動態認領＋未認領自動補平民完整打通（模式 5）', async () => {
+    const store = useGameStore.getState();
+    store.selectBoard('12p-classic');
+    store.updateHostMode({
+      judgeMode: 'online_judge',
+      dealMode: 'physical_deal',
+      controlMode: 'central_control',
+    });
+    store.updateOnlineJudgeSettings({
+      ttsEnabled: false,
+      ttsRate: 1.3,
+      stepBufferSeconds: 6,
+    });
+
+    // 確認設定已持久化並可於 rehydrate 還原
+    const raw = localStorage.getItem(GAME_STORAGE_KEY);
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.onlineJudgeSettings).toEqual({
+      ttsEnabled: false,
+      ttsRate: 1.3,
+      stepBufferSeconds: 6,
+    });
+
+    // 開局進入第一晚（所有座位 roleId 為 null）
+    expect(useGameStore.getState().startGame().ok).toBe(true);
+    expect(useGameStore.getState().phase).toBe('night');
+    expect(useGameStore.getState().seats.every((s) => s.roleId === null)).toBe(true);
+
+    // 第一晚各角色步驟依序動態認領座號（1~4 狼、9 預言家、10 女巫、11 獵人、12 白痴）
+    for (const seat of [1, 2, 3, 4]) {
+      expect(useGameStore.getState().claimSeatRole(seat, 'wolf').ok).toBe(true);
+    }
+    expect(useGameStore.getState().claimSeatRole(9, 'seer').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(10, 'witch').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(11, 'hunter').ok).toBe(true);
+    expect(useGameStore.getState().claimSeatRole(12, 'idiot').ok).toBe(true);
+
+    // 夜間行動：狼刀 5 號、女巫不救、預言家驗 1 號
+    useGameStore.getState().updateNightDraft({ wolfTarget: 5, seerCheckTarget: 1 });
+    useGameStore.getState().finishNight();
+
+    // 結算後 5~8 號自動判定為平民，且 5 號出局
+    const afterNight = useGameStore.getState();
+    expect(afterNight.phase).toBe('day_announcement');
+    expect(afterNight.seats.slice(4, 8).every((s) => s.roleId === 'villager')).toBe(true);
+    expect(afterNight.seats[4].isAlive).toBe(false);
+    expect(afterNight.seats[4].deathReason).toBe('wolf_kill');
+
+    // 保留暱稱重開時保留 onlineJudgeSettings
+    useGameStore.getState().restartGame({ keepNicknames: true });
+    expect(useGameStore.getState().onlineJudgeSettings).toEqual({
+      ttsEnabled: false,
+      ttsRate: 1.3,
+      stepBufferSeconds: 6,
+    });
+  });
 });

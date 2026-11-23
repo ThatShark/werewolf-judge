@@ -4,13 +4,17 @@ import { ROLES_BY_ID } from '../data/roles';
 import {
   DEFAULT_AMBIENT_AUDIO_SETTINGS,
   DEFAULT_HOST_MODE,
+  DEFAULT_ONLINE_JUDGE_SETTINGS,
   DEFAULT_RULE_OVERRIDES,
   claimSeatRole,
+  clampOnlineJudgeSettings,
   createInitialSeats,
   dealRandomRoles,
   finalizePhysicalDealVillagers,
   getHostModeDescriptor,
   getNightSteps,
+  getStepClaimSummary,
+  getUnclaimedSeatNumbers,
   validatePhysicalDealSetup,
   validateRoleAssignment,
 } from './setup';
@@ -272,5 +276,69 @@ describe('MVP 板子靜態資料與發牌驗證', () => {
     expect(dealt.filter((s) => s.roleId === 'witch')).toHaveLength(1);
     expect(dealt.filter((s) => s.roleId === 'hunter')).toHaveLength(1);
     expect(dealt.filter((s) => s.roleId === 'idiot')).toHaveLength(1);
+  });
+
+  it('線上法官設定（OnlineJudgeSettings）預設值與邊界夾值（clamp）正確', () => {
+    expect(DEFAULT_ONLINE_JUDGE_SETTINGS).toEqual({
+      ttsEnabled: true,
+      ttsRate: 1.0,
+      stepBufferSeconds: 3,
+    });
+
+    const clampedLow = clampOnlineJudgeSettings(DEFAULT_ONLINE_JUDGE_SETTINGS, {
+      ttsEnabled: false,
+      ttsRate: 0.1,
+      stepBufferSeconds: -5,
+    });
+    expect(clampedLow).toEqual({
+      ttsEnabled: false,
+      ttsRate: 0.5,
+      stepBufferSeconds: 0,
+    });
+
+    const clampedHigh = clampOnlineJudgeSettings(clampedLow, {
+      ttsRate: 3.45,
+      stepBufferSeconds: 99.6,
+    });
+    expect(clampedHigh).toEqual({
+      ttsEnabled: false,
+      ttsRate: 2.0,
+      stepBufferSeconds: 15,
+    });
+  });
+
+  it('首夜步驟動態認領摘要（getStepClaimSummary）支援多角色步驟與已認領自動完成', () => {
+    const wolfKingBoard = getBoardById('12p-wolf-king-guard')!;
+    let seats = createInitialSeats(12);
+
+    // 狼人(狼王) 步驟需要 wolf×3 + wolf_king×1
+    const beforeWolf = getStepClaimSummary(wolfKingBoard, seats, ['wolf', 'wolf_king']);
+    expect(beforeWolf.requiresClaiming).toBe(true);
+    expect(beforeWolf.isComplete).toBe(false);
+    expect(beforeWolf.totalExpected).toBe(4);
+    expect(beforeWolf.totalClaimed).toBe(0);
+    expect(getUnclaimedSeatNumbers(seats)).toHaveLength(12);
+
+    seats = claimSeatRole(wolfKingBoard, seats, 1, 'wolf').seats;
+    seats = claimSeatRole(wolfKingBoard, seats, 2, 'wolf').seats;
+    seats = claimSeatRole(wolfKingBoard, seats, 3, 'wolf').seats;
+    const partialWolf = getStepClaimSummary(wolfKingBoard, seats, ['wolf', 'wolf_king']);
+    expect(partialWolf.isComplete).toBe(false);
+    expect(partialWolf.roles.find((r) => r.roleId === 'wolf')?.remainingCount).toBe(0);
+    expect(partialWolf.roles.find((r) => r.roleId === 'wolf_king')?.remainingCount).toBe(1);
+
+    seats = claimSeatRole(wolfKingBoard, seats, 4, 'wolf_king').seats;
+    const fullWolf = getStepClaimSummary(wolfKingBoard, seats, ['wolf', 'wolf_king']);
+    expect(fullWolf.isComplete).toBe(true);
+    expect(fullWolf.totalClaimed).toBe(4);
+    expect(getUnclaimedSeatNumbers(seats)).toEqual([5, 6, 7, 8, 9, 10, 11, 12]);
+
+    // 機械狼第一晚二次睜眼時，若首步已認領完成則自動判定 isComplete === true
+    const mechBoard = getBoardById('10p-mech-wolf-psychic')!;
+    let mechSeats = createInitialSeats(10);
+    mechSeats = claimSeatRole(mechBoard, mechSeats, 3, 'mech_wolf').seats;
+    const mechSummary = getStepClaimSummary(mechBoard, mechSeats, ['mech_wolf']);
+    expect(mechSummary.isComplete).toBe(true);
+    expect(mechSummary.roles[0].claimedSeats).toEqual([3]);
   });
 });

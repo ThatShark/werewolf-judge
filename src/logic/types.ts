@@ -99,6 +99,15 @@ export interface HostModeDescriptor {
   description: string;
 }
 
+/** [V2.0 新增] 線上法官語音播報（TTS）與防窺緩衝設定 */
+export interface OnlineJudgeSettings {
+  ttsEnabled: boolean;
+  /** 語速（預設 1.0，範圍 0.5 ~ 2.0） */
+  ttsRate: number;
+  /** 閉眼到下一角色睜眼緩衝秒數（預設 3，範圍 0 ~ 15） */
+  stepBufferSeconds: number;
+}
+
 /** [V2.0 新增] 夜間白噪音播放器設定 */
 export type AmbientPresetId =
   | 'none'
@@ -119,6 +128,23 @@ export interface ClaimSeatRoleResult {
   ok: boolean;
   reason?: string;
   seats: PlayerSeat[];
+}
+
+export interface StepClaimRoleStatus {
+  roleId: string;
+  expectedCount: number;
+  claimedSeats: number[];
+  remainingCount: number;
+}
+
+export interface StepClaimSummary {
+  roles: StepClaimRoleStatus[];
+  /** 此步驟在實體發牌首夜是否有需要認領的角色 */
+  requiresClaiming: boolean;
+  /** 此步驟所有角色是否皆已認領完成 */
+  isComplete: boolean;
+  totalExpected: number;
+  totalClaimed: number;
 }
 
 /** 板子完整定義 */
@@ -349,6 +375,7 @@ export interface GameState {
   round: number;
   selectedBoardId: string | null;
   hostMode: HostModeConfig;
+  onlineJudgeSettings: OnlineJudgeSettings;
   ambientAudio: AmbientAudioSettings;
   ruleOverrides: RuleOverrides;
   seats: PlayerSeat[];

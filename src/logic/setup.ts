@@ -8,11 +8,14 @@ import type {
   MechWolfRuntimeState,
   NightActionDraft,
   NightStepScript,
+  OnlineJudgeSettings,
   PlayerSeat,
   RoleAssignmentValidation,
   RoleSlot,
   RuleOverrides,
   SheriffState,
+  StepClaimRoleStatus,
+  StepClaimSummary,
 } from './types';
 
 export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
@@ -32,6 +35,34 @@ export const DEFAULT_HOST_MODE: HostModeConfig = {
   dealMode: 'physical_deal',
   controlMode: 'central_control',
 };
+
+export const DEFAULT_ONLINE_JUDGE_SETTINGS: OnlineJudgeSettings = {
+  ttsEnabled: true,
+  ttsRate: 1.0,
+  stepBufferSeconds: 3,
+};
+
+export function clampOnlineJudgeSettings(
+  current: OnlineJudgeSettings,
+  partial: Partial<OnlineJudgeSettings>,
+): OnlineJudgeSettings {
+  const rawRate = partial.ttsRate !== undefined ? partial.ttsRate : current.ttsRate;
+  const clampedRate = Number.isFinite(rawRate)
+    ? Math.round(Math.min(2.0, Math.max(0.5, rawRate)) * 10) / 10
+    : DEFAULT_ONLINE_JUDGE_SETTINGS.ttsRate;
+
+  const rawBuffer =
+    partial.stepBufferSeconds !== undefined ? partial.stepBufferSeconds : current.stepBufferSeconds;
+  const clampedBuffer = Number.isFinite(rawBuffer)
+    ? Math.round(Math.min(15, Math.max(0, rawBuffer)))
+    : DEFAULT_ONLINE_JUDGE_SETTINGS.stepBufferSeconds;
+
+  return {
+    ttsEnabled: partial.ttsEnabled !== undefined ? partial.ttsEnabled : current.ttsEnabled,
+    ttsRate: clampedRate,
+    stepBufferSeconds: clampedBuffer,
+  };
+}
 
 export const DEFAULT_AMBIENT_AUDIO_SETTINGS: AmbientAudioSettings = {
   presetId: 'none',
@@ -390,6 +421,65 @@ export function claimSeatRole(
       seat.seatNumber === seatNumber ? { ...seat, roleId } : seat,
     ),
   };
+}
+
+/**
+ * 實體發牌模式：計算第一晚指定步驟中各角色的應配人數、已認領座號與完成狀態。
+ */
+export function getStepClaimSummary(
+  board: BoardDefinition,
+  seats: PlayerSeat[],
+  actorRoleIds: string[],
+): StepClaimSummary {
+  const expectedCounts = getBoardExpectedRoleCounts(board);
+  const allowScalingCounts = Boolean(
+    board.presetPlayerCounts?.length || board.playerCountRange,
+  );
+  const uniqueRoleIds = Array.from(new Set(actorRoleIds));
+
+  const roles: StepClaimRoleStatus[] = [];
+  for (const roleId of uniqueRoleIds) {
+    const expectedCount = expectedCounts[roleId] ?? 0;
+    if (expectedCount <= 0) continue;
+    const claimedSeats = seats
+      .filter((seat) => seat.roleId === roleId)
+      .map((seat) => seat.seatNumber)
+      .sort((a, b) => a - b);
+    const remainingCount = Math.max(0, expectedCount - claimedSeats.length);
+    roles.push({
+      roleId,
+      expectedCount,
+      claimedSeats,
+      remainingCount,
+    });
+  }
+
+  const totalExpected = roles.reduce((sum, r) => sum + r.expectedCount, 0);
+  const totalClaimed = roles.reduce((sum, r) => sum + r.claimedSeats.length, 0);
+  const requiresClaiming = roles.length > 0;
+  const isComplete = !requiresClaiming
+    ? true
+    : board.isFlexibleComposition || allowScalingCounts
+      ? totalClaimed > 0
+      : roles.every((r) => r.remainingCount === 0);
+
+  return {
+    roles,
+    requiresClaiming,
+    isComplete,
+    totalExpected,
+    totalClaimed,
+  };
+}
+
+/**
+ * 實體發牌模式：取得目前尚未認領身分（roleId === null）的座號清單。
+ */
+export function getUnclaimedSeatNumbers(seats: PlayerSeat[]): number[] {
+  return seats
+    .filter((seat) => seat.roleId === null)
+    .map((seat) => seat.seatNumber)
+    .sort((a, b) => a - b);
 }
 
 /**

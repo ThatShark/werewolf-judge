@@ -4,9 +4,11 @@ import { getBoardById } from '../data/boards';
 import {
   DEFAULT_AMBIENT_AUDIO_SETTINGS,
   DEFAULT_HOST_MODE,
+  DEFAULT_ONLINE_JUDGE_SETTINGS,
   DEFAULT_RULE_OVERRIDES,
   DEFAULT_SPEAK_DURATION_SEC,
   claimSeatRole as claimSeatRoleLogic,
+  clampOnlineJudgeSettings,
   createEmptyNightDraft,
   createInitialMechWolfState,
   createInitialSeats,
@@ -46,6 +48,7 @@ import type {
   HostModeConfig,
   KnightDuelResult,
   NightActionDraft,
+  OnlineJudgeSettings,
   RuleOverrides,
   ShootEligibility,
   SpeakingOrderOptions,
@@ -76,6 +79,7 @@ export interface GameStore extends GameState {
   goToBoardSelect: () => void;
   setBoardPlayerCount: (playerCount: number) => void;
   updateHostMode: (partial: Partial<HostModeConfig>) => void;
+  updateOnlineJudgeSettings: (partial: Partial<OnlineJudgeSettings>) => void;
   updateAmbientAudio: (partial: Partial<AmbientAudioSettings>) => void;
   updateRuleOverrides: (partial: Partial<RuleOverrides>) => void;
   setSeatNickname: (seatNumber: number, nickname: string) => void;
@@ -144,6 +148,7 @@ function createInitialGameState(): GameState & {
     round: 1,
     selectedBoardId: null,
     hostMode: { ...DEFAULT_HOST_MODE },
+    onlineJudgeSettings: { ...DEFAULT_ONLINE_JUDGE_SETTINGS },
     ambientAudio: { ...DEFAULT_AMBIENT_AUDIO_SETTINGS },
     ruleOverrides: { ...DEFAULT_RULE_OVERRIDES },
     seats: [],
@@ -223,6 +228,7 @@ export const useGameStore = create<GameStore>()(
           savedNicknames,
           defaultSpeakDurationSec,
           hostMode,
+          onlineJudgeSettings,
           ambientAudio,
           ruleOverrides,
         } = get();
@@ -232,6 +238,7 @@ export const useGameStore = create<GameStore>()(
           selectedBoardId: board.id,
           phase: 'seat_setup',
           hostMode: { ...hostMode },
+          onlineJudgeSettings: { ...onlineJudgeSettings },
           ambientAudio: { ...ambientAudio },
           ruleOverrides: { ...ruleOverrides },
           savedNicknames,
@@ -263,6 +270,12 @@ export const useGameStore = create<GameStore>()(
             ...state.hostMode,
             ...partial,
           },
+        }));
+      },
+
+      updateOnlineJudgeSettings: (partial) => {
+        set((state) => ({
+          onlineJudgeSettings: clampOnlineJudgeSettings(state.onlineJudgeSettings, partial),
         }));
       },
 
@@ -1280,6 +1293,7 @@ export const useGameStore = create<GameStore>()(
             activeView: state.activeView,
             selectedBoardId: board ? board.id : null,
             hostMode: { ...state.hostMode },
+            onlineJudgeSettings: { ...state.onlineJudgeSettings },
             ambientAudio: { ...state.ambientAudio },
             ruleOverrides: { ...state.ruleOverrides },
             savedNicknames: { ...state.savedNicknames },
@@ -1309,6 +1323,10 @@ export const useGameStore = create<GameStore>()(
             ...DEFAULT_HOST_MODE,
             ...(persisted.hostMode ?? {}),
           },
+          onlineJudgeSettings: clampOnlineJudgeSettings(
+            DEFAULT_ONLINE_JUDGE_SETTINGS,
+            persisted.onlineJudgeSettings ?? {},
+          ),
           ambientAudio: {
             ...DEFAULT_AMBIENT_AUDIO_SETTINGS,
             ...(persisted.ambientAudio ?? {}),

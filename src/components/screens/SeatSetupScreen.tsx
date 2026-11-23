@@ -42,12 +42,14 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const seats = useGameStore((s) => s.seats);
   const hostMode = useGameStore((s) => s.hostMode);
+  const onlineJudgeSettings = useGameStore((s) => s.onlineJudgeSettings);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const ambientAudio = useGameStore((s) => s.ambientAudio);
 
   const goToBoardSelect = useGameStore((s) => s.goToBoardSelect);
   const setBoardPlayerCount = useGameStore((s) => s.setBoardPlayerCount);
   const updateHostMode = useGameStore((s) => s.updateHostMode);
+  const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
   const updateRuleOverrides = useGameStore((s) => s.updateRuleOverrides);
   const setSeatNickname = useGameStore((s) => s.setSeatNickname);
   const clearSavedNicknames = useGameStore((s) => s.clearSavedNicknames);
@@ -515,6 +517,98 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
                 {modeDescriptor.description}
               </p>
             </div>
+
+            {hostMode.judgeMode === 'online_judge' && (
+              <div className="space-y-2.5 rounded-2xl border border-indigo-500/35 bg-indigo-950/20 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-extrabold text-indigo-200">
+                      🎙️ 線上法官語音與防窺緩衝設定
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      夜間自動語音播報並以全黑防窺畫面交接下一位角色
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateOnlineJudgeSettings({ ttsEnabled: !onlineJudgeSettings.ttsEnabled })
+                    }
+                    className={`min-h-10 shrink-0 rounded-xl border px-3 text-xs font-bold transition ${
+                      onlineJudgeSettings.ttsEnabled
+                        ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200'
+                        : 'border-slate-700 bg-slate-900 text-slate-400'
+                    }`}
+                  >
+                    {onlineJudgeSettings.ttsEnabled ? '🔊 語音開' : '🔇 靜音'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/75 p-2.5">
+                    <div className="text-[11px] font-bold text-slate-400">閉眼緩衝秒數</div>
+                    <div className="mt-1.5 flex items-center justify-between gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateOnlineJudgeSettings({
+                            stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds - 1,
+                          })
+                        }
+                        className="min-h-10 min-w-10 rounded-lg border border-slate-700 bg-slate-900 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
+                      >
+                        −
+                      </button>
+                      <span className="text-sm font-extrabold tabular-nums text-amber-200">
+                        {onlineJudgeSettings.stepBufferSeconds} 秒
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateOnlineJudgeSettings({
+                            stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds + 1,
+                          })
+                        }
+                        className="min-h-10 min-w-10 rounded-lg border border-slate-700 bg-slate-900 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/75 p-2.5">
+                    <div className="text-[11px] font-bold text-slate-400">語音播報語速</div>
+                    <div className="mt-1.5 flex items-center justify-between gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateOnlineJudgeSettings({
+                            ttsRate: onlineJudgeSettings.ttsRate - 0.1,
+                          })
+                        }
+                        className="min-h-10 min-w-10 rounded-lg border border-slate-700 bg-slate-900 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
+                      >
+                        −
+                      </button>
+                      <span className="text-sm font-extrabold tabular-nums text-indigo-200">
+                        {onlineJudgeSettings.ttsRate.toFixed(1)}×
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateOnlineJudgeSettings({
+                            ttsRate: onlineJudgeSettings.ttsRate + 0.1,
+                          })
+                        }
+                        className="min-h-10 min-w-10 rounded-lg border border-slate-700 bg-slate-900 text-sm font-extrabold text-slate-200 hover:bg-slate-800"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

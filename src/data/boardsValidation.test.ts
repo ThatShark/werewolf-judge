@@ -45,6 +45,7 @@ const VALID_PLAYER_COUNT_FILTERS = new Set<PlayerCountFilter>([
 const VALID_NIGHT_ACTION_TYPES = new Set<NightActionType>([
   'wolf_kill',
   'witch_action',
+  'poisoner_poison',
   'seer_check',
   'psychic_check',
   'guard_protect',
@@ -54,6 +55,10 @@ const VALID_NIGHT_ACTION_TYPES = new Set<NightActionType>([
   'mech_wolf_night_action',
   'wolf_beauty_charm',
   'dream_catcher_dream',
+  'wolf_girl_confess',
+  'treasure_master_choose',
+  'nightmare_fear',
+  'hybrid_choose',
   'confirm_only',
 ]);
 

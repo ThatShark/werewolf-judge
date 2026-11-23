@@ -133,6 +133,7 @@ export function canDreamCatcherDream(
 }
 
 function isSeatWolfForBear(seat: PlayerSeat, mechWolfState: MechWolfRuntimeState): boolean {
+  if (seat.infectedBySeedWolf) return true;
   if (!seat.roleId) return false;
   if (seat.roleId === 'mech_wolf') {
     if (!mechWolfState.learnedRoleId) {
@@ -148,13 +149,14 @@ function isSeatWolfForBear(seat: PlayerSeat, mechWolfState: MechWolfRuntimeState
 /**
  * 天亮自動判定熊是否咆哮：
  * - 若場上無熊，回傳 null。
- * - 若熊已出局，回傳 roared = false。
+ * - 若熊已出局、已被種狼感染失去技能，或當晚遭夢魘恐懼，回傳 roared = false。
  * - 若熊存活，沿順時針（左）與逆時針（右）尋找最近依然存活的兩名鄰居，
- *   只要其中至少一人屬於狼人陣營（機械狼已學習好人身分則視同好人），熊即咆哮。
+ *   只要其中至少一人屬於狼人陣營（含被種狼感染者；機械狼已學習好人身分則視同好人），熊即咆哮。
  */
 export function evaluateBearRoar(
   seats: PlayerSeat[],
   mechWolfState: MechWolfRuntimeState,
+  fearedSeat: number | null = null,
 ): BearRoarResult | null {
   const sortedSeats = [...seats].sort((a, b) => a.seatNumber - b.seatNumber);
   const bearIndex = sortedSeats.findIndex((seat) => seat.roleId === 'bear');
@@ -171,6 +173,26 @@ export function evaluateBearRoar(
       rightNeighborSeat: null,
       roared: false,
       reason: '熊已出局，天亮不會咆哮',
+    };
+  }
+  if (bear.infectedBySeedWolf) {
+    return {
+      bearSeat: bear.seatNumber,
+      bearAlive: true,
+      leftNeighborSeat: null,
+      rightNeighborSeat: null,
+      roared: false,
+      reason: '熊已被種狼感染失去原有技能，天亮不會咆哮',
+    };
+  }
+  if (fearedSeat !== null && bear.seatNumber === fearedSeat) {
+    return {
+      bearSeat: bear.seatNumber,
+      bearAlive: true,
+      leftNeighborSeat: null,
+      rightNeighborSeat: null,
+      roared: false,
+      reason: '熊昨晚遭夢魘恐懼，天亮不會咆哮',
     };
   }
 

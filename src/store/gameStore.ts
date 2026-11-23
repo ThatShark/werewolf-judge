@@ -10,9 +10,12 @@ import {
   claimSeatRole as claimSeatRoleLogic,
   clampOnlineJudgeSettings,
   createEmptyNightDraft,
+  createInitialHiddenWolfState,
+  createInitialHybridState,
   createInitialMechWolfState,
   createInitialNotebookState,
   createInitialSeats,
+  createInitialSeedWolfState,
   createInitialSheriffState,
   createManualVictoryResult,
   dealRandomRoles,
@@ -95,6 +98,11 @@ export type UndoSnapshotData = Pick<
   | 'lastDreamTarget'
   | 'knightDuelUsed'
   | 'lastBearRoar'
+  | 'lastFearedSeat'
+  | 'evilKnightCounterUsed'
+  | 'hybridState'
+  | 'seedWolfState'
+  | 'hiddenWolfState'
   | 'speakingQueue'
   | 'currentSpeakerIndex'
   | 'speakingMeta'
@@ -232,6 +240,11 @@ function createInitialGameState(): GameState & {
     lastDreamTarget: null,
     knightDuelUsed: false,
     lastBearRoar: null,
+    lastFearedSeat: null,
+    evilKnightCounterUsed: false,
+    hybridState: createInitialHybridState(),
+    seedWolfState: createInitialSeedWolfState(),
+    hiddenWolfState: createInitialHiddenWolfState(),
     speakingQueue: [],
     currentSpeakerIndex: 0,
     speakingMeta: null,
@@ -270,6 +283,11 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     lastDreamTarget: state.lastDreamTarget,
     knightDuelUsed: state.knightDuelUsed,
     lastBearRoar: state.lastBearRoar,
+    lastFearedSeat: state.lastFearedSeat,
+    evilKnightCounterUsed: state.evilKnightCounterUsed,
+    hybridState: state.hybridState,
+    seedWolfState: state.seedWolfState,
+    hiddenWolfState: state.hiddenWolfState,
     speakingQueue: state.speakingQueue,
     currentSpeakerIndex: state.currentSpeakerIndex,
     speakingMeta: state.speakingMeta,
@@ -646,6 +664,12 @@ export const useGameStore = create<GameStore>()(
             ? finalizePhysicalDealVillagers(state.seats)
             : state.seats;
 
+        const board = getBoardById(state.selectedBoardId);
+        const nightSteps = board ? getNightSteps(board, state.round) : [];
+        const seerIdx = nightSteps.findIndex((s) => s.actionType === 'seer_check');
+        const witchIdx = nightSteps.findIndex((s) => s.actionType === 'witch_action');
+        const seerActsBeforeWitch = seerIdx !== -1 && witchIdx !== -1 && seerIdx < witchIdx;
+
         const result = resolveNight({
           seats: resolvedInputSeats,
           round: state.round,
@@ -658,6 +682,12 @@ export const useGameStore = create<GameStore>()(
           pendingSelfExplodeSeat: state.pendingSelfExplodeSeat,
           lastCharmedSeat: state.lastCharmedSeat,
           lastDreamTarget: state.lastDreamTarget,
+          lastFearedSeat: state.lastFearedSeat ?? null,
+          evilKnightCounterUsed: state.evilKnightCounterUsed ?? false,
+          seerActsBeforeWitch,
+          hybridState: state.hybridState ?? createInitialHybridState(),
+          seedWolfState: state.seedWolfState ?? createInitialSeedWolfState(),
+          hiddenWolfState: state.hiddenWolfState ?? createInitialHiddenWolfState(),
         });
 
         const deathMap = new Map(result.deaths.map((d) => [d.seat, d.reason]));
@@ -715,6 +745,11 @@ export const useGameStore = create<GameStore>()(
           activeCharmedSeat: result.activeCharmedSeat,
           lastDreamTarget: result.lastDreamTarget,
           lastBearRoar: result.bearRoar,
+          lastFearedSeat: result.lastFearedSeat,
+          evilKnightCounterUsed: result.evilKnightCounterUsed,
+          hybridState: result.hybridState,
+          seedWolfState: result.seedWolfState,
+          hiddenWolfState: result.hiddenWolfState,
           sheriffState: nextSheriffState,
           speakingQueue: [],
           currentSpeakerIndex: 0,

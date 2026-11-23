@@ -793,7 +793,7 @@ const MVP_BOARD_DEFINITIONS: Record<string, BoardDefinition> = {
   },
 };
 
-/** 完整支援自動結算的 10 個核心角色 */
+/** 完整支援自動結算的 24 個核心與進階角色 */
 const AUTOMATED_ROLE_IDS = new Set([
   'wolf',
   'wolf_king',
@@ -805,6 +805,20 @@ const AUTOMATED_ROLE_IDS = new Set([
   'hunter',
   'idiot',
   'guard',
+  'wolf_beauty',
+  'dream_catcher',
+  'bear',
+  'white_wolf_king',
+  'knight',
+  'poisoner',
+  'wolf_girl',
+  'treasure_master',
+  'masked_villager',
+  'nightmare',
+  'evil_knight',
+  'hybrid',
+  'seed_wolf',
+  'hidden_wolf',
 ]);
 
 function stripMarkdownFormatting(input: string): string {
@@ -1072,10 +1086,13 @@ function inferNightActionType(
     return 'confirm_only';
   }
 
-  // 狼人點刀（若非純小狼+狼王，且具有特殊附加台詞如擊殺限制/選誰變成什麼，仍標記 wolf_kill 讓法官至少可記錄基礎刀口，或若純娛樂無刀則 confirm_only）
+  // 狼人點刀（含種狼「擊殺或感染」與各類進階狼隊點刀）
   if (
     (actorLabel.startsWith('狼人') || actorRoleIds.includes('wolf')) &&
-    (actionPrompt.includes('擊殺的目標') || actionPrompt.includes('襲擊') || actionPrompt.includes('刀誰'))
+    (actionPrompt.includes('擊殺的目標') ||
+      actionPrompt.includes('擊殺或感染') ||
+      actionPrompt.includes('襲擊') ||
+      actionPrompt.includes('刀誰'))
   ) {
     return hasCustomWolfMechanic ? 'wolf_kill' : 'wolf_kill';
   }
@@ -1089,6 +1106,33 @@ function inferNightActionType(
     (combined.includes('解藥') || combined.includes('毒藥'))
   ) {
     return 'witch_action';
+  }
+
+  // 毒師（僅一瓶毒藥）
+  if (
+    actorRoleIds.includes('poisoner') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('毒')
+  ) {
+    return 'poisoner_poison';
+  }
+
+  // 狼女孩首夜表白
+  if (
+    actorRoleIds.includes('wolf_girl') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('表白')
+  ) {
+    return 'wolf_girl_confess';
+  }
+
+  // 盜寶大師選擇底牌身分
+  if (
+    actorRoleIds.includes('treasure_master') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('選擇一個身分') || combined.includes('剩餘的三個身分'))
+  ) {
+    return 'treasure_master_choose';
   }
 
   // 標準預言家
@@ -1151,6 +1195,24 @@ function inferNightActionType(
     (combined.includes('攝夢') || combined.includes('夢遊'))
   ) {
     return 'dream_catcher_dream';
+  }
+
+  // 夢魘恐懼
+  if (
+    actorRoleIds.includes('nightmare') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('恐懼')
+  ) {
+    return 'nightmare_fear';
+  }
+
+  // 混血兒首夜選榜樣
+  if (
+    actorRoleIds.includes('hybrid') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('混的玩家') || combined.includes('榜樣'))
+  ) {
+    return 'hybrid_choose';
   }
 
   return 'confirm_only';

@@ -1,6 +1,14 @@
 import { getRoleById } from '../data/roles';
 import { applyWolfBeautyCharmDeath } from './advancedRoles';
 import { syncMechWolfTeamStatus } from './mechWolf';
+import {
+  isEvilKnightNightShootImmune,
+  isSeatWolfFaction,
+} from './topFiveRoles';
+import {
+  isTreasureMasterLastWolfMasked,
+  syncTreasureMasterTeamStatus,
+} from './treasureMaster';
 import type {
   DayExileResult,
   DeathReason,
@@ -11,6 +19,7 @@ import type {
   SelfExplodeResult,
   ShootEligibility,
   ShootResolutionResult,
+  TreasureMasterRuntimeState,
   WhiteWolfKingExplodeResult,
 } from './types';
 import { checkVictory } from './victory';
@@ -34,19 +43,54 @@ export function checkCanShoot(
   seats: PlayerSeat[],
   shooterSeat: number,
   deathReason: DeathReason,
+  options: { fearedSeat?: number | null } = {},
 ): ShootEligibility | null {
   const shooter = seats.find((seat) => seat.seatNumber === shooterSeat);
   if (!shooter || (shooter.roleId !== 'hunter' && shooter.roleId !== 'wolf_king')) {
     return null;
   }
 
+  // 被種狼感染轉化為狼人後失去原有神職技能（不可開槍）
+  if (shooter.infectedBySeedWolf && shooter.roleId === 'hunter') {
+    return {
+      seatNumber: shooterSeat,
+      roleId: 'hunter',
+      canShoot: false,
+      reason: '獵人已被種狼感染失去原有技能，無法開槍',
+    };
+  }
+
   if (shooter.roleId === 'hunter') {
-    if (deathReason === 'witch_poison' || deathReason === 'mech_wolf_poison') {
+    if (
+      options.fearedSeat === shooterSeat &&
+      deathReason !== 'exiled' &&
+      deathReason !== 'wolf_king_shoot'
+    ) {
+      return {
+        seatNumber: shooterSeat,
+        roleId: 'hunter',
+        canShoot: false,
+        reason: '獵人昨晚遭夢魘恐懼，晚上倒牌無法開槍',
+      };
+    }
+    if (
+      deathReason === 'witch_poison' ||
+      deathReason === 'poisoner_poison' ||
+      deathReason === 'mech_wolf_poison'
+    ) {
       return {
         seatNumber: shooterSeat,
         roleId: 'hunter',
         canShoot: false,
         reason: '獵人被毒殺，無法開槍',
+      };
+    }
+    if (deathReason === 'wolf_girl_breakup') {
+      return {
+        seatNumber: shooterSeat,
+        roleId: 'hunter',
+        canShoot: false,
+        reason: '獵人因愛情破裂出局，無法開槍',
       };
     }
     if (HUNTER_SHOOTABLE_REASONS.has(deathReason)) {
@@ -74,7 +118,11 @@ export function checkCanShoot(
       reason: '狼王自爆，無法開槍',
     };
   }
-  if (deathReason === 'witch_poison' || deathReason === 'mech_wolf_poison') {
+  if (
+    deathReason === 'witch_poison' ||
+    deathReason === 'poisoner_poison' ||
+    deathReason === 'mech_wolf_poison'
+  ) {
     return {
       seatNumber: shooterSeat,
       roleId: 'wolf_king',
@@ -141,6 +189,22 @@ export function resolveShoot(
   const shootReason: 'hunter_shoot' | 'wolf_king_shoot' =
     eligibility.roleId === 'hunter' ? 'hunter_shoot' : 'wolf_king_shoot';
 
+  // 惡靈騎士免疫夜間傷害：晚上倒牌的獵人對惡靈騎士開槍無效（白天放逐開槍則有效）
+  if (isEvilKnightNightShootImmune(target, eligibility.roleId, shooterDeathReason)) {
+    const victory = checkVictory(seats, ruleOverrides);
+    return {
+      seats: seats.map((seat) => ({ ...seat })),
+      shooterSeat,
+      targetSeat,
+      deathReason: shootReason,
+      targetSurvived: true,
+      charmedDeathSeat: null,
+      chainedShootEligibility: null,
+      mechWolfState,
+      victory,
+    };
+  }
+
   let updatedSeats = seats.map((seat) =>
     seat.seatNumber === targetSeat
       ? {
@@ -191,14 +255,47 @@ export function resolveDayExile(
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
   activeCharmedSeat: number | null = null,
+  treasureMasterState?: TreasureMasterRuntimeState,
 ): DayExileResult {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.isAlive) {
     throw new Error('放逐目標不存在或已出局');
   }
 
-  // 白痴白天首次被放逐：翻牌免死並失去投票權
-  if (target.roleId === 'idiot' && !target.idiotRevealed) {
+  // 盜寶蒙面狼作為最後一狼切換成蒙面人並被放逐時，暫時不死且可於隔夜再刀一人（類似血月使徒）
+  if (isTreasureMasterLastWolfMasked(seats, targetSeat, treasureMasterState)) {
+    const updatedSeats = seats.map((seat) =>
+      seat.seatNumber === targetSeat
+        ? {
+            ...seat,
+            isAlive: true,
+            treasureMasterMaskedExileSurvived: true,
+          }
+        : seat,
+    );
+    const nextTreasureMasterState: TreasureMasterRuntimeState | undefined = treasureMasterState
+      ? {
+          ...treasureMasterState,
+          hasJoinedWolfTeam: true,
+          pendingExileDeathNextNight: true,
+        }
+      : undefined;
+
+    return {
+      seats: updatedSeats,
+      exiledSeat: targetSeat,
+      idiotRevealed: false,
+      treasureMasterMaskedSurvived: true,
+      charmedDeathSeat: null,
+      shootEligibility: null,
+      mechWolfState,
+      treasureMasterState: nextTreasureMasterState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
+  // 白痴白天首次被放逐：翻牌免死並失去投票權（若已被種狼感染則失去此技能）
+  if (target.roleId === 'idiot' && !target.idiotRevealed && !target.infectedBySeedWolf) {
     const updatedSeats = seats.map((seat) =>
       seat.seatNumber === targetSeat
         ? {
@@ -209,7 +306,7 @@ export function resolveDayExile(
         : seat,
     );
 
-    const victory = checkVictory(updatedSeats, ruleOverrides);
+    const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
     return {
       seats: updatedSeats,
       exiledSeat: targetSeat,
@@ -217,6 +314,7 @@ export function resolveDayExile(
       charmedDeathSeat: null,
       shootEligibility: null,
       mechWolfState,
+      treasureMasterState,
       victory,
     };
   }
@@ -243,12 +341,16 @@ export function resolveDayExile(
   updatedSeats = charmResult.seats;
 
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
+  const nextTreasureMasterState = treasureMasterState
+    ? syncTreasureMasterTeamStatus(updatedSeats, treasureMasterState)
+    : undefined;
   const shootEligibility = checkCanShoot(updatedSeats, targetSeat, 'exiled');
   const victory = checkVictory(
     updatedSeats,
     charmResult.charmedDeathSeat !== null
       ? { ...ruleOverrides, wolfKillPriority: true }
       : ruleOverrides,
+    nextTreasureMasterState,
   );
 
   return {
@@ -258,6 +360,7 @@ export function resolveDayExile(
     charmedDeathSeat: charmResult.charmedDeathSeat,
     shootEligibility,
     mechWolfState: nextMechWolfState,
+    treasureMasterState: nextTreasureMasterState,
     victory,
   };
 }
@@ -291,8 +394,23 @@ export function resolveSelfExplode(
     };
   }
 
-  const role = getRoleById(player.roleId);
-  if (!role || role.faction !== 'wolf') {
+  if (player.roleId === 'evil_knight') {
+    return {
+      allowed: false,
+      reason: '惡靈騎士不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (player.roleId === 'hidden_wolf' && !player.infectedBySeedWolf) {
+    return {
+      allowed: false,
+      reason: '隱狼不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (!isSeatWolfFaction(player)) {
     return {
       allowed: false,
       reason: '僅狼人陣營可自爆',
@@ -447,10 +565,10 @@ export function resolveKnightDuel(
       victory: { winner: null, winReason: null },
     };
   }
-  if (knight.roleId !== 'knight') {
+  if (knight.roleId !== 'knight' || knight.infectedBySeedWolf) {
     return {
       allowed: false,
-      reason: '僅騎士可發動翻牌決鬥',
+      reason: knight.infectedBySeedWolf ? '騎士已被種狼感染失去決鬥技能' : '僅騎士可發動翻牌決鬥',
       seats,
       knightSeat,
       targetSeat,
@@ -514,8 +632,7 @@ export function resolveKnightDuel(
     };
   }
 
-  const targetRole = getRoleById(target.roleId);
-  const targetWasWolf = targetRole?.faction === 'wolf';
+  const targetWasWolf = isSeatWolfFaction(target);
   const eliminatedSeat = targetWasWolf ? targetSeat : knightSeat;
   const deathReason: 'knight_duel' | 'knight_duel_fail' = targetWasWolf
     ? 'knight_duel'

@@ -409,6 +409,10 @@ describe('全量板子原文對帳與無頭開局健康檢查（Full Corpus Audi
       const dreamTarget = state.seats.find((s) => s.roleId !== 'dream_catcher');
       const wolfGirlSeat = state.seats.find((s) => s.roleId === 'wolf_girl');
       const nonWolfTarget = state.seats.find((s) => ROLES_BY_ID[s.roleId ?? '']?.faction !== 'wolf');
+      const nightmareSeat = state.seats.find((s) => s.roleId === 'nightmare');
+      const nonNightmareTarget = state.seats.find((s) => s.roleId !== 'nightmare');
+      const hybridSeat = state.seats.find((s) => s.roleId === 'hybrid');
+      const nonHybridTarget = state.seats.find((s) => s.roleId !== 'hybrid');
 
       for (let stepIdx = 0; stepIdx < night1Steps.length; stepIdx += 1) {
         const step = night1Steps[stepIdx];
@@ -429,6 +433,14 @@ describe('全量板子原文對帳與無頭開局健康檢查（Full Corpus Audi
         } else if (step.actionType === 'wolf_girl_confess' && wolfGirlSeat && nonWolfTarget) {
           useGameStore.getState().updateNightDraft({
             wolfGirlConfessTarget: nonWolfTarget.seatNumber,
+          });
+        } else if (step.actionType === 'nightmare_fear' && nightmareSeat && nonNightmareTarget) {
+          useGameStore.getState().updateNightDraft({
+            nightmareFearTarget: nonNightmareTarget.seatNumber,
+          });
+        } else if (step.actionType === 'hybrid_choose' && hybridSeat && nonHybridTarget) {
+          useGameStore.getState().updateNightDraft({
+            hybridIdolTarget: nonHybridTarget.seatNumber,
           });
         }
 

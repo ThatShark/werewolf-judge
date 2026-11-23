@@ -3,6 +3,7 @@ import type {
   ManualVictoryOverrideKind,
   PlayerSeat,
   RuleOverrides,
+  TreasureMasterRuntimeState,
   VictoryResult,
 } from './types';
 
@@ -12,9 +13,35 @@ export interface AliveFactionCounts {
   gods: number;
 }
 
+function getEffectiveSide(
+  seat: PlayerSeat,
+  ruleOverrides: RuleOverrides,
+  treasureMasterState?: TreasureMasterRuntimeState,
+): 'wolf' | 'villager' | 'god' | null {
+  if (!seat.roleId) return null;
+  // 被種狼感染轉化為狼人者，即時改計入狼人陣營（從原好人邊扣除）
+  if (seat.infectedBySeedWolf) {
+    return 'wolf';
+  }
+  if (seat.roleId === 'treasure_master' && treasureMasterState?.affiliation) {
+    return treasureMasterState.affiliation;
+  }
+  // 混血兒不計入狼人陣營；預設不計入屠邊人數，若開啟 hybridCountsAsVillager 則計入平民邊
+  if (seat.roleId === 'hybrid') {
+    return ruleOverrides.hybridCountsAsVillager ? 'villager' : null;
+  }
+  const role = getRoleById(seat.roleId);
+  if (!role) return null;
+  if (role.faction === 'wolf') return 'wolf';
+  if (role.category === 'villager') return 'villager';
+  if (role.category === 'god') return 'god';
+  return null;
+}
+
 export function countAliveFactions(
   seats: PlayerSeat[],
   ruleOverrides: RuleOverrides,
+  treasureMasterState?: TreasureMasterRuntimeState,
 ): AliveFactionCounts {
   let wolves = 0;
   let villagers = 0;
@@ -22,16 +49,16 @@ export function countAliveFactions(
 
   for (const seat of seats) {
     if (!seat.isAlive) continue;
-    const role = getRoleById(seat.roleId);
-    if (!role) continue;
+    const side = getEffectiveSide(seat, ruleOverrides, treasureMasterState);
+    if (!side) continue;
 
-    if (role.faction === 'wolf') {
+    if (side === 'wolf') {
       wolves += 1;
-    } else if (role.category === 'villager') {
+    } else if (side === 'villager') {
       villagers += 1;
-    } else if (role.category === 'god') {
+    } else if (side === 'god') {
       // 白痴翻牌免死後，若規則設定不需追刀（idiotNeedsExtraKill = false），則不再計入存活神職
-      if (role.id === 'idiot' && seat.idiotRevealed && !ruleOverrides.idiotNeedsExtraKill) {
+      if (seat.roleId === 'idiot' && seat.idiotRevealed && !ruleOverrides.idiotNeedsExtraKill) {
         continue;
       }
       gods += 1;
@@ -44,6 +71,7 @@ export function countAliveFactions(
 export function checkVictory(
   seats: PlayerSeat[],
   ruleOverrides: RuleOverrides,
+  treasureMasterState?: TreasureMasterRuntimeState,
 ): VictoryResult {
   if (seats.length === 0) {
     return { winner: null, winReason: null };
@@ -53,14 +81,24 @@ export function checkVictory(
   let hasAnyVillager = false;
   let hasAnyGod = false;
   for (const seat of seats) {
-    const role = getRoleById(seat.roleId);
-    if (!role) continue;
-    if (role.faction === 'wolf') hasAnyWolf = true;
-    else if (role.category === 'villager') hasAnyVillager = true;
-    else if (role.category === 'god') hasAnyGod = true;
+    const side = getEffectiveSide(seat, ruleOverrides, treasureMasterState);
+    if (side === 'wolf') hasAnyWolf = true;
+    else if (side === 'villager') hasAnyVillager = true;
+    else if (side === 'god') hasAnyGod = true;
+
+    // 若原好人（神職／平民）被種狼感染轉為狼人，本局仍視為原本存在該陣營邊，避免最後一神／最後一民被感染時漏判屠邊
+    if (seat.infectedBySeedWolf && seat.roleId) {
+      const origRole = getRoleById(seat.roleId);
+      if (origRole?.category === 'villager') hasAnyVillager = true;
+      else if (origRole?.category === 'god') hasAnyGod = true;
+    }
   }
 
-  const { wolves, villagers, gods } = countAliveFactions(seats, ruleOverrides);
+  const { wolves, villagers, gods } = countAliveFactions(
+    seats,
+    ruleOverrides,
+    treasureMasterState,
+  );
 
   const villagersEliminated = hasAnyVillager && villagers === 0;
   const godsEliminated = hasAnyGod && gods === 0;

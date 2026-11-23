@@ -17,6 +17,7 @@ import type {
 export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   wolf_kill: '狼人擊殺',
   witch_poison: '女巫毒殺',
+  poisoner_poison: '毒師毒殺',
   milk_pierce: '同守同救奶穿',
   exiled: '白天放逐出局',
   hunter_shoot: '獵人開槍帶走',
@@ -24,12 +25,16 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   self_explode: '狼人自爆出局',
   white_wolf_king_explode: '白狼王自爆帶走',
   wolf_beauty_charm: '狼美人殉情帶走',
+  wolf_girl_breakup: '狼女孩愛情破裂帶走',
   knight_duel: '騎士決鬥撞狼出局',
   knight_duel_fail: '騎士決鬥撞好人以死謝罪',
   dream_catcher_consecutive: '攝夢人連續兩晚夢死',
   dream_catcher_link: '攝夢人夜死牽連共死',
   mech_wolf_poison: '機械狼毒殺',
   mech_wolf_kill: '機械狼額外刀口',
+  masked_delayed_death: '蒙面人負傷延遲出局',
+  treasure_master_exile_delayed: '盜寶蒙面狼隔夜刀後出局',
+  evil_knight_counter: '惡靈騎士反傷出局',
   manual_judge: '法官手動標記出局',
 };
 
@@ -82,6 +87,10 @@ export const RULE_TOGGLE_META: Record<
   sheriffUseDeadSideOnDeath: {
     label: '有警長有死訊優先死左／死右',
     description: '開啟後，有警長且昨夜有死訊時優先採死左／死右，平安夜再切回警左／警右。',
+  },
+  hybridCountsAsVillager: {
+    label: '混血兒計入平民屠邊人數',
+    description: '預設關閉（不計入屠邊人數）；開啟後依 12 人局規則，狼隊屠民須連同混血兒一起淘汰。',
   },
 };
 

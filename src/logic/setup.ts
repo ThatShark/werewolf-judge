@@ -28,6 +28,7 @@ export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
   badgeSwallowRule: 'single_explode',
   noSheriffDeadDirection: 'clockwise',
   sheriffUseDeadSideOnDeath: false,
+  hybridCountsAsVillager: false,
 };
 
 export const DEFAULT_HOST_MODE: HostModeConfig = {
@@ -188,12 +189,18 @@ export function createEmptyNightDraft(round: number): NightActionDraft {
     wolfTarget: null,
     witchUseAntidote: false,
     witchPoisonTarget: null,
+    poisonerTarget: null,
     seerCheckTarget: null,
     psychicCheckTarget: null,
     mechWolfLearnTarget: null,
     mechWolfSkillTarget: null,
     wolfBeautyCharmTarget: null,
     dreamCatcherTarget: null,
+    wolfGirlConfessTarget: null,
+    treasureMasterCardRoleId: null,
+    nightmareFearTarget: null,
+    hybridIdolTarget: null,
+    seedWolfInfectTarget: null,
   };
 }
 

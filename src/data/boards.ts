@@ -533,7 +533,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -725,7 +725,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -943,7 +943,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -1252,19 +1252,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -1305,19 +1302,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -1605,20 +1599,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf_king",
             "white_wolf_king",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -1698,20 +1689,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf_king",
             "white_wolf_king",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -2714,7 +2702,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -2909,7 +2897,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -3316,7 +3304,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -3716,22 +3704,19 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -3793,18 +3778,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -3960,22 +3942,19 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -4036,18 +4015,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -7310,18 +7286,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "step_2",
@@ -7350,18 +7323,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_4",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -7451,18 +7421,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -7664,18 +7631,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -8163,18 +8127,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "step_2",
@@ -9389,18 +9350,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "step_2",
@@ -10085,7 +10043,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -10282,7 +10240,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -10651,7 +10609,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -10829,7 +10787,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -11013,7 +10971,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -11227,7 +11185,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -11441,7 +11399,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -11874,7 +11832,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -12105,7 +12063,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -13143,22 +13101,19 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -13219,18 +13174,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -13376,22 +13328,19 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -13452,18 +13401,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -13587,18 +13533,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -13662,18 +13605,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -15042,7 +14982,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -20928,19 +20868,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -21007,19 +20944,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -21120,7 +21054,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -21135,19 +21069,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -21199,19 +21130,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -21323,7 +21251,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -21338,19 +21266,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "step_3",
@@ -21428,19 +21353,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -21558,7 +21480,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -21573,19 +21495,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -21637,19 +21556,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "wolf",
             "seed_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -21974,20 +21890,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "war_wolf",
             "seed_wolf",
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "wolf_beauty_charm",
@@ -22077,20 +21990,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "war_wolf",
             "seed_wolf",
             "wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺或感染，請選擇要擊殺或感染的玩家",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "wolf_beauty_charm",
@@ -22783,18 +22693,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "step_2",
@@ -23232,18 +23139,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "step_2",
@@ -23308,18 +23212,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "step_2",
@@ -24951,7 +24852,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -24966,18 +24867,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "wolf_girl_confess",
           "actorLabel": "狼女孩",
           "actorRoleIds": [
             "wolf_girl"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_girl_confess",
           "openPrompt": "狼女孩請睜眼",
           "actionPrompt": "所有小狼請舉手\n請選擇表白的玩家",
-          "closePrompt": "狼女孩請閉眼\n所有小狼手放下",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼女孩請閉眼\n所有小狼手放下"
         },
         {
           "stepId": "step_3",
@@ -24992,18 +24890,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "poisoner_poison",
           "actorLabel": "毒師",
           "actorRoleIds": [
             "poisoner"
           ],
-          "actionType": "confirm_only",
+          "actionType": "poisoner_poison",
           "openPrompt": "毒師請睜眼",
           "actionPrompt": "請選擇要毒的玩家",
-          "closePrompt": "毒師請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "毒師請閉眼"
         },
         {
           "stepId": "seer_check",
@@ -25066,18 +24961,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "poisoner_poison",
           "actorLabel": "毒師",
           "actorRoleIds": [
             "poisoner"
           ],
-          "actionType": "confirm_only",
+          "actionType": "poisoner_poison",
           "openPrompt": "毒師請睜眼",
           "actionPrompt": "請選擇要毒的玩家",
-          "closePrompt": "毒師請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "毒師請閉眼"
         },
         {
           "stepId": "seer_check",
@@ -27794,18 +27686,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "step_2",
@@ -27834,18 +27723,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_4",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -27961,18 +27847,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "nightmare_fear",
           "actorLabel": "夢魘",
           "actorRoleIds": [
             "nightmare"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nightmare_fear",
           "openPrompt": "夢魘請睜眼",
           "actionPrompt": "請選擇要恐懼的玩家",
-          "closePrompt": "夢魘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夢魘請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -28399,18 +28282,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -28624,18 +28504,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "mech_wolf_learn",
@@ -29032,18 +28909,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "hybrid_choose",
           "actorLabel": "混血兒",
           "actorRoleIds": [
             "hybrid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "hybrid_choose",
           "openPrompt": "混血兒請睜眼",
           "actionPrompt": "請選擇你要混的玩家",
-          "closePrompt": "混血兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "混血兒請閉眼"
         },
         {
           "stepId": "step_2",
@@ -31150,18 +31024,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "poisoner_poison",
           "actorLabel": "毒師",
           "actorRoleIds": [
             "poisoner"
           ],
-          "actionType": "confirm_only",
+          "actionType": "poisoner_poison",
           "openPrompt": "毒師請睜眼",
           "actionPrompt": "請選擇要毒的玩家",
-          "closePrompt": "毒師請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "毒師請閉眼"
         },
         {
           "stepId": "step_4",
@@ -31175,30 +31046,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "蒙面人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "treasure_master_choose",
           "actorLabel": "盜寶大師",
           "actorRoleIds": [
             "treasure_master"
           ],
-          "actionType": "confirm_only",
+          "actionType": "treasure_master_choose",
           "openPrompt": "盜寶大師請睜眼",
           "actionPrompt": "剩餘的三個身分為...，請選擇一個身分",
-          "closePrompt": "盜寶大師請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "盜寶大師請閉眼"
         },
         {
-          "stepId": "step_6",
-          "actorLabel": "預言家",
-          "actorRoleIds": [],
-          "actionType": "confirm_only",
-          "openPrompt": "預言家請睜眼",
+          "stepId": "psychic_check",
+          "actorLabel": "通靈師",
+          "actorRoleIds": [
+            "psychic"
+          ],
+          "actionType": "psychic_check",
+          "openPrompt": "通靈師請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "通靈師請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -31214,18 +31081,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "treasure_master_choose",
           "actorLabel": "盜寶大師",
           "actorRoleIds": [
             "treasure_master"
           ],
-          "actionType": "confirm_only",
+          "actionType": "treasure_master_choose",
           "openPrompt": "盜寶大師請睜眼",
           "actionPrompt": "請選擇一個身分",
-          "closePrompt": "盜寶大師請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "盜寶大師請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -31251,30 +31115,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "poisoner_poison",
           "actorLabel": "毒師",
           "actorRoleIds": [
             "poisoner"
           ],
-          "actionType": "confirm_only",
+          "actionType": "poisoner_poison",
           "openPrompt": "毒師請睜眼",
           "actionPrompt": "請選擇要毒的玩家",
-          "closePrompt": "毒師請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "毒師請閉眼"
         },
         {
-          "stepId": "step_5",
-          "actorLabel": "預言家",
-          "actorRoleIds": [],
-          "actionType": "confirm_only",
-          "openPrompt": "預言家請睜眼",
+          "stepId": "psychic_check",
+          "actorLabel": "通靈師",
+          "actorRoleIds": [
+            "psychic"
+          ],
+          "actionType": "psychic_check",
+          "openPrompt": "通靈師請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "通靈師請閉眼"
         },
         {
           "stepId": "hunter_gesture",

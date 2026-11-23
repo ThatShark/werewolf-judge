@@ -45,6 +45,7 @@ export interface RoleDefinition {
 export type NightActionType =
   | 'wolf_kill'
   | 'witch_action'
+  | 'poisoner_poison'
   | 'seer_check'
   | 'psychic_check'
   | 'guard_protect'
@@ -54,6 +55,10 @@ export type NightActionType =
   | 'mech_wolf_night_action'
   | 'wolf_beauty_charm'
   | 'dream_catcher_dream'
+  | 'wolf_girl_confess'
+  | 'treasure_master_choose'
+  | 'nightmare_fear'
+  | 'hybrid_choose'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -107,6 +112,8 @@ export interface RuleOverrides {
   noSheriffDeadDirection: SpeakingDirection;
   /** [V2.0 擴充] 有警長且有死訊時，是否優先採用死左／死右（平安夜切回警左／警右） */
   sheriffUseDeadSideOnDeath: boolean;
+  /** 混血兒是否計入平民邊屠邊人數（預設 false 不計入屠邊；12 人局混血兒可切換開啟） */
+  hybridCountsAsVillager?: boolean;
 }
 
 /** [V2.0 新增] 主持三大維度（組合成 8 種主持模式） */
@@ -220,6 +227,7 @@ export type GamePhase =
 export type DeathReason =
   | 'wolf_kill'
   | 'witch_poison'
+  | 'poisoner_poison'
   | 'milk_pierce'
   | 'exiled'
   | 'hunter_shoot'
@@ -227,12 +235,16 @@ export type DeathReason =
   | 'self_explode'
   | 'white_wolf_king_explode'
   | 'wolf_beauty_charm'
+  | 'wolf_girl_breakup'
   | 'knight_duel'
   | 'knight_duel_fail'
   | 'dream_catcher_consecutive'
   | 'dream_catcher_link'
   | 'mech_wolf_poison'
   | 'mech_wolf_kill'
+  | 'masked_delayed_death'
+  | 'treasure_master_exile_delayed'
+  | 'evil_knight_counter'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -244,6 +256,14 @@ export interface PlayerSeat {
   deathRound?: number;
   /** 特殊狀態：白痴已翻牌免死（失去投票權） */
   idiotRevealed?: boolean;
+  /** 特殊狀態：蒙面人夜間被毒／攝／狼刀進入負傷延遲死亡（隔天發言後死亡） */
+  maskedDelayedDeath?: boolean;
+  /** 蒙面人觸發負傷的原始夜間死因 */
+  maskedDelayedDeathReason?: DeathReason;
+  /** 特殊狀態：盜寶蒙面狼為最後一狼被放逐時暫時不死，隔夜再刀一人後出局 */
+  treasureMasterMaskedExileSurvived?: boolean;
+  /** 特殊狀態：被種狼感染轉化為狼人陣營並失去原有技能 */
+  infectedBySeedWolf?: boolean;
 }
 
 export interface MechWolfRuntimeState {
@@ -254,18 +274,68 @@ export interface MechWolfRuntimeState {
   lastGuardedSeat: number | null;
 }
 
+export interface WolfGirlRuntimeState {
+  confessedSeat: number | null;
+  /** true: 表白平民成功（與狼隊同勝但身分維持平民）；false: 表白神職失敗；null: 尚未表白 */
+  confessSuccess: boolean | null;
+  /** 表白成功時該平民的勝利條件與狼隊相同 */
+  alignedWithWolf: boolean;
+}
+
+export type TreasureMasterAffiliation = 'wolf' | 'god' | 'villager' | null;
+
+export interface TreasureMasterRuntimeState {
+  /** 首夜剩餘三張底牌的角色 ID */
+  bottomCards: string[];
+  /** 依底牌規則判定之陣營／屠邊歸屬（盜寶狼→wolf；好人雙神→god；好人雙民→villager） */
+  affiliation: TreasureMasterAffiliation;
+  /** 盜寶狼是否已因場上原狼全滅而入狼隊帶刀 */
+  hasJoinedWolfTeam: boolean;
+  /** 上一晚選擇使用的底牌角色 ID（連續兩晚不可選相同技能） */
+  lastChosenCardRoleId: string | null;
+  /** 今晚選擇使用的底牌角色 ID */
+  currentNightCardRoleId: string | null;
+  /** 盜寶蒙面狼為最後一狼被放逐免死後，標記隔夜點刀後正式死亡 */
+  pendingExileDeathNextNight: boolean;
+}
+
+export interface HybridRuntimeState {
+  /** 首夜選擇的榜樣座號 */
+  idolSeat: number | null;
+  /** 綁定之勝利陣營（依榜樣所屬陣營即時決定） */
+  alignedFaction: Faction | null;
+}
+
+export interface SeedWolfRuntimeState {
+  /** 整局限一次之感染技能是否已使用 */
+  infectUsed: boolean;
+  /** 被成功感染轉化為狼人的座號（若遭守衛擋下則為 null） */
+  infectedSeat: number | null;
+}
+
+export interface HiddenWolfRuntimeState {
+  /** 場上其他狼人全數出局後，隱狼自動入狼隊並獲得狼刀權限 */
+  hasJoinedWolfTeam: boolean;
+}
+
 export interface NightActionDraft {
   round: number;
   guardTarget: number | null;
   wolfTarget: number | null;
   witchUseAntidote: boolean;
   witchPoisonTarget: number | null;
+  poisonerTarget?: number | null;
   seerCheckTarget: number | null;
   psychicCheckTarget: number | null;
   mechWolfLearnTarget: number | null;
   mechWolfSkillTarget: number | null;
   wolfBeautyCharmTarget?: number | null;
   dreamCatcherTarget?: number | null;
+  wolfGirlConfessTarget?: number | null;
+  treasureMasterCardRoleId?: string | null;
+  nightmareFearTarget?: number | null;
+  hybridIdolTarget?: number | null;
+  seedWolfInfectTarget?: number | null;
 }
 
 export interface BearRoarResult {
@@ -434,6 +504,11 @@ export interface GameState {
   lastDreamTarget: number | null;
   knightDuelUsed: boolean;
   lastBearRoar: BearRoarResult | null;
+  lastFearedSeat?: number | null;
+  evilKnightCounterUsed?: boolean;
+  hybridState?: HybridRuntimeState;
+  seedWolfState?: SeedWolfRuntimeState;
+  hiddenWolfState?: HiddenWolfRuntimeState;
 
   /** 自動發言順序與單人倒數計時引擎 */
   speakingQueue: number[];
@@ -504,11 +579,25 @@ export interface NightResolutionInput {
   ruleOverrides: RuleOverrides;
   witchAntidoteUsed: boolean;
   witchPoisonUsed: boolean;
+  poisonerPoisonUsed?: boolean;
   lastGuardedSeat: number | null;
   mechWolfState: MechWolfRuntimeState;
   pendingSelfExplodeSeat: number | null;
   lastCharmedSeat?: number | null;
   lastDreamTarget?: number | null;
+  wolfGirlState?: WolfGirlRuntimeState;
+  treasureMasterState?: TreasureMasterRuntimeState;
+  /** 首夜狼人無刀板子（如狼女孩、盜寶大師）於第一晚強制禁止狼刀 */
+  firstNightNoWolfKill?: boolean;
+  /** 夢魘上一晚恐懼對象（不可連恐同一人） */
+  lastFearedSeat?: number | null;
+  /** 惡靈騎士一次性反傷是否已觸發 */
+  evilKnightCounterUsed?: boolean;
+  /** 同晚預言家與女巫同時對惡靈騎士施放技能時，預言家是否先於女巫行動（預設 false：女巫先於預言家） */
+  seerActsBeforeWitch?: boolean;
+  hybridState?: HybridRuntimeState;
+  seedWolfState?: SeedWolfRuntimeState;
+  hiddenWolfState?: HiddenWolfRuntimeState;
 }
 
 export interface NightResolutionResult {
@@ -516,12 +605,22 @@ export interface NightResolutionResult {
   deaths: NightDeathRecord[];
   witchAntidoteUsed: boolean;
   witchPoisonUsed: boolean;
+  poisonerPoisonUsed: boolean;
   lastGuardedSeat: number | null;
   mechWolfState: MechWolfRuntimeState;
   pendingSelfExplodeSeat: number | null;
   lastCharmedSeat: number | null;
   activeCharmedSeat: number | null;
   lastDreamTarget: number | null;
+  wolfGirlState: WolfGirlRuntimeState;
+  treasureMasterState: TreasureMasterRuntimeState;
+  lastFearedSeat: number | null;
+  evilKnightCounterUsed: boolean;
+  hybridState: HybridRuntimeState;
+  seedWolfState: SeedWolfRuntimeState;
+  hiddenWolfState: HiddenWolfRuntimeState;
+  /** 今晚因蒙面人被動而進入負傷／中毒延遲死亡的座號 */
+  maskedDelayedSeats: number[];
   bearRoar: BearRoarResult | null;
   seerResult: SeerCheckOutcome | null;
   psychicResult: PsychicCheckOutcome | null;
@@ -534,9 +633,36 @@ export interface DayExileResult {
   seats: PlayerSeat[];
   exiledSeat: number;
   idiotRevealed: boolean;
+  /** 盜寶蒙面狼為最後一狼被放逐時暫時免死並可隔夜再刀一人 */
+  treasureMasterMaskedSurvived?: boolean;
   charmedDeathSeat: number | null;
   shootEligibility: ShootEligibility | null;
   mechWolfState: MechWolfRuntimeState;
+  treasureMasterState?: TreasureMasterRuntimeState;
+  victory: VictoryResult;
+}
+
+export interface WolfGirlExplodeResult {
+  allowed: boolean;
+  reason?: string;
+  seats: PlayerSeat[];
+  wolfGirlSeat: number;
+  /** 因愛情破裂直接出局的先前表白對象（若存活），出局後無法發動技能 */
+  breakupDeathSeat: number | null;
+  /** 本輪放逐投票是否直接作廢 */
+  voidedExileVote: boolean;
+  pendingSelfExplodeSeat: number | null;
+  mechWolfState: MechWolfRuntimeState;
+  victory: VictoryResult;
+}
+
+export interface MaskedDelayedDeathResult {
+  allowed: boolean;
+  reason?: string;
+  seats: PlayerSeat[];
+  eliminatedSeat: number | null;
+  mechWolfState: MechWolfRuntimeState;
+  treasureMasterState?: TreasureMasterRuntimeState;
   victory: VictoryResult;
 }
 
@@ -545,9 +671,12 @@ export interface ShootResolutionResult {
   shooterSeat: number;
   targetSeat: number;
   deathReason: 'hunter_shoot' | 'wolf_king_shoot';
+  /** 夜間獵人開槍射中惡靈騎士時，惡靈騎士免疫夜間傷害存活 */
+  targetSurvived?: boolean;
   charmedDeathSeat: number | null;
   chainedShootEligibility: ShootEligibility | null;
   mechWolfState: MechWolfRuntimeState;
+  hiddenWolfState?: HiddenWolfRuntimeState;
   victory: VictoryResult;
 }
 

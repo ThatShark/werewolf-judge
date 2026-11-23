@@ -6,6 +6,7 @@ import type {
   PsychicCheckOutcome,
   RuleOverrides,
   SeerCheckOutcome,
+  TreasureMasterRuntimeState,
 } from './types';
 
 export function findMechWolfSeat(seats: PlayerSeat[]): PlayerSeat | undefined {
@@ -64,6 +65,7 @@ export function getPsychicCheckResult(
   seats: PlayerSeat[],
   mechWolfState: MechWolfRuntimeState,
   targetSeat: number,
+  treasureMasterState?: TreasureMasterRuntimeState,
 ): PsychicCheckOutcome | null {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.roleId) return null;
@@ -72,6 +74,13 @@ export function getPsychicCheckResult(
     return {
       targetSeat,
       perceivedRoleId: mechWolfState.learnedRoleId,
+    };
+  }
+
+  if (target.roleId === 'treasure_master' && treasureMasterState?.currentNightCardRoleId) {
+    return {
+      targetSeat,
+      perceivedRoleId: treasureMasterState.currentNightCardRoleId,
     };
   }
 
@@ -87,6 +96,22 @@ export function getSeerCheckResult(
 ): SeerCheckOutcome | null {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.roleId) return null;
+
+  // 被種狼感染轉化為狼人者（含被感染的隱狼）被預言家查驗皆為狼人（查殺）
+  if (target.infectedBySeedWolf) {
+    return {
+      targetSeat,
+      faction: 'wolf',
+    };
+  }
+
+  // 隱狼與混血兒被預言家查驗恆為好人（金水）
+  if (target.roleId === 'hidden_wolf' || target.roleId === 'hybrid') {
+    return {
+      targetSeat,
+      faction: 'good',
+    };
+  }
 
   const role = getRoleById(target.roleId);
   if (!role) return null;

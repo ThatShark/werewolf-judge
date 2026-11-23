@@ -6,17 +6,22 @@ import {
   applyMechWolfLearn,
   canDreamCatcherDream,
   canGuardTarget,
+  canHybridChooseIdol,
   canMechWolfLearn,
   canMechWolfUseLearnedSkill,
+  canNightmareFear,
+  canSeedWolfInfect,
   canWitchUseAntidote,
   canWitchUsePoison,
   canWolfBeautyCharm,
+  createInitialSeedWolfState,
   findMechWolfSeat,
   getNightSteps,
   getPsychicCheckResult,
   getSeerCheckResult,
   getStepClaimSummary,
   getUnclaimedSeatNumbers,
+  isSeatWolfFaction,
 } from '../../logic';
 import type { ActionCheckResult, NightActionDraft, NightActionType } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
@@ -46,7 +51,7 @@ function getInitialTargetForStep(
 ): number | null {
   switch (actionType) {
     case 'wolf_kill':
-      return draft.wolfTarget;
+      return draft.seedWolfInfectTarget ?? draft.wolfTarget;
     case 'guard_protect':
       return draft.guardTarget;
     case 'witch_action':
@@ -63,6 +68,10 @@ function getInitialTargetForStep(
       return draft.wolfBeautyCharmTarget ?? null;
     case 'dream_catcher_dream':
       return draft.dreamCatcherTarget ?? null;
+    case 'nightmare_fear':
+      return draft.nightmareFearTarget ?? null;
+    case 'hybrid_choose':
+      return draft.hybridIdolTarget ?? null;
     default:
       return null;
   }
@@ -98,6 +107,9 @@ function getSeatActionIcons(
   }
   if (draft.wolfBeautyCharmTarget === seatNumber) icons.push('💘');
   if (draft.dreamCatcherTarget === seatNumber) icons.push('💤');
+  if (draft.nightmareFearTarget === seatNumber) icons.push('😱');
+  if (draft.hybridIdolTarget === seatNumber) icons.push('🧬');
+  if (draft.seedWolfInfectTarget === seatNumber) icons.push('🦠');
   if (draft.mechWolfLearnTarget === seatNumber || draft.mechWolfSkillTarget === seatNumber) {
     icons.push('🤖');
   }
@@ -120,6 +132,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const pendingSelfExplodeSeat = useGameStore((s) => s.pendingSelfExplodeSeat);
   const lastCharmedSeat = useGameStore((s) => s.lastCharmedSeat);
   const lastDreamTarget = useGameStore((s) => s.lastDreamTarget);
+  const lastFearedSeat = useGameStore((s) => s.lastFearedSeat ?? null);
+  const seedWolfState = useGameStore((s) => s.seedWolfState ?? createInitialSeedWolfState());
 
   const claimSeatRole = useGameStore((s) => s.claimSeatRole);
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
@@ -142,6 +156,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   );
   const [pendingUseAntidote, setPendingUseAntidote] = useState<boolean>(
     () => currentNightDraft.witchUseAntidote,
+  );
+  const [pendingSeedWolfInfect, setPendingSeedWolfInfect] = useState<boolean>(
+    () => currentNightDraft.seedWolfInfectTarget != null,
   );
   const [revealConfirmed, setRevealConfirmed] = useState(false);
 
@@ -181,6 +198,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     if (!currentStep) return;
     setPendingTarget(getInitialTargetForStep(currentStep.actionType, currentNightDraft));
     setPendingUseAntidote(currentNightDraft.witchUseAntidote);
+    setPendingSeedWolfInfect(currentNightDraft.seedWolfInfectTarget != null);
     setRevealConfirmed(false);
     setPendingClaimSeat(null);
     setClaimError(null);
@@ -308,11 +326,24 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     (currentStep.actionType === 'mech_wolf_night_action' &&
       mechWolfState.learnedRoleId === 'psychic');
 
+  // 夢魘恐懼到狼人 → 整晚狼隊空刀；種狼開啟感染 → 女巫顯示空刀
+  const fearedSeatObj =
+    currentNightDraft.nightmareFearTarget != null
+      ? seats.find((s) => s.seatNumber === currentNightDraft.nightmareFearTarget)
+      : undefined;
+  const wolfTeamFearedTonight = Boolean(fearedSeatObj && isSeatWolfFaction(fearedSeatObj));
+  const seedWolfAliveCanInfect =
+    seats.some((s) => s.roleId === 'seed_wolf' && s.isAlive) && !seedWolfState.infectUsed;
+  const effectiveWolfTargetForWitch =
+    wolfTeamFearedTonight || currentNightDraft.seedWolfInfectTarget != null
+      ? null
+      : currentNightDraft.wolfTarget;
+
   // 女巫解藥檢核（以本地預選狀態評估互斥）
   const antidoteCheck = canWitchUseAntidote(
     seats,
     round,
-    currentNightDraft.wolfTarget,
+    effectiveWolfTargetForWitch,
     witchAntidoteUsed,
     ruleOverrides,
   );
@@ -322,6 +353,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const pendingValidation: ActionCheckResult = (() => {
     if (isClaimStage) return { allowed: true };
     switch (currentStep.actionType) {
+      case 'wolf_kill':
+        if (pendingSeedWolfInfect && pendingTarget !== null) {
+          return canSeedWolfInfect(seats, seedWolfState, pendingTarget);
+        }
+        return { allowed: true };
       case 'guard_protect':
         return actorSeatsAlive
           ? canGuardTarget(lastGuardedSeat, pendingTarget, seats)
@@ -352,6 +388,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       case 'dream_catcher_dream':
         return dreamCatcherSeat?.isAlive
           ? canDreamCatcherDream(seats, pendingTarget)
+          : { allowed: true };
+      case 'nightmare_fear':
+        return actorSeatsAlive
+          ? canNightmareFear(seats, lastFearedSeat, pendingTarget, round, { allowSkip: true })
+          : { allowed: true };
+      case 'hybrid_choose':
+        return round === 1 && actorSeatsAlive
+          ? canHybridChooseIdol(seats, pendingTarget, round, { allowSkip: false })
           : { allowed: true };
       default:
         return { allowed: true };
@@ -385,8 +429,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         currentNightDraft.mechWolfSkillTarget === hunterSeat.seatNumber));
 
   const wolfTargetSeat =
-    currentNightDraft.wolfTarget !== null
-      ? seats.find((s) => s.seatNumber === currentNightDraft.wolfTarget)
+    effectiveWolfTargetForWitch !== null
+      ? seats.find((s) => s.seatNumber === effectiveWolfTargetForWitch)
       : undefined;
 
   const mechLearnedTargetSeat =
@@ -461,11 +505,27 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
     switch (currentStep.actionType) {
       case 'wolf_kill': {
+        if (pendingSeedWolfInfect) {
+          const check = canSeedWolfInfect(seats, seedWolfState, seatNumber);
+          return {
+            selected: pendingTarget === seatNumber,
+            disabled: !check.allowed,
+            reason: check.allowed ? undefined : check.reason,
+            onSelect: toggleTarget,
+          };
+        }
         const isWolfBeauty = isAlive && seat?.roleId === 'wolf_beauty';
+        const isEvilKnight = isAlive && seat?.roleId === 'evil_knight';
         return {
           selected: pendingTarget === seatNumber,
-          disabled: !isAlive || isWolfBeauty,
-          reason: !isAlive ? '已出局' : isWolfBeauty ? '狼美禁自刀' : undefined,
+          disabled: !isAlive || isWolfBeauty || isEvilKnight,
+          reason: !isAlive
+            ? '已出局'
+            : isWolfBeauty
+              ? '狼美禁自刀'
+              : isEvilKnight
+                ? '惡靈禁自刀'
+                : undefined,
           onSelect: toggleTarget,
         };
       }
@@ -531,6 +591,24 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           onSelect: toggleTarget,
         };
       }
+      case 'nightmare_fear': {
+        const check = canNightmareFear(seats, lastFearedSeat, seatNumber, round);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'hybrid_choose': {
+        const check = canHybridChooseIdol(seats, seatNumber, round);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
       default:
         return {
           selected: false,
@@ -544,7 +622,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const commitCurrentStepDraft = () => {
     switch (currentStep.actionType) {
       case 'wolf_kill':
-        updateNightDraft({ wolfTarget: pendingTarget });
+        if (pendingSeedWolfInfect && pendingTarget !== null) {
+          updateNightDraft({ wolfTarget: null, seedWolfInfectTarget: pendingTarget });
+        } else {
+          updateNightDraft({ wolfTarget: pendingTarget, seedWolfInfectTarget: null });
+        }
         break;
       case 'guard_protect':
         updateNightDraft({ guardTarget: pendingTarget });
@@ -572,6 +654,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         break;
       case 'dream_catcher_dream':
         updateNightDraft({ dreamCatcherTarget: pendingTarget });
+        break;
+      case 'nightmare_fear':
+        updateNightDraft({ nightmareFearTarget: pendingTarget });
+        break;
+      case 'hybrid_choose':
+        updateNightDraft({ hybridIdolTarget: pendingTarget });
         break;
       default:
         break;
@@ -1104,7 +1192,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                 <div className="text-xs text-slate-300">
                   {pendingTarget !== null ? (
                     <span>
-                      預選落刀：<strong className="text-rose-300">{pendingTarget} 號</strong>
+                      {pendingSeedWolfInfect ? '預選種狼感染：' : '預選落刀：'}
+                      <strong className={pendingSeedWolfInfect ? 'text-purple-300' : 'text-rose-300'}>
+                        {pendingTarget} 號
+                      </strong>
                     </span>
                   ) : (
                     <span>
@@ -1117,15 +1208,74 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                     </span>
                   )}
                 </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {seedWolfAliveCanInfect && !wolfTeamFearedTonight && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingSeedWolfInfect((prev) => !prev);
+                        setPendingTarget(null);
+                      }}
+                      className={`min-h-12 rounded-xl border px-3 text-xs font-bold transition ${
+                        pendingSeedWolfInfect
+                          ? 'border-purple-400 bg-purple-500/25 text-purple-100'
+                          : 'border-purple-500/40 bg-purple-950/40 text-purple-200 hover:bg-purple-900/40'
+                      }`}
+                    >
+                      {pendingSeedWolfInfect ? '✓ 種狼感染模式（再點切回狼刀）' : '🦠 改為種狼感染（限一次）'}
+                    </button>
+                  )}
+                  {pendingTarget !== null && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingTarget(null)}
+                      className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800"
+                    >
+                      改為空刀
+                    </button>
+                  )}
+                </div>
+                {wolfTeamFearedTonight && (
+                  <div className="w-full rounded-xl border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-200">
+                    ⚠️ 今晚夢魘恐懼到狼隊友，狼隊強制空刀（無法落刀或感染）
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'nightmare_fear' && (
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <div className="text-xs text-slate-300">
+                  昨晚恐懼：
+                  <strong className="text-amber-300">
+                    {lastFearedSeat !== null ? `${lastFearedSeat} 號` : '無'}
+                  </strong>
+                  {' · '}
+                  預選：
+                  <strong className="text-purple-300">
+                    {pendingTarget !== null ? `${pendingTarget} 號` : '不恐懼'}
+                  </strong>
+                </div>
                 {pendingTarget !== null && (
                   <button
                     type="button"
                     onClick={() => setPendingTarget(null)}
                     className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800"
                   >
-                    改為空刀
+                    改為不恐懼
                   </button>
                 )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'hybrid_choose' && (
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <div className="text-xs text-slate-300">
+                  首夜榜樣：
+                  <strong className="text-emerald-300">
+                    {pendingTarget !== null ? `${pendingTarget} 號（勝利條件將綁定其陣營）` : '請點選上方座位選擇榜樣'}
+                  </strong>
+                </div>
               </div>
             )}
 

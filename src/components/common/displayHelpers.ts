@@ -1,10 +1,13 @@
 import { getRoleById } from '../../data/roles';
+import { formatNotebookExportText, hasNotebookContent } from '../../logic/notebook';
 import type {
   BoardDefinition,
   DeathReason,
   GamePhase,
   GameState,
   GameWinner,
+  MechWolfRuntimeState,
+  NotebookState,
   PlayerSeat,
   RuleOverrides,
   SheriffState,
@@ -170,19 +173,35 @@ export function formatVoteRecordLines(record: VoteRoundRecord): string[] {
   return lines;
 }
 
+export function buildReplayDownloadFilename(boardName?: string, now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const safeBoard = (boardName ?? 'werewolf')
+    .replace(/[\\/:*?"<>|\s]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return `werewolf-replay-${safeBoard || 'game'}-${stamp}.txt`;
+}
+
 export function buildGameReplayText(
   state: Pick<
     GameState,
     'round' | 'winner' | 'winReason' | 'seats' | 'nightHistory' | 'dayHistory'
-  > & { sheriffState?: SheriffState },
+  > & {
+    sheriffState?: SheriffState;
+    mechWolfState?: MechWolfRuntimeState;
+    notebook?: NotebookState;
+    ruleOverrides?: Pick<RuleOverrides, 'enableSheriff'>;
+  },
   board?: BoardDefinition,
 ): string {
   const lines: string[] = [];
+  const aliveCount = state.seats.filter((s) => s.isAlive).length;
   lines.push(`【狼人殺對局復盤】${board ? board.name : '未指定板子'}`);
   lines.push(`勝利陣營：${formatFactionLabel(state.winner)}`);
   if (state.winReason) {
     lines.push(`獲勝原因：${state.winReason}`);
   }
+  lines.push(`對局統計：共 ${state.round} 輪｜最終存活 ${aliveCount} / ${state.seats.length} 人`);
   const sheriffSummary = formatSheriffStatusSummary(state.sheriffState, state.seats);
   if (sheriffSummary) {
     lines.push(sheriffSummary);
@@ -192,12 +211,25 @@ export function buildGameReplayText(
   lines.push('【玩家身分總覽】');
   for (const seat of state.seats) {
     const roleName = getRoleById(seat.roleId)?.name ?? '未指派';
+    const tags: string[] = [];
+    if (
+      state.sheriffState?.badgeStatus === 'active' &&
+      state.sheriffState.sheriffSeat === seat.seatNumber
+    ) {
+      tags.push('警長');
+    }
+    if (seat.roleId === 'mech_wolf' && state.mechWolfState?.learnedRoleId) {
+      const learnedName =
+        getRoleById(state.mechWolfState.learnedRoleId)?.name ?? state.mechWolfState.learnedRoleId;
+      tags.push(`學：${learnedName}`);
+    }
+    const tagSuffix = tags.length > 0 ? ` [${tags.join(' / ')}]` : '';
     const statusText = seat.isAlive
       ? seat.idiotRevealed
         ? '存活（白痴已翻牌）'
         : '存活'
       : `第 ${seat.deathRound ?? '?'} 輪出局（${formatDeathReason(seat.deathReason)}）`;
-    lines.push(`- ${formatSeatDisplay(seat)}：${roleName}｜${statusText}`);
+    lines.push(`- ${formatSeatDisplay(seat)}：${roleName}${tagSuffix}｜${statusText}`);
   }
 
   const maxRound = Math.max(
@@ -277,6 +309,16 @@ export function buildGameReplayText(
         }
       }
     }
+  }
+
+  if (state.notebook && hasNotebookContent(state.notebook)) {
+    lines.push('');
+    lines.push(
+      formatNotebookExportText(state.notebook, state.seats, board?.name, {
+        round: state.round,
+        enableSheriff: state.ruleOverrides?.enableSheriff ?? true,
+      }),
+    );
   }
 
   return lines.join('\n');

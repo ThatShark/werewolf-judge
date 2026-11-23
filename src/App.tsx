@@ -92,7 +92,7 @@ function App() {
       case 'day_vote':
         return <DayVoteScreen />;
       case 'game_over':
-        return <GameOverScreen />;
+        return <GameOverScreen onOpenNotebook={() => setNotebookOpen(true)} />;
     }
   };
 
@@ -101,7 +101,8 @@ function App() {
     phase === 'pass_and_reveal' ||
     phase === 'night' ||
     phase === 'day_announcement' ||
-    phase === 'day_vote';
+    phase === 'day_vote' ||
+    phase === 'game_over';
 
   const renderMainContent = () => {
     switch (activeView) {

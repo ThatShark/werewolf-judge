@@ -9,3 +9,4 @@ export * from './voting';
 export * from './dayResolution';
 export * from './nightResolution';
 export * from './manualControl';
+export * from './notebook';

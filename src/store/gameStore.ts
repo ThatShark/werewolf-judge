@@ -11,6 +11,7 @@ import {
   clampOnlineJudgeSettings,
   createEmptyNightDraft,
   createInitialMechWolfState,
+  createInitialNotebookState,
   createInitialSeats,
   createInitialSheriffState,
   createManualVictoryResult,
@@ -29,6 +30,7 @@ import {
   resolveShoot,
   resolveWhiteWolfKingExplode,
   resumeDeferredSheriffElection,
+  setNotebookGridCell as setNotebookGridCellLogic,
   shouldTriggerAutoVictory,
   startSheriffElection as startSheriffElectionLogic,
   syncSheriffBadgeOnDeaths,
@@ -51,6 +53,7 @@ import type {
   KnightDuelResult,
   ManualVictoryOverrideKind,
   NightActionDraft,
+  NotebookMode,
   OnlineJudgeSettings,
   RuleOverrides,
   ShootEligibility,
@@ -147,7 +150,14 @@ export interface GameStore extends GameState {
   overrideVictory: (kind: ManualVictoryOverrideKind, customReason?: string) => void;
   forceContinueGame: () => void;
 
+  /** 玩家雙模式筆記本 */
+  setNotebookMode: (mode: NotebookMode) => void;
+  setNotebookFreeformText: (text: string) => void;
+  setNotebookGridCell: (stageKey: string, seatNumber: number, value: string) => void;
+  clearNotebook: (scope?: 'all' | 'freeform' | 'grid') => void;
+
   restartGame: (options: { keepNicknames: boolean }) => void;
+  dissolveRoom: () => void;
 }
 
 function createInitialGameState(): GameState & {
@@ -186,6 +196,7 @@ function createInitialGameState(): GameState & {
     sheriffState: createInitialSheriffState(),
     exilePkCandidates: [],
     voteInputMode: 'by_voter',
+    notebook: createInitialNotebookState(),
     nightHistory: [],
     dayHistory: [],
     winner: null,
@@ -1426,6 +1437,54 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
+      setNotebookMode: (mode) => {
+        set((state) => ({
+          notebook: {
+            ...state.notebook,
+            mode,
+          },
+        }));
+      },
+
+      setNotebookFreeformText: (text) => {
+        set((state) => ({
+          notebook: {
+            ...state.notebook,
+            freeformText: text,
+          },
+        }));
+      },
+
+      setNotebookGridCell: (stageKey, seatNumber, value) => {
+        set((state) => ({
+          notebook: setNotebookGridCellLogic(state.notebook, stageKey, seatNumber, value),
+        }));
+      },
+
+      clearNotebook: (scope = 'all') => {
+        set((state) => {
+          if (scope === 'freeform') {
+            return {
+              notebook: {
+                ...state.notebook,
+                freeformText: '',
+              },
+            };
+          }
+          if (scope === 'grid') {
+            return {
+              notebook: {
+                ...state.notebook,
+                gridCells: {},
+              },
+            };
+          }
+          return {
+            notebook: createInitialNotebookState(state.notebook.mode),
+          };
+        });
+      },
+
       restartGame: ({ keepNicknames }) => {
         const state = get();
         if (keepNicknames) {
@@ -1439,6 +1498,7 @@ export const useGameStore = create<GameStore>()(
             ambientAudio: { ...state.ambientAudio },
             ruleOverrides: { ...state.ruleOverrides },
             voteInputMode: state.voteInputMode,
+            notebook: createInitialNotebookState(state.notebook.mode),
             savedNicknames: { ...state.savedNicknames },
             defaultSpeakDurationSec: state.defaultSpeakDurationSec,
             remainingSeconds: state.defaultSpeakDurationSec,
@@ -1451,6 +1511,13 @@ export const useGameStore = create<GameStore>()(
         set({
           ...createInitialGameState(),
           activeView: state.activeView,
+        });
+      },
+
+      dissolveRoom: () => {
+        set({
+          ...createInitialGameState(),
+          activeView: 'home',
         });
       },
     }),
@@ -1481,6 +1548,11 @@ export const useGameStore = create<GameStore>()(
           sheriffState: {
             ...createInitialSheriffState(),
             ...(persisted.sheriffState ?? {}),
+          },
+          notebook: {
+            ...createInitialNotebookState(),
+            ...(persisted.notebook ?? {}),
+            gridCells: persisted.notebook?.gridCells ?? {},
           },
           voteInputMode: persisted.voteInputMode ?? 'by_voter',
           forceContinueAfterVictory: persisted.forceContinueAfterVictory ?? false,

@@ -6,6 +6,22 @@ export type PlayerCountFilter = '6' | '7' | '8' | '9' | '10' | '12' | 'multi';
 /** [V2.0 新增] 中央操作雙模式投票紀錄器模式 */
 export type VoteInputMode = 'by_voter' | 'by_candidate';
 
+/** [V2.0 新增] 玩家雙模式筆記本型別 */
+export type NotebookMode = 'freeform' | 'grid';
+
+export interface NotebookStageColumn {
+  key: string;
+  label: string;
+  shortLabel: string;
+}
+
+export interface NotebookState {
+  mode: NotebookMode;
+  freeformText: string;
+  /** key: stageKey（如 'pre_game', 'sheriff', 'day_1', 'day_2'），value: Record<seatNumber, string> */
+  gridCells: Record<string, Record<number, string>>;
+}
+
 /** [V2.0 新增] 法官手動勝負覆蓋類型 */
 export type ManualVictoryOverrideKind =
   | 'good_surrender'
@@ -431,6 +447,9 @@ export interface GameState {
   exilePkCandidates: number[];
   /** 中央操作雙模式投票紀錄器模式 */
   voteInputMode: VoteInputMode;
+
+  /** 玩家雙模式筆記本（持久化於 localStorage） */
+  notebook: NotebookState;
 
   /** 歷史紀錄與勝負 */
   nightHistory: NightHistoryEntry[];

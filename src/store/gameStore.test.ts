@@ -28,7 +28,10 @@ vi.hoisted(() => {
 
 import { ALL_BOARDS } from '../data/boards';
 import { GAME_STORAGE_KEY, useGameStore } from './gameStore';
-import { buildGameReplayText } from '../components/common/displayHelpers';
+import {
+  buildGameReplayText,
+  buildReplayDownloadFilename,
+} from '../components/common/displayHelpers';
 
 const CLASSIC_ROLES = [
   'wolf',
@@ -561,5 +564,72 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     useGameStore.getState().overrideVictory('good_surrender');
     expect(useGameStore.getState().winner).toBe('wolf');
     expect(useGameStore.getState().winReason).toContain('好人陣營交牌');
+  });
+
+  it('Phase A5：雙模式筆記本持久化、重整還原、重開清空舊筆記、解散房間與完整戰報匯出', async () => {
+    const store = useGameStore.getState();
+    store.setActiveView('game');
+    store.selectBoard('12p-classic');
+    store.updateHostMode({ judgeMode: 'online_judge', dealMode: 'online_deal' });
+    store.setSeatNickname(1, '阿明');
+    store.setSeatNickname(9, '小美');
+
+    // 寫入自由筆記與表格筆記並切換模式
+    store.setNotebookMode('grid');
+    store.setNotebookFreeformText('警上 9 號起跳真預言家');
+    store.setNotebookGridCell('pre_game', 1, '抿牌像狼');
+    store.setNotebookGridCell('sheriff', 9, '發 5 號金水');
+
+    // 驗證已同步寫入 localStorage 並可於模擬重整後 rehydrate 完整還原
+    const raw = localStorage.getItem(GAME_STORAGE_KEY);
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.notebook.mode).toBe('grid');
+    expect(parsed.state.notebook.freeformText).toBe('警上 9 號起跳真預言家');
+    expect(parsed.state.notebook.gridCells.pre_game['1']).toBe('抿牌像狼');
+
+    const snapshot = raw!;
+    useGameStore.getState().clearNotebook('all');
+    expect(useGameStore.getState().notebook.freeformText).toBe('');
+    expect(useGameStore.getState().notebook.gridCells).toEqual({});
+
+    localStorage.setItem(GAME_STORAGE_KEY, snapshot);
+    await useGameStore.persist.rehydrate();
+    expect(useGameStore.getState().notebook.mode).toBe('grid');
+    expect(useGameStore.getState().notebook.freeformText).toBe('警上 9 號起跳真預言家');
+    expect(useGameStore.getState().notebook.gridCells.sheriff[9]).toBe('發 5 號金水');
+
+    // 驗證完整戰報匯出包含個人筆記本與檔名格式化
+    const replayWithNotes = buildGameReplayText(
+      useGameStore.getState(),
+      ALL_BOARDS.find((b) => b.id === '12p-classic'),
+    );
+    expect(replayWithNotes).toContain('【個人筆記本】');
+    expect(replayWithNotes).toContain('警上 9 號起跳真預言家');
+    expect(replayWithNotes).toContain('1 號（阿明）：抿牌像狼');
+    expect(
+      buildReplayDownloadFilename('12 人局 - 經典', new Date(2026, 10, 23, 15, 5)),
+    ).toBe('werewolf-replay-12_人局_-_經典-20261123-1505.txt');
+
+    // 重新開始（保留板子、3D 模式與暱稱，清空舊局筆記但保留筆記本模式偏好）
+    useGameStore.getState().restartGame({ keepNicknames: true });
+    const restarted = useGameStore.getState();
+    expect(restarted.selectedBoardId).toBe('12p-classic');
+    expect(restarted.hostMode.judgeMode).toBe('online_judge');
+    expect(restarted.hostMode.dealMode).toBe('online_deal');
+    expect(restarted.savedNicknames[1]).toBe('阿明');
+    expect(restarted.notebook.mode).toBe('grid');
+    expect(restarted.notebook.freeformText).toBe('');
+    expect(restarted.notebook.gridCells).toEqual({});
+
+    // 解散房間：清空所有狀態並返回主頁
+    useGameStore.getState().setNotebookFreeformText('暫存筆記');
+    useGameStore.getState().dissolveRoom();
+    const dissolved = useGameStore.getState();
+    expect(dissolved.activeView).toBe('home');
+    expect(dissolved.phase).toBe('board_select');
+    expect(dissolved.selectedBoardId).toBeNull();
+    expect(dissolved.savedNicknames).toEqual({});
+    expect(dissolved.notebook.freeformText).toBe('');
   });
 });

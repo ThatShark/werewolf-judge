@@ -47,6 +47,8 @@ import type {
 
 export const GAME_STORAGE_KEY = 'werewolf-judge-storage';
 
+export type AppView = 'home' | 'join_room' | 'rules_atlas' | 'about' | 'game';
+
 export interface PendingShooter extends ShootEligibility {
   deathReason: DeathReason;
 }
@@ -57,7 +59,10 @@ export interface SubmitExileVotesOptions {
 }
 
 export interface GameStore extends GameState {
+  activeView: AppView;
   pendingShooters: PendingShooter[];
+
+  setActiveView: (view: AppView) => void;
 
   selectBoard: (boardId: string) => void;
   setBoardPlayerCount: (playerCount: number) => void;
@@ -111,8 +116,12 @@ export interface GameStore extends GameState {
   restartGame: (options: { keepNicknames: boolean }) => void;
 }
 
-function createInitialGameState(): GameState & { pendingShooters: PendingShooter[] } {
+function createInitialGameState(): GameState & {
+  activeView: AppView;
+  pendingShooters: PendingShooter[];
+} {
   return {
+    activeView: 'home',
     phase: 'board_select',
     round: 1,
     selectedBoardId: null,
@@ -180,6 +189,8 @@ export const useGameStore = create<GameStore>()(
   persist(
     (set, get) => ({
       ...createInitialGameState(),
+
+      setActiveView: (view) => set({ activeView: view }),
 
       selectBoard: (boardId) => {
         const board = getBoardById(boardId);
@@ -1089,6 +1100,7 @@ export const useGameStore = create<GameStore>()(
           const board = getBoardById(state.selectedBoardId);
           set({
             ...createInitialGameState(),
+            activeView: state.activeView,
             selectedBoardId: board ? board.id : null,
             ruleOverrides: { ...state.ruleOverrides },
             savedNicknames: { ...state.savedNicknames },
@@ -1100,7 +1112,10 @@ export const useGameStore = create<GameStore>()(
           return;
         }
 
-        set(createInitialGameState());
+        set({
+          ...createInitialGameState(),
+          activeView: state.activeView,
+        });
       },
     }),
     {

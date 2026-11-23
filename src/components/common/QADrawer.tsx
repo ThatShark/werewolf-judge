@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { getRoleById } from '../../data/roles';
 import type { BoardDefinition } from '../../logic/types';
+import { SlideDrawer } from './SlideDrawer';
 import { getRoleBadgeClasses } from './displayHelpers';
 
 interface QADrawerProps {
@@ -37,41 +38,18 @@ export function QADrawer({ open, board, highlightRoleIds = [], onClose }: QADraw
     return { prioritizedQAs: prioritized, otherQAs: others, boardRoles: roles };
   }, [board, highlightRoleIds]);
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 backdrop-blur-xs"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
+    <SlideDrawer
+      open={open}
+      onClose={onClose}
+      title={`Q & A 規則速查${board ? ` · ${board.name}` : ''}`}
+      subtitle="Judge Quick Reference"
+      placement="bottom"
     >
-      <div
-        className="flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-3xl border-t border-x border-slate-700 bg-slate-900 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-              Judge Quick Reference
-            </p>
-            <h2 className="text-lg font-bold text-slate-50">
-              Q &amp; A 規則速查{board ? ` · ${board.name}` : ''}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-12 min-w-12 rounded-xl border border-slate-700 bg-slate-800 px-4 text-sm font-semibold text-slate-200 hover:bg-slate-700"
-          >
-            關閉
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {!board ? (
-            <p className="text-sm text-slate-400">尚未選擇板子，請先於開局畫面選擇板子。</p>
-          ) : (
+      <div className="space-y-5">
+        {!board ? (
+          <p className="text-sm text-slate-400">尚未選擇板子，請先於開局畫面選擇板子。</p>
+        ) : (
             <>
               {prioritizedQAs.length > 0 && (
                 <section className="space-y-2.5">
@@ -155,8 +133,7 @@ export function QADrawer({ open, board, highlightRoleIds = [], onClose }: QADraw
               </section>
             </>
           )}
-        </div>
       </div>
-    </div>
+    </SlideDrawer>
   );
 }

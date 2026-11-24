@@ -64,6 +64,7 @@ import {
   cloneThirdPartySpecialState,
   createInitialThirdPartySpecialState,
   getChannelableSkillForRole,
+  isLuckySkillAllowedOnRound,
   isSeatAsleep,
   resolveDancerFloor,
   resolveExoticPrinceCheck,
@@ -1693,7 +1694,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     draft.luckyItemTargetSeat != null &&
     nextThirdPartySpecialState.miracleLuckySeat === draft.luckyItemActorSeat &&
     nextThirdPartySpecialState.miracleLuckyItem === 'guard_shield' &&
-    !nextThirdPartySpecialState.miracleLuckyItemUsed
+    !nextThirdPartySpecialState.miracleLuckyItemUsed &&
+    isLuckySkillAllowedOnRound('miracle', 'guard_shield', round, ruleOverrides)
       ? draft.luckyItemTargetSeat
       : null;
 
@@ -2985,11 +2987,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 幸運兒使用道具（毒藥／盾）
+  // 幸運兒使用道具（毒藥／盾／查驗，依房規 luckyFirstNightSkills 管制第一晚是否可用）
   if (draft.luckyItemActorSeat != null && draft.luckyItemTargetSeat != null) {
     if (
       nextThirdPartySpecialState.miracleLuckySeat === draft.luckyItemActorSeat &&
-      !nextThirdPartySpecialState.miracleLuckyItemUsed
+      nextThirdPartySpecialState.miracleLuckyItem &&
+      !nextThirdPartySpecialState.miracleLuckyItemUsed &&
+      isLuckySkillAllowedOnRound(
+        'miracle',
+        nextThirdPartySpecialState.miracleLuckyItem,
+        round,
+        ruleOverrides,
+      )
     ) {
       if (nextThirdPartySpecialState.miracleLuckyItem === 'witch_poison') {
         doKill(draft.luckyItemTargetSeat, 'witch_poison');
@@ -2997,12 +3006,36 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       nextThirdPartySpecialState.miracleLuckyItemUsed = true;
     } else if (
       nextThirdPartySpecialState.blackMarketLuckySeat === draft.luckyItemActorSeat &&
-      !nextThirdPartySpecialState.blackMarketLuckyItemUsed
+      nextThirdPartySpecialState.blackMarketLuckyItem &&
+      !nextThirdPartySpecialState.blackMarketLuckyItemUsed &&
+      isLuckySkillAllowedOnRound(
+        'blackMarket',
+        nextThirdPartySpecialState.blackMarketLuckyItem,
+        round,
+        ruleOverrides,
+      )
     ) {
       if (nextThirdPartySpecialState.blackMarketLuckyItem === 'witch_poison') {
         doKill(draft.luckyItemTargetSeat, 'witch_poison');
       }
       nextThirdPartySpecialState.blackMarketLuckyItemUsed = true;
+    } else {
+      const superGiftIdx = nextThirdPartySpecialState.superBlackMarketGifts.findIndex(
+        (g) =>
+          g.seat === draft.luckyItemActorSeat &&
+          !g.used &&
+          isLuckySkillAllowedOnRound('superBlackMarket', g.item, round, ruleOverrides),
+      );
+      if (superGiftIdx >= 0) {
+        const gift = nextThirdPartySpecialState.superBlackMarketGifts[superGiftIdx];
+        if (gift.item === 'witch_poison') {
+          doKill(draft.luckyItemTargetSeat, 'witch_poison');
+        }
+        nextThirdPartySpecialState.superBlackMarketGifts[superGiftIdx] = {
+          ...gift,
+          used: true,
+        };
+      }
     }
   }
 
@@ -3373,7 +3406,12 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   const shootEligibilities: ShootEligibility[] = [];
   for (const record of deaths) {
-    const eligibility = checkCanShoot(updatedSeats, record.seat, record.reason, { fearedSeat });
+    const eligibility = checkCanShoot(updatedSeats, record.seat, record.reason, {
+      fearedSeat,
+      round,
+      ruleOverrides,
+      thirdPartySpecialState: nextThirdPartySpecialState,
+    });
     if (eligibility) {
       if (
         eligibility.roleId === 'hunter' &&

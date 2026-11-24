@@ -21,7 +21,14 @@ export function PendingShooterCard({
   const [selectedTarget, setSelectedTarget] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<'shoot' | 'skip' | null>(null);
 
-  const roleLabel = shooter.roleId === 'hunter' ? '獵人' : '狼王';
+  const roleLabel =
+    shooter.roleId === 'wolf_king'
+      ? '狼王'
+      : shooter.roleId === 'awakened_hunter'
+        ? '覺醒獵人'
+        : shooter.roleId === 'lucky_gun'
+          ? '幸運兒（槍）'
+          : '獵人';
   const aliveTargets = seats.filter((s) => s.isAlive && s.seatNumber !== shooter.seatNumber);
   const selectedSeatObj = seats.find((s) => s.seatNumber === selectedTarget);
 

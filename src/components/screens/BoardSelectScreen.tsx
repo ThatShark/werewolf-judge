@@ -3,7 +3,7 @@ import { ALL_BOARDS, filterBoards } from '../../data/boards';
 import type { PlayerCountFilter } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { QADrawer } from '../common/QADrawer';
-import { formatBoardCompositionShort } from '../common/displayHelpers';
+import { formatBoardRoleList } from '../common/displayHelpers';
 
 const COUNT_FILTERS: Array<{ value: PlayerCountFilter | 'all'; label: string }> = [
   { value: 'all', label: '全部' },
@@ -20,6 +20,7 @@ export function BoardSelectScreen() {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const selectBoard = useGameStore((s) => s.selectBoard);
+  const goToHostSetup = useGameStore((s) => s.goToHostSetup);
 
   const [countFilter, setCountFilter] = useState<PlayerCountFilter | 'all'>('all');
   const [query, setQuery] = useState('');
@@ -82,10 +83,10 @@ export function BoardSelectScreen() {
         </div>
       </section>
 
-      {/* 極簡板子清單（僅板子名稱 ＋ 人數 ＋ 陣營簡稱） */}
+      {/* 板子清單（板子名稱 ＋ 人數 ＋ 具體角色配置清單） */}
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-subtle bg-surface">
         <div className="flex shrink-0 items-center justify-between border-b border-subtle px-3 py-2 text-[12px] text-secondary">
-          <span>板子清單</span>
+          <span>步驟 2 / 2 · 選擇板子</span>
           <span className="tabular-nums">{filteredBoards.length}</span>
         </div>
 
@@ -115,28 +116,30 @@ export function BoardSelectScreen() {
                   key={board.id}
                   type="button"
                   onClick={() => setPreviewBoardId(board.id)}
-                  className={`flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition ${
+                  className={`flex min-h-14 w-full flex-col gap-1 px-3 py-2.5 text-left transition ${
                     isSelected
                       ? 'border-l-2 border-sheriff bg-elevated'
                       : 'hover:bg-elevated/50'
                   }`}
                 >
-                  <span
-                    className={`truncate text-[14px] font-semibold ${
-                      isSelected ? 'text-primary' : 'text-primary/90'
-                    }`}
-                  >
-                    {board.name}
-                  </span>
-                  <div className="flex shrink-0 items-center gap-2 text-[12px] tabular-nums">
-                    <span className="text-secondary">{formatBoardCompositionShort(board)}</span>
+                  <div className="flex w-full items-center justify-between gap-2">
                     <span
-                      className={`w-11 text-right font-semibold ${
+                      className={`truncate text-[14px] font-semibold ${
+                        isSelected ? 'text-primary' : 'text-primary/90'
+                      }`}
+                    >
+                      {board.name}
+                    </span>
+                    <span
+                      className={`shrink-0 text-[12px] font-semibold tabular-nums ${
                         isSelected ? 'text-sheriff' : 'text-muted'
                       }`}
                     >
                       {countLabel}
                     </span>
+                  </div>
+                  <div className="line-clamp-2 text-[12px] leading-4 text-secondary">
+                    {formatBoardRoleList(board)}
                   </div>
                 </button>
               );
@@ -145,9 +148,16 @@ export function BoardSelectScreen() {
         )}
       </section>
 
-      {/* 底部固定操作區：規則/Q&A 線框 ＋ 單一實心主按鈕 */}
+      {/* 底部固定操作區：返回模式 ＋ 規則/Q&A 線框 ＋ 單一實心主按鈕 */}
       {activeBoard && (
         <footer className="flex shrink-0 items-center gap-2 border-t border-subtle pt-2">
+          <button
+            type="button"
+            onClick={goToHostSetup}
+            className="min-h-12 shrink-0 rounded-md border border-subtle bg-surface px-3 text-[13px] font-medium text-secondary transition hover:border-strong hover:text-primary"
+          >
+            模式
+          </button>
           <button
             type="button"
             onClick={() => setQaOpen(true)}
@@ -160,7 +170,7 @@ export function BoardSelectScreen() {
             onClick={() => selectBoard(activeBoard.id)}
             className="min-h-12 flex-1 rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90"
           >
-            確認板子（{activeBoard.playerCount}人）
+            進入房間（{activeBoard.playerCount}人）
           </button>
         </footer>
       )}

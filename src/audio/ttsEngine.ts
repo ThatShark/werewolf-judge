@@ -18,6 +18,7 @@ export interface SpeakOptions {
 class TtsEngine {
   private lastSpokenText = '';
   private unlocked = false;
+  private previewTimerId: ReturnType<typeof setTimeout> | null = null;
 
   // Web Audio keep-alive（防止 iOS Safari 夜間語音通道進入休眠）
   private keepAliveCtx: AudioContext | null = null;
@@ -203,7 +204,42 @@ class TtsEngine {
     this.speakFromGesture(this.lastSpokenText, options);
   }
 
+  /**
+   * 試聽一小段語音播報（預設最長 3 秒後自動停止），供開局前測試音量與語速。
+   */
+  previewShort(
+    options: Omit<SpeakOptions, 'enabled'> & { enabled?: boolean; sampleText?: string },
+    durationMs = 3000,
+  ): void {
+    if (this.previewTimerId !== null) {
+      clearTimeout(this.previewTimerId);
+      this.previewTimerId = null;
+    }
+    const text = options.sampleText ?? '天黑請閉眼，狼人請睜眼。';
+    this.speakFromGesture(text, {
+      enabled: options.enabled ?? true,
+      rate: options.rate,
+      onStart: options.onStart,
+      onEnd: () => {
+        if (this.previewTimerId !== null) {
+          clearTimeout(this.previewTimerId);
+          this.previewTimerId = null;
+        }
+        options.onEnd?.();
+      },
+    });
+    this.previewTimerId = setTimeout(() => {
+      this.previewTimerId = null;
+      this.cancel();
+      options.onEnd?.();
+    }, durationMs);
+  }
+
   cancel(): void {
+    if (this.previewTimerId !== null) {
+      clearTimeout(this.previewTimerId);
+      this.previewTimerId = null;
+    }
     if (!this.isSupported()) return;
     try {
       window.speechSynthesis.cancel();

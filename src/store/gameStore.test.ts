@@ -92,7 +92,7 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     // 模擬頁面重整：保存目前持久化快照、清空記憶體狀態後寫回快照並呼叫 rehydrate
     const snapshot = raw!;
     useGameStore.getState().restartGame({ keepNicknames: false });
-    expect(useGameStore.getState().phase).toBe('board_select');
+    expect(useGameStore.getState().phase).toBe('host_setup');
 
     localStorage.setItem(GAME_STORAGE_KEY, snapshot);
     await useGameStore.persist.rehydrate();
@@ -128,13 +128,13 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     // 2. 全部清空重開
     useGameStore.getState().restartGame({ keepNicknames: false });
     const clearedState = useGameStore.getState();
-    expect(clearedState.phase).toBe('board_select');
+    expect(clearedState.phase).toBe('host_setup');
     expect(clearedState.selectedBoardId).toBeNull();
     expect(clearedState.savedNicknames).toEqual({});
     expect(clearedState.seats).toEqual([]);
   });
 
-  it('Store 層支援狼人自爆直接進入下一晚並於次晚點刀後死亡', () => {
+  it('Store 層支援狼人自爆即刻死亡並直接進入下一晚，且不可成為後續技能目標', () => {
     const store = useGameStore.getState();
     store.selectBoard('12p-classic');
     CLASSIC_ROLES.forEach((roleId, idx) => {
@@ -145,15 +145,16 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     useGameStore.getState().finishNight();
     useGameStore.getState().proceedToDayVote();
 
-    // 1 號狼人白天自爆
+    // 1 號狼人白天自爆 -> 即刻標記死亡並直接進入第 2 晚
     const explode = useGameStore.getState().selfExplode(1);
     expect(explode.allowed).toBe(true);
     expect(useGameStore.getState().phase).toBe('night');
     expect(useGameStore.getState().round).toBe(2);
-    expect(useGameStore.getState().pendingSelfExplodeSeat).toBe(1);
-    expect(useGameStore.getState().seats[0].isAlive).toBe(true);
+    expect(useGameStore.getState().pendingSelfExplodeSeat).toBeNull();
+    expect(useGameStore.getState().seats[0].isAlive).toBe(false);
+    expect(useGameStore.getState().seats[0].deathReason).toBe('self_explode');
 
-    // 第 2 晚點刀 6 號後，1 號與 6 號同時於天亮死亡
+    // 第 2 晚點刀 6 號後，6 號死亡、1 號維持自爆死亡狀態
     useGameStore.getState().updateNightDraft({ wolfTarget: 6 });
     useGameStore.getState().finishNight();
     expect(useGameStore.getState().seats[0].isAlive).toBe(false);
@@ -275,7 +276,8 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     useGameStore.getState().updateNightDraft({ wolfTarget: null });
     useGameStore.getState().finishNight();
 
-    // 1、9 號上警 -> 1 號狼人於警上自爆 -> 自動吞警徽並強制進入第 2 晚
+    // 設定單爆吞警徽：1、9 號上警 -> 1 號狼人於警上自爆 -> 自動吞警徽並強制進入第 2 晚
+    useGameStore.getState().updateRuleOverrides({ badgeSwallowRule: 'single_explode' });
     useGameStore.getState().startSheriffElection([1, 9]);
     const explode = useGameStore.getState().selfExplode(1);
     expect(explode.allowed).toBe(true);
@@ -628,7 +630,7 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     useGameStore.getState().dissolveRoom();
     const dissolved = useGameStore.getState();
     expect(dissolved.activeView).toBe('home');
-    expect(dissolved.phase).toBe('board_select');
+    expect(dissolved.phase).toBe('host_setup');
     expect(dissolved.selectedBoardId).toBeNull();
     expect(dissolved.savedNicknames).toEqual({});
     expect(dissolved.notebook.freeformText).toBe('');

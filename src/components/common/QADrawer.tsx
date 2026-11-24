@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { getRoleById } from '../../data/roles';
-import { DEFAULT_RULE_OVERRIDES, getNightSteps } from '../../logic';
+import { DEFAULT_RULE_OVERRIDES } from '../../logic';
 import type { BoardDefinition, RuleOverrides } from '../../logic/types';
 import { SlideDrawer } from './SlideDrawer';
 import { getRoleBadgeClasses } from './displayHelpers';
@@ -16,11 +16,11 @@ interface QADrawerProps {
 function getWitchSelfSaveLabel(rule: RuleOverrides['witchSelfSave']): string {
   switch (rule) {
     case 'first_night_only':
-      return '僅首夜可自救';
+      return '僅首晚能';
     case 'never':
-      return '全程不可自救';
+      return '不能';
     case 'always':
-      return '全程可自救';
+      return '能';
   }
 }
 
@@ -31,44 +31,51 @@ export function QADrawer({
   highlightRoleIds = [],
   onClose,
 }: QADrawerProps) {
-  const { prioritizedQAs, otherQAs, boardRoles, firstNightOrder, regularNightOrder } =
-    useMemo(() => {
-      if (!board) {
-        return {
-          prioritizedQAs: [],
-          otherQAs: [],
-          boardRoles: [],
-          firstNightOrder: [],
-          regularNightOrder: [],
-        };
-      }
-      const highlightSet = new Set(highlightRoleIds);
-      const prioritized = board.qaList.filter((qa) =>
-        qa.relatedRoleIds?.some((id) => highlightSet.has(id)),
-      );
-      const others = board.qaList.filter(
-        (qa) => !qa.relatedRoleIds?.some((id) => highlightSet.has(id)),
-      );
-
-      const roleIds = Array.from(
-        new Set([
-          ...board.composition.wolf.map((s) => s.roleId),
-          ...board.composition.good.map((s) => s.roleId),
-          ...(board.composition.thirdParty ?? []).map((s) => s.roleId),
-        ]),
-      );
-      const roles = roleIds
-        .map((id) => getRoleById(id))
-        .filter((r): r is NonNullable<typeof r> => Boolean(r));
-
+  const { prioritizedQAs, otherQAs, boardRoles, specialRuleLines } = useMemo(() => {
+    if (!board) {
       return {
-        prioritizedQAs: prioritized,
-        otherQAs: others,
-        boardRoles: roles,
-        firstNightOrder: getNightSteps(board, 1).map((s) => s.actorLabel),
-        regularNightOrder: getNightSteps(board, 2).map((s) => s.actorLabel),
+        prioritizedQAs: [],
+        otherQAs: [],
+        boardRoles: [],
+        specialRuleLines: [],
       };
-    }, [board, highlightRoleIds]);
+    }
+    const highlightSet = new Set(highlightRoleIds);
+    const prioritized = board.qaList.filter((qa) =>
+      qa.relatedRoleIds?.some((id) => highlightSet.has(id)),
+    );
+    const others = board.qaList.filter(
+      (qa) => !qa.relatedRoleIds?.some((id) => highlightSet.has(id)),
+    );
+
+    const roleIds = Array.from(
+      new Set([
+        ...board.composition.wolf.map((s) => s.roleId),
+        ...board.composition.good.map((s) => s.roleId),
+        ...(board.composition.thirdParty ?? []).map((s) => s.roleId),
+      ]),
+    );
+    const roles = roleIds
+      .map((id) => getRoleById(id))
+      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+
+    const rules: string[] = [];
+    if (board.specialRules && board.specialRules.length > 0) {
+      for (const line of board.specialRules) {
+        if (!rules.includes(line)) rules.push(line);
+      }
+    }
+    if (board.compositionNote && !rules.includes(board.compositionNote)) {
+      rules.push(board.compositionNote);
+    }
+
+    return {
+      prioritizedQAs: prioritized,
+      otherQAs: others,
+      boardRoles: roles,
+      specialRuleLines: rules,
+    };
+  }, [board, highlightRoleIds]);
 
   const isDoubleExplode = ruleOverrides.badgeSwallowRule === 'double_explode';
   const witchSelfSaveLabel = getWitchSelfSaveLabel(ruleOverrides.witchSelfSave);
@@ -82,35 +89,48 @@ export function QADrawer({
       placement="bottom"
     >
       <div className="space-y-4">
-        {/* 本局生效房規與常見衝突 */}
+        {/* 1. 板子首夜／全局特殊規則（最上方醒目呈現） */}
+        {specialRuleLines.length > 0 && (
+          <section className="space-y-2 rounded-md border border-sheriff-border bg-sheriff-tint/60 p-3">
+            <h3 className="text-[12px] font-semibold uppercase tracking-wider text-sheriff">
+              板子特殊規則
+            </h3>
+            <ul className="space-y-1">
+              {specialRuleLines.map((ruleText, idx) => (
+                <li key={idx} className="text-[13px] font-medium leading-5 text-primary">
+                  • {ruleText}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* 2. 本局生效房規 */}
         <section className="space-y-2">
           <h3 className="text-[12px] font-semibold uppercase tracking-wider text-secondary">
             本局生效房規
           </h3>
           <div className="flex flex-wrap gap-1.5 text-[12px]">
             <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
-              女巫：<span className="font-semibold text-primary">{witchSelfSaveLabel}</span>
+              女巫自救：<span className="font-semibold text-primary">{witchSelfSaveLabel}</span>
             </span>
             <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
               勝負：<span className="font-semibold text-good">{victoryModeLabel}</span>
             </span>
             <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
-              警徽：
+              警長：
               <span className="font-semibold text-sheriff">
                 {!ruleOverrides.enableSheriff
-                  ? '關閉'
+                  ? '沒有'
                   : isDoubleExplode
                     ? '雙爆吞徽'
                     : '單爆吞徽'}
               </span>
             </span>
             <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
-              奶穿：<span className="font-semibold text-wolf">死亡且禁槍</span>
-            </span>
-            <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
-              結算：
+              機械狼首夜學：
               <span className="font-semibold text-primary">
-                {ruleOverrides.wolfKillPriority ? '狼刀在先' : '毒殺優先'}
+                {ruleOverrides.mechWolfForceLearnNight1 ? '強制' : '可跳過'}
               </span>
             </span>
           </div>
@@ -120,70 +140,7 @@ export function QADrawer({
           <p className="text-[14px] text-secondary">尚未選擇板子。</p>
         ) : (
           <>
-            {/* 睜眼順序 */}
-            <section className="space-y-2 border-t border-subtle pt-3">
-              <h3 className="text-[12px] font-semibold uppercase tracking-wider text-secondary">
-                睜眼順序
-              </h3>
-              <div className="space-y-1.5 text-[12px] leading-5">
-                <div>
-                  <span className="font-semibold text-sheriff">首夜：</span>
-                  <span className="text-primary">{firstNightOrder.join(' → ')}</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-secondary">次夜：</span>
-                  <span className="text-secondary">{regularNightOrder.join(' → ')}</span>
-                </div>
-              </div>
-            </section>
-
-            {/* 當前步驟相關 Q&A */}
-            {prioritizedQAs.length > 0 && (
-              <section className="space-y-2 border-t border-subtle pt-3">
-                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-sheriff">
-                  當前步驟相關 Q&amp;A
-                </h3>
-                <div className="divide-y divide-subtle">
-                  {prioritizedQAs.map((qa) => (
-                    <div key={qa.id} className="border-l-2 border-sheriff py-2.5 pl-3">
-                      <h4 className="whitespace-pre-line text-[14px] font-semibold text-primary">
-                        Q：{qa.question}
-                      </h4>
-                      <p className="mt-1 whitespace-pre-line text-[12px] leading-5 text-secondary">
-                        A：{qa.answer}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* 其他 Q&A */}
-            {(otherQAs.length > 0 || prioritizedQAs.length === 0) && (
-              <section className="space-y-2 border-t border-subtle pt-3">
-                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-secondary">
-                  常見 Q&amp;A
-                </h3>
-                {otherQAs.length === 0 ? (
-                  <p className="text-[12px] text-muted">此板子無額外 Q&amp;A。</p>
-                ) : (
-                  <div className="divide-y divide-subtle">
-                    {otherQAs.map((qa) => (
-                      <div key={qa.id} className="py-2.5">
-                        <h4 className="whitespace-pre-line text-[14px] font-semibold text-primary">
-                          Q：{qa.question}
-                        </h4>
-                        <p className="mt-1 whitespace-pre-line text-[12px] leading-5 text-secondary">
-                          A：{qa.answer}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
-
-            {/* 板子角色說明 */}
+            {/* 3. 板子角色規則（移至常見 Q&A 上方，徹底移除睜眼順序） */}
             <section className="space-y-2 border-t border-subtle pt-3">
               <h3 className="text-[12px] font-semibold uppercase tracking-wider text-secondary">
                 板子角色規則
@@ -219,6 +176,52 @@ export function QADrawer({
                 ))}
               </div>
             </section>
+
+            {/* 4. 當前步驟相關 Q&A */}
+            {prioritizedQAs.length > 0 && (
+              <section className="space-y-2 border-t border-subtle pt-3">
+                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-sheriff">
+                  當前步驟相關 Q&amp;A
+                </h3>
+                <div className="divide-y divide-subtle">
+                  {prioritizedQAs.map((qa) => (
+                    <div key={qa.id} className="border-l-2 border-sheriff py-2.5 pl-3">
+                      <h4 className="whitespace-pre-line text-[14px] font-semibold text-primary">
+                        Q：{qa.question}
+                      </h4>
+                      <p className="mt-1 whitespace-pre-line text-[12px] leading-5 text-secondary">
+                        A：{qa.answer}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* 5. 常見 Q&A（移至角色規則下方） */}
+            {(otherQAs.length > 0 || prioritizedQAs.length === 0) && (
+              <section className="space-y-2 border-t border-subtle pt-3">
+                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-secondary">
+                  常見 Q&amp;A
+                </h3>
+                {otherQAs.length === 0 ? (
+                  <p className="text-[12px] text-muted">此板子無額外 Q&amp;A。</p>
+                ) : (
+                  <div className="divide-y divide-subtle">
+                    {otherQAs.map((qa) => (
+                      <div key={qa.id} className="py-2.5">
+                        <h4 className="whitespace-pre-line text-[14px] font-semibold text-primary">
+                          Q：{qa.question}
+                        </h4>
+                        <p className="mt-1 whitespace-pre-line text-[12px] leading-5 text-secondary">
+                          A：{qa.answer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
       </div>

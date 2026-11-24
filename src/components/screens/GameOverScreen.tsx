@@ -23,6 +23,7 @@ interface GameOverScreenProps {
 
 export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
+  const hostMode = useGameStore((s) => s.hostMode);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
   const winner = useGameStore((s) => s.winner);
@@ -171,6 +172,18 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
     ? (getRoleById(mechWolfState.learnedRoleId)?.name ?? mechWolfState.learnedRoleId)
     : null;
 
+  const showNotesTab = hostMode.judgeMode !== 'physical_judge';
+  const reviewTabs: Array<{ id: ReviewTab; label: string }> = showNotesTab
+    ? [
+        { id: 'identities', label: `身分 (${seats.length})` },
+        { id: 'timeline', label: '時間軸' },
+        { id: 'notes', label: '筆記' },
+      ]
+    : [
+        { id: 'identities', label: `身分 (${seats.length})` },
+        { id: 'timeline', label: '時間軸' },
+      ];
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       {/* 1. 頂部戰局結算橫條 */}
@@ -210,15 +223,11 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
       <nav
         role="tablist"
         aria-label="復盤分頁"
-        className="grid shrink-0 grid-cols-3 gap-1 rounded-md border border-subtle bg-surface p-1"
+        className={`grid shrink-0 gap-1 rounded-md border border-subtle bg-surface p-1 ${
+          showNotesTab ? 'grid-cols-3' : 'grid-cols-2'
+        }`}
       >
-        {(
-          [
-            { id: 'identities', label: `身分 (${seats.length})` },
-            { id: 'timeline', label: '時間軸' },
-            { id: 'notes', label: '筆記' },
-          ] as const
-        ).map((t) => (
+        {reviewTabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -331,7 +340,7 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
           </div>
         )}
 
-        {activeTab === 'notes' && (
+        {showNotesTab && activeTab === 'notes' && (
           <div className="space-y-2 py-1">
             {noteHasContent ? (
               <pre className="whitespace-pre-wrap font-sans text-[12px] leading-5 text-secondary">

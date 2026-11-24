@@ -2399,6 +2399,52 @@ function main() {
     const qaMatch = rawBoard.match(/## 常見 Q & A([\s\S]*)$/);
     const qaList = parseQAList(qaMatch?.[1], id, boardRoleIds, roleLookup);
 
+    // 擷取板子級首夜／全局特殊限制（如「此板子第一夜狼人無刀」、「此板子第一夜無人可使用技能…」等）
+    const specialRulesSet = new Set<string>();
+    const rawLines = rawBoard.split(/\r?\n/);
+    for (let i = 0; i < rawLines.length; i += 1) {
+      const trimmed = rawLines[i].trim();
+      if (!trimmed.startsWith('>')) continue;
+      if (/^>\s*\[!(important|warning)\]/i.test(trimmed)) {
+        const nextLine = rawLines[i + 1]?.trim() ?? '';
+        if (nextLine.startsWith('>')) {
+          const text = nextLine
+            .replace(/^>\s*/, '')
+            .replace(/==/g, '')
+            .replace(/\*\*/g, '')
+            .trim();
+          if (
+            text &&
+            !text.includes('同守同救') &&
+            !text.includes('狼刀永遠優先') &&
+            (text.includes('此板子') ||
+              text.includes('第一夜') ||
+              text.includes('首夜') ||
+              text.includes('第三方陣營直接獲勝') ||
+              text.includes('如果蝕日侍女') ||
+              text.includes('如果許仙'))
+          ) {
+            specialRulesSet.add(text);
+          }
+        }
+      } else {
+        const text = trimmed
+          .replace(/^>\s*/, '')
+          .replace(/==/g, '')
+          .replace(/\*\*/g, '')
+          .trim();
+        if (
+          text &&
+          !text.includes('同守同救') &&
+          !text.includes('狼刀永遠優先') &&
+          (text.includes('此板子') || text.includes('無刀') || text.includes('無人可使用技能'))
+        ) {
+          specialRulesSet.add(text);
+        }
+      }
+    }
+    const specialRules = Array.from(specialRulesSet);
+
     // 決定自動化支援等級：若僅含 MVP 核心 10 角色且所有步驟皆非進階 confirm_only（或僅首夜白痴確認）
     const usesOnlyCoreRoles = boardRoleIds.every((rId) => AUTOMATED_ROLE_IDS.has(rId));
     const hasThirdParty = thirdPartySlots.length > 0;
@@ -2444,6 +2490,7 @@ function main() {
       },
       ...(isFlexibleComposition ? { isFlexibleComposition: true } : {}),
       ...(compositionNote ? { compositionNote } : {}),
+      ...(specialRules.length > 0 ? { specialRules } : {}),
       ...(presetPlayerCounts ? { presetPlayerCounts } : {}),
       automationLevel,
       nightSchedule: {

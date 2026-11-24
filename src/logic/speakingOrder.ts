@@ -162,6 +162,13 @@ export function generateSpeakingOrder(
 }
 
 /**
+ * 隨機抽選當日發言方向（順時針 / 逆時針）。
+ */
+export function pickRandomDirection(rng: () => number = Math.random): SpeakingDirection {
+  return clampUnitRandom(rng()) < 0.5 ? 'clockwise' : 'counterclockwise';
+}
+
+/**
  * 取得昨夜死者中座號最小者（供無警長有死訊與死左／死右預設基準使用）。
  */
 export function getSmallestDeadSeat(deadSeats: number[]): number | null {
@@ -188,9 +195,10 @@ export function resolveDaySpeakingRule(input: {
   seats: PlayerSeat[];
   nightDeadSeats: number[];
   sheriffSeat: number | null;
-  ruleOverrides: Pick<RuleOverrides, 'noSheriffDeadDirection' | 'sheriffUseDeadSideOnDeath'>;
+  ruleOverrides?: Pick<RuleOverrides, 'noSheriffDeadDirection' | 'sheriffUseDeadSideOnDeath'>;
+  dailyRandomDirection?: SpeakingDirection;
 }): DaySpeakingRuleRecommendation {
-  const { seats, nightDeadSeats, sheriffSeat, ruleOverrides } = input;
+  const { seats, nightDeadSeats, sheriffSeat, ruleOverrides, dailyRandomDirection } = input;
   const smallestDead = getSmallestDeadSeat(nightDeadSeats);
   const hasNightDeaths = smallestDead !== null;
   const aliveSheriff =
@@ -198,28 +206,30 @@ export function resolveDaySpeakingRule(input: {
     seats.some((s) => s.seatNumber === sheriffSeat && s.isAlive);
 
   if (aliveSheriff) {
-    if (hasNightDeaths && ruleOverrides.sheriffUseDeadSideOnDeath) {
+    if (hasNightDeaths && ruleOverrides?.sheriffUseDeadSideOnDeath) {
       return {
         recommendedModes: ['dead_left', 'dead_right'],
         defaultDeadAnchor: smallestDead,
         noSheriffDeadMode: null,
-        reason: `有警長且昨夜有死訊（房規優先死左／死右，預設基準 ${smallestDead} 號，警長歸票位）`,
+        reason: `有警長且昨夜有死訊（優先死左／死右，預設基準 ${smallestDead} 號，警長歸票位）`,
       };
     }
     return {
-      recommendedModes: ['sheriff_left', 'sheriff_right'],
+      recommendedModes: hasNightDeaths
+        ? ['dead_left', 'dead_right', 'sheriff_left', 'sheriff_right']
+        : ['sheriff_left', 'sheriff_right'],
       defaultDeadAnchor: smallestDead,
       noSheriffDeadMode: null,
       reason: hasNightDeaths
-        ? '有警長：由警長決定警左或警右發言（警長排最後歸票位）'
-        : '昨夜平安夜：自動切回警左／警右發言（警長排最後歸票位）',
+        ? '有警長且有死訊：可選死左／死右或由警長決定警左／警右（警長排最後歸票位）'
+        : '昨夜平安夜：由警長決定警左／警右發言（警長排最後歸票位）',
     };
   }
 
   if (hasNightDeaths) {
-    const mode: 'dead_left' | 'dead_right' =
-      ruleOverrides.noSheriffDeadDirection === 'clockwise' ? 'dead_left' : 'dead_right';
-    const dirLabel = ruleOverrides.noSheriffDeadDirection === 'clockwise' ? '順時針' : '逆時針';
+    const dir = ruleOverrides?.noSheriffDeadDirection ?? dailyRandomDirection ?? 'clockwise';
+    const mode: 'dead_left' | 'dead_right' = dir === 'clockwise' ? 'dead_left' : 'dead_right';
+    const dirLabel = dir === 'clockwise' ? '順時針' : '逆時針';
     return {
       recommendedModes: [mode],
       defaultDeadAnchor: smallestDead,

@@ -15,6 +15,7 @@ class AmbientAudioEngine {
   private currentPreset: AmbientPresetId = 'none';
   private currentVolume = 0.4;
   private listeners = new Set<PlaybackListener>();
+  private previewTimerId: ReturnType<typeof setTimeout> | null = null;
 
   subscribe(listener: PlaybackListener): () => void {
     this.listeners.add(listener);
@@ -63,6 +64,11 @@ class AmbientAudioEngine {
   }
 
   stop() {
+    if (this.previewTimerId !== null) {
+      clearTimeout(this.previewTimerId);
+      this.previewTimerId = null;
+    }
+
     for (const src of this.activeSources) {
       try {
         src.stop();
@@ -158,6 +164,23 @@ class AmbientAudioEngine {
 
     this.playing = true;
     this.emitState();
+    return true;
+  }
+
+  /**
+   * 試聽一小段白噪音，於指定毫秒（預設 3 秒）後自動停止。
+   */
+  previewShort(
+    presetId: AmbientPresetId,
+    volume: number = this.currentVolume,
+    durationMs = 3000,
+  ): boolean {
+    const started = this.play(presetId, volume);
+    if (!started) return false;
+    this.previewTimerId = setTimeout(() => {
+      this.previewTimerId = null;
+      this.stop();
+    }, durationMs);
     return true;
   }
 

@@ -209,33 +209,35 @@ describe('MVP 板子 1：12 人局 - 經典', () => {
     expect(killIdiotNight.victory.winner).toBe('wolf');
   });
 
-  it('狼人白天自爆強制入夜，且自爆狼於當晚點刀後才正式死亡', () => {
+  it('狼人白天自爆即刻死亡並直接進入黑夜', () => {
     const seats = createClassic12Seats(); // 1 號為小狼
 
-    const explode = resolveSelfExplode(seats, 1);
+    const explode = resolveSelfExplode(seats, 1, undefined, {
+      round: 1,
+      ruleOverrides: DEFAULT_RULE_OVERRIDES,
+      mechWolfState: createInitialMechWolfState(),
+    });
     expect(explode.allowed).toBe(true);
-    expect(explode.pendingSelfExplodeSeat).toBe(1);
-    // 自爆當下不直接標記死亡
-    expect(seats[0].isAlive).toBe(true);
+    expect(explode.pendingSelfExplodeSeat).toBeNull();
+    // 自爆當下即刻標記死亡
+    expect(explode.seats?.[0].isAlive).toBe(false);
+    expect(explode.seats?.[0].deathReason).toBe('self_explode');
 
-    // 進入當晚完成點刀 5 號後，1 號才正式因 self_explode 死亡
+    // 進入當晚點刀 5 號後，僅 5 號於當晚死訊列出，1 號維持自爆死亡狀態
     const nightAfterExplode = resolveNight({
-      seats,
+      seats: explode.seats!,
       round: 2,
       draft: { ...createEmptyNightDraft(2), wolfTarget: 5 },
       ruleOverrides: DEFAULT_RULE_OVERRIDES,
       witchAntidoteUsed: true,
       witchPoisonUsed: true,
       lastGuardedSeat: null,
-      mechWolfState: createInitialMechWolfState(),
+      mechWolfState: explode.mechWolfState ?? createInitialMechWolfState(),
       pendingSelfExplodeSeat: explode.pendingSelfExplodeSeat,
     });
     expect(nightAfterExplode.pendingSelfExplodeSeat).toBeNull();
     expect(nightAfterExplode.seats[0].isAlive).toBe(false);
     expect(nightAfterExplode.seats[0].deathReason).toBe('self_explode');
-    expect(nightAfterExplode.deaths).toEqual([
-      { seat: 5, reason: 'wolf_kill' },
-      { seat: 1, reason: 'self_explode' },
-    ]);
+    expect(nightAfterExplode.deaths).toEqual([{ seat: 5, reason: 'wolf_kill' }]);
   });
 });

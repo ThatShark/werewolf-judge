@@ -7,6 +7,7 @@ interface TopBarProps {
   phase: GamePhase;
   round: number;
   board?: BoardDefinition;
+  showNotebook?: boolean;
   canUndo?: boolean;
   undoLabel?: string;
   onUndo?: () => void;
@@ -28,6 +29,7 @@ export function TopBar({
   phase,
   round,
   board,
+  showNotebook = false,
   canUndo = false,
   undoLabel,
   onUndo,
@@ -92,13 +94,15 @@ export function TopBar({
                 撤銷
               </button>
             )}
-            <button
-              type="button"
-              onClick={onOpenNotebook}
-              className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
-            >
-              筆記
-            </button>
+            {showNotebook && (
+              <button
+                type="button"
+                onClick={onOpenNotebook}
+                className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
+              >
+                筆記
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenHistory}

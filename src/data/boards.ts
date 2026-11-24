@@ -6945,6 +6945,9 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
+    "specialRules": [
+      "此板子第一夜無人可使用技能，只有熊還是會咆哮。"
+    ],
     "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
@@ -8599,6 +8602,10 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
+    "specialRules": [
+      "如果蝕日侍女偷到許仙尋香魅影的綁定技能，並剛好綁定到白蛇預言家和許仙尋香魅影兩人，則第三方陣營直接獲勝。",
+      "如果許仙尋香魅影的綁定技能綁定自己白蛇預言家，並且透過綁定導致雙方一起死亡，第三方陣營也會直接獲勝。"
+    ],
     "automationLevel": "partial_manual",
     "nightSchedule": {
       "firstNight": [
@@ -18061,6 +18068,9 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
+    "specialRules": [
+      "此板子第一夜無人可使用技能，只有熊還是會咆哮。"
+    ],
     "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
@@ -24242,6 +24252,9 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
+    "specialRules": [
+      "此板子第一夜狼人無刀。"
+    ],
     "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
@@ -26077,7 +26090,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "full",
+    "automationLevel": "partial_manual",
     "nightSchedule": {
       "firstNight": [
         {
@@ -26281,17 +26294,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "jack_ripper_action",
-          "actorLabel": "開膛手傑克（指定狂熱粉）",
-          "actorRoleIds": [
-            "jack_the_ripper"
-          ],
-          "actionType": "jack_ripper_action",
+          "stepId": "step_1",
+          "actorLabel": "開膛手傑克",
+          "actorRoleIds": [],
+          "actionType": "confirm_only",
           "openPrompt": "開膛手傑克請睜眼",
-          "actionPrompt": "請選擇一位偵探成為狂熱粉",
+          "actionPrompt": "請選擇要擊殺的目標",
           "closePrompt": "開膛手傑克請閉眼",
           "judgeTips": [
-            "第一晚開膛手傑克指定一名偵探成為狂熱粉（其偵探身分自動失效）。"
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
           ]
         },
         {
@@ -29367,6 +29378,10 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
+    "specialRules": [
+      "如果蝕日侍女偷到許仙尋香魅影的綁定技能，並剛好綁定到白蛇預言家和許仙尋香魅影兩人，則第三方陣營直接獲勝。",
+      "如果許仙尋香魅影的綁定技能綁定自己白蛇預言家，並且透過綁定導致雙方一起死亡，第三方陣營也會直接獲勝。"
+    ],
     "automationLevel": "partial_manual",
     "nightSchedule": {
       "firstNight": [
@@ -30156,6 +30171,9 @@ export const ALL_BOARDS: BoardDefinition[] = [
     },
     "isFlexibleComposition": true,
     "compositionNote": "牌池共 15 張牌（含盜賊／額外底牌），從中發出 12 張上場。",
+    "specialRules": [
+      "此板子第一夜狼人無刀。"
+    ],
     "automationLevel": "partial_manual",
     "nightSchedule": {
       "firstNight": [
@@ -30347,6 +30365,9 @@ export const ALL_BOARDS: BoardDefinition[] = [
     },
     "isFlexibleComposition": true,
     "compositionNote": "娛樂局支援 6 / 10 / 12 人配置（小狼與獵人比例依人數調整）。",
+    "specialRules": [
+      "此板子第一夜狼隊無刀。"
+    ],
     "presetPlayerCounts": [
       6,
       10,

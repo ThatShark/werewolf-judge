@@ -1,11 +1,15 @@
 import { ROLES_BY_ID } from '../data/roles';
 import { isSeatEffectiveWolf } from './factionHelpers';
+import { DEFAULT_LUCKY_FIRST_NIGHT_SKILLS } from './setup';
 import type {
   ActionCheckResult,
   GameWinner,
+  LuckyFirstNightSkillsConfig,
   MediumSkillType,
+  MerchantGiftItem,
   PandoraBoxItem,
   PlayerSeat,
+  RuleOverrides,
   ThirdPartySpecialRuntimeState,
   VictoryResult,
 } from './types';
@@ -622,6 +626,96 @@ export function getBatch5ExileExtraVotes(
 // ============================================================================
 // 6. 商人系列與通靈者（medium）
 // ============================================================================
+
+export type LuckyMerchantSource = 'blackMarket' | 'miracle' | 'superBlackMarket';
+
+/**
+ * 檢查幸運兒於指定回合是否允許使用獲贈技能（依房規 luckyFirstNightSkills 判定首夜是否開放）。
+ */
+export function isLuckySkillAllowedOnRound(
+  source: LuckyMerchantSource,
+  item: MerchantGiftItem,
+  round: number,
+  ruleOverrides?: Pick<RuleOverrides, 'luckyFirstNightSkills'>,
+): boolean {
+  if (round > 1) return true;
+  const cfg: LuckyFirstNightSkillsConfig =
+    ruleOverrides?.luckyFirstNightSkills ?? DEFAULT_LUCKY_FIRST_NIGHT_SKILLS;
+  if (source === 'blackMarket') {
+    if (item === 'seer_check') return cfg.blackMarket.seer_check;
+    if (item === 'witch_poison') return cfg.blackMarket.witch_poison;
+    if (item === 'hunter_gun') return cfg.blackMarket.hunter_gun;
+    return false;
+  }
+  if (source === 'miracle') {
+    if (item === 'seer_check') return cfg.miracle.seer_check;
+    if (item === 'witch_poison') return cfg.miracle.witch_poison;
+    if (item === 'guard_shield') return cfg.miracle.guard_shield;
+    return false;
+  }
+  // superBlackMarket
+  if (item === 'seer_check') return cfg.superBlackMarket.seer_check;
+  if (item === 'witch_poison') return cfg.superBlackMarket.witch_poison;
+  if (item === 'hunter_gun') return cfg.superBlackMarket.hunter_gun;
+  return false;
+}
+
+/**
+ * 查詢某座位目前持有之未使用商人贈禮（來源、道具與當晚是否可用）。
+ */
+export function findLuckyGiftForSeat(
+  state: ThirdPartySpecialRuntimeState | undefined,
+  seatNumber: number,
+  round: number,
+  ruleOverrides?: Pick<RuleOverrides, 'luckyFirstNightSkills'>,
+): {
+  source: LuckyMerchantSource;
+  item: MerchantGiftItem;
+  allowedThisRound: boolean;
+} | null {
+  if (!state) return null;
+  if (
+    state.miracleLuckySeat === seatNumber &&
+    state.miracleLuckyItem &&
+    !state.miracleLuckyItemUsed
+  ) {
+    return {
+      source: 'miracle',
+      item: state.miracleLuckyItem,
+      allowedThisRound: isLuckySkillAllowedOnRound('miracle', state.miracleLuckyItem, round, ruleOverrides),
+    };
+  }
+  if (
+    state.blackMarketLuckySeat === seatNumber &&
+    state.blackMarketLuckyItem &&
+    !state.blackMarketLuckyItemUsed
+  ) {
+    return {
+      source: 'blackMarket',
+      item: state.blackMarketLuckyItem,
+      allowedThisRound: isLuckySkillAllowedOnRound(
+        'blackMarket',
+        state.blackMarketLuckyItem,
+        round,
+        ruleOverrides,
+      ),
+    };
+  }
+  const superGift = state.superBlackMarketGifts.find((g) => g.seat === seatNumber && !g.used);
+  if (superGift) {
+    return {
+      source: 'superBlackMarket',
+      item: superGift.item,
+      allowedThisRound: isLuckySkillAllowedOnRound(
+        'superBlackMarket',
+        superGift.item,
+        round,
+        ruleOverrides,
+      ),
+    };
+  }
+  return null;
+}
 
 export function getChannelableSkillForRole(roleId: string | null): MediumSkillType | null {
   if (!roleId) return null;

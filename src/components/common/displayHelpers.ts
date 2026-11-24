@@ -102,6 +102,7 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
 };
 
 export const PHASE_LABELS: Record<GamePhase, string> = {
+  host_setup: '主持模式',
   board_select: '開局選板',
   seat_setup: '開局大廳',
   pass_and_reveal: '傳閱確認',
@@ -116,44 +117,48 @@ export const RULE_TOGGLE_META: Record<
   { label: string; description: string }
 > = {
   witchSelfSave: {
-    label: '女巫自救規則',
+    label: '女巫可否自救',
     description: '控制女巫被狼人刀殺時是否可以使用解藥救自己。',
+  },
+  enableSheriff: {
+    label: '是否有警長',
+    description: '第一天白天是否進行警長競選流程（選「沒有」時自動跳過警長競選）。',
+  },
+  badgeSwallowRule: {
+    label: '吞警徽規則',
+    description: '警長競選期間狼人自爆時，採雙爆吞警徽或單爆吞警徽。',
+  },
+  victoryMode: {
+    label: '勝利條件',
+    description: '屠邊（殺光所有平民或所有神職）或屠城（殺光全部好人）。',
+  },
+  mechWolfForceLearnNight1: {
+    label: '機械狼是否第一晚強制學習',
+    description: '開啟後，機械狼第一晚必須選擇一名其他玩家學習技能（不可跳過）。',
+  },
+  luckyFirstNightSkills: {
+    label: '幸運兒第一晚是否就能使用技能',
+    description: '分別設定黑市商人、奇蹟商人、超級黑市商人的幸運兒在第一晚可使用的技能。',
   },
   idiotNeedsExtraKill: {
     label: '白痴翻牌後需追刀',
     description: '開啟後，白痴白天翻牌免死仍計入存活神職，狼隊須追刀才會屠神。',
   },
-  mechWolfForceLearnNight1: {
-    label: '機械狼首夜強制學習',
-    description: '開啟後，機械狼第一晚必須選擇一名其他玩家學習技能（不可跳過）。',
-  },
   wolfKillPriority: {
     label: '狼刀在先原則',
-    description: '開啟後，若當晚狼刀已達成屠邊條件，即使同晚女巫毒殺最後一狼仍判狼人勝利。',
-  },
-  victoryMode: {
-    label: '勝利條件模式',
-    description: '屠邊（殺光所有平民或所有神職）或屠城（殺光全部好人）。',
-  },
-  enableSheriff: {
-    label: '開啟警長競選',
-    description: '第一天白天是否進行警長競選流程（上警、退水、警下投票與警徽移交）。',
-  },
-  badgeSwallowRule: {
-    label: '吞警徽規則',
-    description: '警長競選期間狼人自爆時，採單爆立即吞警徽或雙爆吞警徽。',
+    description: '固定採狼刀在先原則。',
   },
   noSheriffDeadDirection: {
     label: '無警長有死訊發言方向',
-    description: '無警長且昨夜有死訊時，從座號最小死者出發的預設發言方向。',
+    description: '由每日天亮隨機方向決定。',
   },
   sheriffUseDeadSideOnDeath: {
     label: '有警長有死訊優先死左／死右',
-    description: '開啟後，有警長且昨夜有死訊時優先採死左／死右，平安夜再切回警左／警右。',
+    description: '由天亮公告方向選擇器決定。',
   },
   hybridCountsAsVillager: {
     label: '混血兒計入平民屠邊人數',
-    description: '預設關閉（不計入屠邊人數）；開啟後依 12 人局規則，狼隊屠民須連同混血兒一起淘汰。',
+    description: '依板子預設套用。',
   },
 };
 
@@ -182,6 +187,65 @@ export function formatFactionLabel(faction: GameWinner | null): string {
 
 export function formatSeatNum(seatNumber: number): string {
   return String(seatNumber).padStart(2, '0');
+}
+
+/**
+ * 列出板子具體角色配置清單（例如：「預言家、女巫、獵人、白痴、4狼、4民」）。
+ * 若含第三方角色直接列出角色名稱，不顯示「幾三方」數量標籤。
+ */
+export function formatBoardRoleList(board: BoardDefinition): string {
+  const parts: string[] = [];
+
+  // 1. 神職（非平民好人）
+  const villagerSlots: Array<{ roleId: string; count: number }> = [];
+  for (const slot of board.composition.good) {
+    const role = getRoleById(slot.roleId);
+    if (role?.category === 'villager') {
+      villagerSlots.push(slot);
+    } else {
+      const name = role?.name ?? slot.roleId;
+      parts.push(slot.count > 1 ? `${name}×${slot.count}` : name);
+    }
+  }
+
+  // 2. 第三方角色直接列在角色清單中（不加「三方」數量標籤）
+  for (const slot of board.composition.thirdParty ?? []) {
+    const role = getRoleById(slot.roleId);
+    const name = role?.name ?? slot.roleId;
+    parts.push(slot.count > 1 ? `${name}×${slot.count}` : name);
+  }
+
+  // 3. 狼人陣營（特殊狼列名稱，普通小狼顯示「N狼」）
+  let plainWolfCount = 0;
+  for (const slot of board.composition.wolf) {
+    if (slot.roleId === 'wolf') {
+      plainWolfCount += slot.count;
+    } else {
+      const role = getRoleById(slot.roleId);
+      const name = role?.name ?? slot.roleId;
+      parts.push(slot.count > 1 ? `${name}×${slot.count}` : name);
+    }
+  }
+  if (plainWolfCount > 0) {
+    parts.push(`${plainWolfCount}狼`);
+  }
+
+  // 4. 平民（普通平民顯示「N民」，特殊平民列名稱）
+  let plainVillagerCount = 0;
+  for (const slot of villagerSlots) {
+    if (slot.roleId === 'villager') {
+      plainVillagerCount += slot.count;
+    } else {
+      const role = getRoleById(slot.roleId);
+      const name = role?.name ?? slot.roleId;
+      parts.push(slot.count > 1 ? `${name}×${slot.count}` : name);
+    }
+  }
+  if (plainVillagerCount > 0) {
+    parts.push(`${plainVillagerCount}民`);
+  }
+
+  return parts.join('、');
 }
 
 export function formatBoardCompositionShort(board: BoardDefinition): string {

@@ -26,6 +26,7 @@ export function SpeakingTimerPanel() {
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const nightHistory = useGameStore((s) => s.nightHistory);
   const sheriffState = useGameStore((s) => s.sheriffState);
+  const dailyRandomDirection = useGameStore((s) => s.dailyRandomDirection);
   const speakingQueue = useGameStore((s) => s.speakingQueue);
   const currentSpeakerIndex = useGameStore((s) => s.currentSpeakerIndex);
   const speakingMeta = useGameStore((s) => s.speakingMeta);
@@ -84,8 +85,9 @@ export function SpeakingTimerPanel() {
         nightDeadSeats,
         sheriffSeat: activeSheriffSeat,
         ruleOverrides,
+        dailyRandomDirection,
       }),
-    [seats, nightDeadSeats, activeSheriffSeat, ruleOverrides],
+    [seats, nightDeadSeats, activeSheriffSeat, ruleOverrides, dailyRandomDirection],
   );
 
   const effectiveDeadAnchor = useMemo(() => {

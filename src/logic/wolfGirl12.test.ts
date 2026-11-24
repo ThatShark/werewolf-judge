@@ -143,13 +143,14 @@ describe('12 人局 - 狼女孩（狼女孩／毒師／首夜無刀完整邊界�
     expect(explode.allowed).toBe(true);
     expect(explode.voidedExileVote).toBe(true);
     expect(explode.breakupDeathSeat).toBe(11);
-    expect(explode.pendingSelfExplodeSeat).toBe(4);
+    expect(explode.pendingSelfExplodeSeat).toBeNull();
     // 11 號獵人因愛情破裂直接出局且無法開槍
     expect(explode.seats[10].isAlive).toBe(false);
     expect(explode.seats[10].deathReason).toBe('wolf_girl_breakup');
     expect(checkCanShoot(explode.seats, 11, 'wolf_girl_breakup')?.canShoot).toBe(false);
-    // 狼女孩尚未立即死亡，待第二晚點刀後正式死亡
-    expect(explode.seats[3].isAlive).toBe(true);
+    // 狼女孩自爆即刻死亡
+    expect(explode.seats[3].isAlive).toBe(false);
+    expect(explode.seats[3].deathReason).toBe('self_explode');
 
     const night2 = resolveNight({
       seats: explode.seats,

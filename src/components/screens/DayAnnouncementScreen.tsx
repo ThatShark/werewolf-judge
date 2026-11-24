@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
-import { checkCanShoot } from '../../logic';
+import { checkCanShoot, getSmallestDeadSeat } from '../../logic';
+import type { SpeakingOrderMode } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { PendingShooterCard } from '../common/PendingShooterCard';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
@@ -33,9 +34,14 @@ export function DayAnnouncementScreen() {
   const triggerWhiteCatDelayedDeath = useGameStore((s) => s.triggerWhiteCatDelayedDeath);
   const triggerOldRascalDelayedDeath = useGameStore((s) => s.triggerOldRascalDelayedDeath);
   const sheriffState = useGameStore((s) => s.sheriffState);
+  const dailyRandomDirection = useGameStore((s) => s.dailyRandomDirection);
+  const speakingQueue = useGameStore((s) => s.speakingQueue);
+  const speakingMeta = useGameStore((s) => s.speakingMeta);
   const pendingShooters = useGameStore((s) => s.pendingShooters);
   const forceContinueAfterVictory = useGameStore((s) => s.forceContinueAfterVictory);
 
+  const rerollDailyRandomDirection = useGameStore((s) => s.rerollDailyRandomDirection);
+  const generateSpeakingOrder = useGameStore((s) => s.generateSpeakingOrder);
   const triggerShoot = useGameStore((s) => s.triggerShoot);
   const skipShoot = useGameStore((s) => s.skipShoot);
   const transferSheriffBadge = useGameStore((s) => s.transferSheriffBadge);
@@ -46,6 +52,7 @@ export function DayAnnouncementScreen() {
   const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
   const [victoryModalOpen, setVictoryModalOpen] = useState(false);
   const [skillsDrawerOpen, setSkillsDrawerOpen] = useState(false);
+  const [selectedDeadAnchor, setSelectedDeadAnchor] = useState<number | null>(null);
   // 防法官唸錯鐵律：預設隱藏真實死因，點擊該列或圖示才顯示
   const [revealedDeathKeys, setRevealedDeathKeys] = useState<Record<string, boolean>>({});
 
@@ -58,8 +65,38 @@ export function DayAnnouncementScreen() {
   );
 
   const deaths = latestNight?.deaths ?? [];
-  const nightDeadSeats = useMemo(() => deaths.map((d) => d.seat), [deaths]);
+  const nightDeadSeats = useMemo(
+    () => Array.from(new Set(deaths.map((d) => d.seat))).sort((a, b) => a - b),
+    [deaths],
+  );
   const bearRoar = latestNight?.bearRoar ?? lastBearRoar;
+
+  const activeSheriffSeat = useMemo(() => {
+    if (sheriffState.badgeStatus !== 'active' || sheriffState.sheriffSeat === null) return null;
+    const sheriffObj = seats.find((s) => s.seatNumber === sheriffState.sheriffSeat);
+    return sheriffObj?.isAlive ? sheriffObj.seatNumber : null;
+  }, [sheriffState, seats]);
+
+  const effectiveDeadAnchor = useMemo(() => {
+    if (selectedDeadAnchor !== null && nightDeadSeats.includes(selectedDeadAnchor)) {
+      return selectedDeadAnchor;
+    }
+    return getSmallestDeadSeat(nightDeadSeats);
+  }, [selectedDeadAnchor, nightDeadSeats]);
+
+  const handleLockSpeakingOrder = (mode: SpeakingOrderMode) => {
+    if (mode === 'dead_left' || mode === 'dead_right') {
+      if (effectiveDeadAnchor === null) return;
+      generateSpeakingOrder({ mode, referenceDeadSeat: effectiveDeadAnchor });
+      return;
+    }
+    if (mode === 'sheriff_left' || mode === 'sheriff_right') {
+      if (activeSheriffSeat === null) return;
+      generateSpeakingOrder({ mode });
+      return;
+    }
+    generateSpeakingOrder({ mode: 'random' });
+  };
 
   const disabledShootInfos = useMemo(() => {
     if (isOnlineJudge) return [];
@@ -186,6 +223,149 @@ export function DayAnnouncementScreen() {
           )}
         </section>
 
+        {/* 白天一早決定發言方向與順序（今日隨機順／逆時針 ＋ 死左死右／警左警右一鍵鎖定） */}
+        <section className="space-y-2.5 rounded-lg border border-subtle bg-surface p-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-semibold text-secondary">今日隨機方向</span>
+              <span className="rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 py-0.5 text-[13px] font-semibold text-sheriff">
+                {dailyRandomDirection === 'clockwise' ? '↻ 順時針' : '↺ 逆時針'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={rerollDailyRandomDirection}
+              className="min-h-9 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+            >
+              重抽方向
+            </button>
+          </div>
+
+          {nightDeadSeats.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+              <span className="text-secondary">基準死者</span>
+              {nightDeadSeats.map((seatNum) => (
+                <button
+                  key={seatNum}
+                  type="button"
+                  onClick={() => setSelectedDeadAnchor(seatNum)}
+                  className={`min-h-9 rounded-md px-2.5 font-semibold tabular-nums ${
+                    effectiveDeadAnchor === seatNum
+                      ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                      : 'border border-subtle bg-canvas text-secondary'
+                  }`}
+                >
+                  {formatSeatNum(seatNum)} 號
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 依死訊／警長狀態呈現明確方向按鈕 */}
+          <div className="space-y-1.5">
+            {nightDeadSeats.length > 0 && (
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleLockSpeakingOrder('dead_left')}
+                  className={`min-h-12 rounded-md px-3 text-[13px] font-semibold transition ${
+                    speakingMeta?.mode === 'dead_left'
+                      ? 'border-selected-wolf bg-wolf-tint text-primary'
+                      : 'border border-subtle bg-canvas text-primary hover:border-strong'
+                  }`}
+                >
+                  死左（順時針）
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLockSpeakingOrder('dead_right')}
+                  className={`min-h-12 rounded-md px-3 text-[13px] font-semibold transition ${
+                    speakingMeta?.mode === 'dead_right'
+                      ? 'border-selected-wolf bg-wolf-tint text-primary'
+                      : 'border border-subtle bg-canvas text-primary hover:border-strong'
+                  }`}
+                >
+                  死右（逆時針）
+                </button>
+              </div>
+            )}
+
+            {activeSheriffSeat !== null && (
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleLockSpeakingOrder('sheriff_left')}
+                  className={`min-h-12 rounded-md px-3 text-[13px] font-semibold transition ${
+                    speakingMeta?.mode === 'sheriff_left'
+                      ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                      : 'border border-subtle bg-canvas text-primary hover:border-strong'
+                  }`}
+                >
+                  警左（順時針）
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLockSpeakingOrder('sheriff_right')}
+                  className={`min-h-12 rounded-md px-3 text-[13px] font-semibold transition ${
+                    speakingMeta?.mode === 'sheriff_right'
+                      ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                      : 'border border-subtle bg-canvas text-primary hover:border-strong'
+                  }`}
+                >
+                  警右（逆時針）
+                </button>
+              </div>
+            )}
+
+            {nightDeadSeats.length === 0 && activeSheriffSeat === null && (
+              <button
+                type="button"
+                onClick={() => handleLockSpeakingOrder('random')}
+                className={`min-h-12 w-full rounded-md px-3 text-[13px] font-semibold transition ${
+                  speakingMeta?.mode === 'random'
+                    ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                    : 'border border-subtle bg-canvas text-primary hover:border-strong'
+                }`}
+              >
+                平安夜無警長 · 一鍵抽選發言順序
+              </button>
+            )}
+          </div>
+
+          {/* 鎖定之完整發言順序列表（直接帶入後續發言計時器） */}
+          {speakingQueue.length > 0 && (
+            <div className="space-y-1.5 border-t border-subtle pt-2">
+              <div className="flex items-center justify-between text-[12px] text-secondary">
+                <span className="font-semibold text-good">
+                  已鎖定發言順序（
+                  {speakingMeta?.mode === 'dead_left'
+                    ? '死左'
+                    : speakingMeta?.mode === 'dead_right'
+                      ? '死右'
+                      : speakingMeta?.mode === 'sheriff_left'
+                        ? '警左'
+                        : speakingMeta?.mode === 'sheriff_right'
+                          ? '警右'
+                          : '隨機'}
+                  ）
+                </span>
+                <span className="tabular-nums">共 {speakingQueue.length} 位</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {speakingQueue.map((seatNum, idx) => (
+                  <span
+                    key={`${seatNum}-${idx}`}
+                    className="inline-flex h-7 items-center rounded-md border border-subtle bg-canvas px-2 text-[12px] font-semibold tabular-nums text-primary"
+                  >
+                    {formatSeatNum(seatNum)}
+                    {speakingMeta?.sheriffLastSeat === seatNum ? '警' : ''}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* 公共宣告資訊（熊咆哮／月靈狼／高級平民／雙爆續選／猩紅／河豚） */}
         {isDeferredElectionNext && (
           <div className="border-l-2 border-sheriff bg-surface px-3 py-2 text-[12px] text-sheriff tabular-nums">
@@ -256,7 +436,14 @@ export function DayAnnouncementScreen() {
         {disabledShootInfos.length > 0 && (
           <div className="space-y-1.5">
             {disabledShootInfos.map((info) => {
-              const roleLabel = info.roleId === 'hunter' ? '獵人' : '狼王';
+              const roleLabel =
+                info.roleId === 'wolf_king'
+                  ? '狼王'
+                  : info.roleId === 'awakened_hunter'
+                    ? '覺醒獵人'
+                    : info.roleId === 'lucky_gun'
+                      ? '幸運兒（槍）'
+                      : '獵人';
               return (
                 <div
                   key={info.seatNumber}

@@ -2,46 +2,32 @@ import { useMemo, useState } from 'react';
 import { ttsEngine } from '../../audio/ttsEngine';
 import { getBoardById } from '../../data/boards';
 import { getHostModeDescriptor } from '../../logic';
-import type {
-  BadgeSwallowRule,
-  ControlMode,
-  DealMode,
-  JudgeMode,
-  RuleOverrides,
-  SpeakingDirection,
-  WitchSelfSaveRule,
-} from '../../logic/types';
+import type { BadgeSwallowRule, WitchSelfSaveRule } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { AmbientAudioPlayer } from '../common/AmbientAudioPlayer';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { SlideDrawer } from '../common/SlideDrawer';
 import {
-  RULE_TOGGLE_META,
-  formatBoardCompositionShort,
+  formatBoardRoleList,
   formatSeatNum,
   splitSeatsIntoSymmetricColumns,
 } from '../common/displayHelpers';
 
-type SettingsTab = 'mode' | 'rules' | 'special' | 'audio';
+type SettingsTab = 'rules' | 'special' | 'audio' | 'mode';
 
 interface SeatSetupScreenProps {
   onOpenQA?: () => void;
 }
 
 const WITCH_SELF_SAVE_OPTIONS: Array<{ value: WitchSelfSaveRule; label: string }> = [
-  { value: 'first_night_only', label: '首夜自救' },
-  { value: 'never', label: '不可自救' },
-  { value: 'always', label: '全程自救' },
+  { value: 'never', label: '不能' },
+  { value: 'first_night_only', label: '僅首晚能' },
+  { value: 'always', label: '能' },
 ];
 
 const BADGE_SWALLOW_OPTIONS: Array<{ value: BadgeSwallowRule; label: string }> = [
-  { value: 'single_explode', label: '單爆吞徽' },
-  { value: 'double_explode', label: '雙爆吞徽' },
-];
-
-const DIRECTION_OPTIONS: Array<{ value: SpeakingDirection; label: string }> = [
-  { value: 'clockwise', label: '順時針' },
-  { value: 'counterclockwise', label: '逆時針' },
+  { value: 'double_explode', label: '雙爆吞警徽' },
+  { value: 'single_explode', label: '單爆吞警徽' },
 ];
 
 export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
@@ -51,6 +37,7 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const onlineJudgeSettings = useGameStore((s) => s.onlineJudgeSettings);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
 
+  const goToHostSetup = useGameStore((s) => s.goToHostSetup);
   const goToBoardSelect = useGameStore((s) => s.goToBoardSelect);
   const setBoardPlayerCount = useGameStore((s) => s.setBoardPlayerCount);
   const updateHostMode = useGameStore((s) => s.updateHostMode);
@@ -64,30 +51,13 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const startGame = useGameStore((s) => s.startGame);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>('mode');
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('rules');
   const [confirmClearNicknamesOpen, setConfirmClearNicknamesOpen] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [isTtsPreviewing, setIsTtsPreviewing] = useState(false);
 
   const board = getBoardById(selectedBoardId);
   const modeDescriptor = useMemo(() => getHostModeDescriptor(hostMode), [hostMode]);
-
-  const visibleRuleKeys = useMemo<Array<keyof RuleOverrides>>(() => {
-    const coreKeys: Array<keyof RuleOverrides> = [
-      'victoryMode',
-      'enableSheriff',
-      'badgeSwallowRule',
-      'noSheriffDeadDirection',
-      'sheriffUseDeadSideOnDeath',
-    ];
-    const boardKeys = board?.supportedRuleToggles ?? [];
-    const merged: Array<keyof RuleOverrides> = [];
-    for (const key of [...boardKeys, ...coreKeys]) {
-      if (!merged.includes(key)) {
-        merged.push(key);
-      }
-    }
-    return merged;
-  }, [board]);
 
   if (!board) {
     return (
@@ -126,140 +96,54 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
     }
   };
 
-  const renderRuleControl = (key: keyof RuleOverrides) => {
-    const meta = RULE_TOGGLE_META[key];
-
-    if (key === 'witchSelfSave') {
-      return (
-        <div key={key} className="space-y-1.5 py-2.5">
-          <div className="text-[14px] font-medium text-primary">{meta.label}</div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {WITCH_SELF_SAVE_OPTIONS.map((opt) => {
-              const active = ruleOverrides.witchSelfSave === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => updateRuleOverrides({ witchSelfSave: opt.value })}
-                  className={`min-h-11 rounded-md px-2 text-[12px] font-semibold transition ${
-                    active
-                      ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                      : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
+  const handleToggleTtsPreview = () => {
+    if (isTtsPreviewing) {
+      ttsEngine.cancel();
+      setIsTtsPreviewing(false);
+      return;
     }
-
-    if (key === 'victoryMode') {
-      return (
-        <div key={key} className="space-y-1.5 py-2.5">
-          <div className="text-[14px] font-medium text-primary">{meta.label}</div>
-          <div className="grid grid-cols-2 gap-1.5">
-            {(
-              [
-                { value: 'slaughter_side', label: '屠邊' },
-                { value: 'slaughter_all', label: '屠城' },
-              ] as const
-            ).map((opt) => {
-              const active = ruleOverrides.victoryMode === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => updateRuleOverrides({ victoryMode: opt.value })}
-                  className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
-                    active
-                      ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                      : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    if (key === 'badgeSwallowRule') {
-      return (
-        <div key={key} className="space-y-1.5 py-2.5">
-          <div className="text-[14px] font-medium text-primary">{meta.label}</div>
-          <div className="grid grid-cols-2 gap-1.5">
-            {BADGE_SWALLOW_OPTIONS.map((opt) => {
-              const active = ruleOverrides.badgeSwallowRule === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => updateRuleOverrides({ badgeSwallowRule: opt.value })}
-                  className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
-                    active
-                      ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                      : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    if (key === 'noSheriffDeadDirection') {
-      return (
-        <div key={key} className="space-y-1.5 py-2.5">
-          <div className="text-[14px] font-medium text-primary">{meta.label}</div>
-          <div className="grid grid-cols-2 gap-1.5">
-            {DIRECTION_OPTIONS.map((opt) => {
-              const active = ruleOverrides.noSheriffDeadDirection === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => updateRuleOverrides({ noSheriffDeadDirection: opt.value })}
-                  className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
-                    active
-                      ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                      : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    const boolValue = Boolean(ruleOverrides[key]);
-    return (
-      <button
-        key={key}
-        type="button"
-        onClick={() => updateRuleOverrides({ [key]: !boolValue })}
-        className="flex min-h-12 w-full items-center justify-between gap-3 py-2.5 text-left"
-      >
-        <span className="text-[14px] font-medium text-primary">{meta.label}</span>
-        <span
-          className={`shrink-0 text-[12px] font-semibold ${
-            boolValue ? 'text-good' : 'text-muted'
-          }`}
-        >
-          {boolValue ? '開啟' : '關閉'}
-        </span>
-      </button>
+    setIsTtsPreviewing(true);
+    ttsEngine.previewShort(
+      {
+        enabled: true,
+        rate: onlineJudgeSettings.ttsRate,
+        onEnd: () => setIsTtsPreviewing(false),
+      },
+      3000,
     );
+  };
+
+  const luckyCfg = ruleOverrides.luckyFirstNightSkills;
+
+  const toggleLuckySkill = (
+    merchant: 'blackMarket' | 'miracle' | 'superBlackMarket',
+    skill: 'seer_check' | 'witch_poison' | 'hunter_gun' | 'guard_shield',
+  ) => {
+    if (merchant === 'blackMarket' && skill !== 'guard_shield') {
+      updateRuleOverrides({
+        luckyFirstNightSkills: {
+          ...luckyCfg,
+          blackMarket: { ...luckyCfg.blackMarket, [skill]: !luckyCfg.blackMarket[skill] },
+        },
+      });
+    } else if (merchant === 'miracle' && skill !== 'hunter_gun') {
+      updateRuleOverrides({
+        luckyFirstNightSkills: {
+          ...luckyCfg,
+          miracle: { ...luckyCfg.miracle, [skill]: !luckyCfg.miracle[skill] },
+        },
+      });
+    } else if (merchant === 'superBlackMarket' && skill !== 'guard_shield') {
+      updateRuleOverrides({
+        luckyFirstNightSkills: {
+          ...luckyCfg,
+          superBlackMarket: {
+            ...luckyCfg.superBlackMarket,
+            [skill]: !luckyCfg.superBlackMarket[skill],
+          },
+        },
+      });
+    }
   };
 
   const renderSeatRow = (seat: (typeof seats)[number]) => (
@@ -282,30 +166,27 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   );
 
   const settingsTabs: Array<{ id: SettingsTab; label: string }> = [
-    { id: 'mode', label: '主持模式' },
-    { id: 'rules', label: '房規' },
+    { id: 'rules', label: '細節設定' },
     ...(isJackBoard ? [{ id: 'special' as const, label: '特殊配置' }] : []),
     { id: 'audio', label: '音效' },
+    { id: 'mode', label: '主持模式' },
   ];
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       {/* 1. 頂部板子摘要列 */}
       <section className="shrink-0 space-y-2 border-b border-subtle pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
             <h1 className="truncate text-[18px] font-semibold leading-6 text-primary">
               {board.name}
             </h1>
-            <div className="mt-0.5 flex items-center gap-2 text-[12px] tabular-nums text-secondary">
-              <span>{seats.length}人</span>
-              <span>·</span>
-              <span>{formatBoardCompositionShort(board)}</span>
-              <span>·</span>
-              <span className="text-sheriff">
-                {hostMode.dealMode === 'physical_deal' ? '實體發牌' : '線上發牌'}
-              </span>
+            <div className="mt-0.5 line-clamp-2 text-[12px] leading-4 text-secondary">
+              <span className="font-semibold tabular-nums text-primary">{seats.length}人</span>
+              <span className="mx-1.5 text-muted">·</span>
+              <span>{formatBoardRoleList(board)}</span>
             </div>
+            <div className="mt-0.5 text-[11px] text-sheriff">{modeDescriptor.shortTitle}</div>
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
@@ -318,10 +199,13 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
             </button>
             <button
               type="button"
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => {
+                setSettingsTab('rules');
+                setSettingsOpen(true);
+              }}
               className="min-h-11 rounded-md border border-subtle bg-surface px-3 text-[12px] font-semibold text-primary hover:border-strong"
             >
-              開局設定
+              細節設定
             </button>
           </div>
         </div>
@@ -426,11 +310,11 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
         </div>
       </footer>
 
-      {/* 開局設定抽屜（整合主持矩陣、房規、傑克特殊配置、白噪音） */}
+      {/* 房間內細節設定抽屜（6 項房規、傑克特殊配置、音效、主持模式摘要） */}
       <SlideDrawer
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        title="開局設定"
+        title="房間內細節設定"
         placement="bottom"
       >
         <div className="space-y-3">
@@ -455,186 +339,253 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
             })}
           </div>
 
-          {settingsTab === 'mode' && (
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <div className="text-[12px] font-semibold text-secondary">法官模式</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(
-                    [
-                      { value: 'physical_judge' as JudgeMode, label: '實體法官' },
-                      { value: 'online_judge' as JudgeMode, label: '線上語音法官' },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        updateHostMode({ judgeMode: opt.value });
-                        setStartError(null);
-                      }}
-                      className={`min-h-12 rounded-md px-3 text-[14px] font-semibold transition ${
-                        hostMode.judgeMode === opt.value
-                          ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                          : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-[12px] font-semibold text-secondary">發牌模式</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(
-                    [
-                      { value: 'physical_deal' as DealMode, label: '實體發牌' },
-                      { value: 'online_deal' as DealMode, label: '線上發牌' },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        updateHostMode({ dealMode: opt.value });
-                        setStartError(null);
-                      }}
-                      className={`min-h-12 rounded-md px-3 text-[14px] font-semibold transition ${
-                        hostMode.dealMode === opt.value
-                          ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                          : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-[12px] font-semibold text-secondary">操作模式</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(
-                    [
-                      { value: 'central_control' as ControlMode, label: '中央單機' },
-                      { value: 'multi_device' as ControlMode, label: '多點連線' },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        updateHostMode({ controlMode: opt.value });
-                        setStartError(null);
-                      }}
-                      className={`min-h-12 rounded-md px-3 text-[14px] font-semibold transition ${
-                        hostMode.controlMode === opt.value
-                          ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                          : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-l-2 border-subtle pl-3 text-[12px] text-secondary">
-                模式 {modeDescriptor.modeNumber} · {modeDescriptor.shortTitle}
-              </div>
-
-              {hostMode.judgeMode === 'online_judge' && (
-                <div className="space-y-2.5 border-t border-subtle pt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[14px] font-medium text-primary">語音播報</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateOnlineJudgeSettings({ ttsEnabled: !onlineJudgeSettings.ttsEnabled })
-                      }
-                      className={`min-h-11 rounded-md border px-3 text-[12px] font-semibold ${
-                        onlineJudgeSettings.ttsEnabled
-                          ? 'border-good-border bg-good-tint text-good'
-                          : 'border-subtle bg-canvas text-muted'
-                      }`}
-                    >
-                      {onlineJudgeSettings.ttsEnabled ? '開啟' : '靜音'}
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-2.5 py-2">
-                      <span className="text-[12px] text-secondary">緩衝</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateOnlineJudgeSettings({
-                              stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds - 1,
-                            })
-                          }
-                          className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center text-[14px] font-semibold tabular-nums text-sheriff">
-                          {onlineJudgeSettings.stepBufferSeconds}s
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateOnlineJudgeSettings({
-                              stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds + 1,
-                            })
-                          }
-                          className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-2.5 py-2">
-                      <span className="text-[12px] text-secondary">語速</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateOnlineJudgeSettings({
-                              ttsRate: onlineJudgeSettings.ttsRate - 0.1,
-                            })
-                          }
-                          className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
-                        >
-                          −
-                        </button>
-                        <span className="w-9 text-center text-[14px] font-semibold tabular-nums text-primary">
-                          {onlineJudgeSettings.ttsRate.toFixed(1)}×
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateOnlineJudgeSettings({
-                              ttsRate: onlineJudgeSettings.ttsRate + 0.1,
-                            })
-                          }
-                          className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {settingsTab === 'rules' && (
             <div className="divide-y divide-subtle">
-              {visibleRuleKeys.map((key) => renderRuleControl(key))}
+              {/* 1. 女巫可否自救 */}
+              <div className="space-y-1.5 py-2.5">
+                <div className="text-[14px] font-medium text-primary">1. 女巫可否自救</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {WITCH_SELF_SAVE_OPTIONS.map((opt) => {
+                    const active = ruleOverrides.witchSelfSave === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => updateRuleOverrides({ witchSelfSave: opt.value })}
+                        className={`min-h-11 rounded-md px-2 text-[12px] font-semibold transition ${
+                          active
+                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. 是否有警長 */}
+              <div className="space-y-1.5 py-2.5">
+                <div className="text-[14px] font-medium text-primary">2. 是否有警長</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(
+                    [
+                      { value: true, label: '有' },
+                      { value: false, label: '沒有' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = ruleOverrides.enableSheriff === opt.value;
+                    return (
+                      <button
+                        key={String(opt.value)}
+                        type="button"
+                        onClick={() => updateRuleOverrides({ enableSheriff: opt.value })}
+                        className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                          active
+                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. 吞警徽規則 */}
+              <div className="space-y-1.5 py-2.5">
+                <div className="text-[14px] font-medium text-primary">3. 吞警徽規則</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {BADGE_SWALLOW_OPTIONS.map((opt) => {
+                    const active = ruleOverrides.badgeSwallowRule === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => updateRuleOverrides({ badgeSwallowRule: opt.value })}
+                        className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                          active
+                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. 勝利條件 */}
+              <div className="space-y-1.5 py-2.5">
+                <div className="text-[14px] font-medium text-primary">4. 勝利條件</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(
+                    [
+                      { value: 'slaughter_side', label: '屠邊' },
+                      { value: 'slaughter_all', label: '屠城' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = ruleOverrides.victoryMode === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => updateRuleOverrides({ victoryMode: opt.value })}
+                        className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                          active
+                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 5. 機械狼是否第一晚強制學習 */}
+              <div className="space-y-1.5 py-2.5">
+                <div className="text-[14px] font-medium text-primary">
+                  5. 機械狼是否第一晚強制學習
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(
+                    [
+                      { value: true, label: '是' },
+                      { value: false, label: '否' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = ruleOverrides.mechWolfForceLearnNight1 === opt.value;
+                    return (
+                      <button
+                        key={String(opt.value)}
+                        type="button"
+                        onClick={() => updateRuleOverrides({ mechWolfForceLearnNight1: opt.value })}
+                        className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                          active
+                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 6. 幸運兒第一晚是否就能使用技能（多選勾選框） */}
+              <div className="space-y-2.5 py-2.5">
+                <div className="text-[14px] font-medium text-primary">
+                  6. 幸運兒第一晚是否就能使用技能
+                </div>
+
+                {/* 黑市商人 */}
+                <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
+                  <div className="text-[12px] font-semibold text-secondary">黑市商人</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { key: 'seer_check', label: '查驗' },
+                        { key: 'witch_poison', label: '毒' },
+                        { key: 'hunter_gun', label: '槍' },
+                      ] as const
+                    ).map((item) => {
+                      const checked = luckyCfg.blackMarket[item.key];
+                      return (
+                        <label
+                          key={item.key}
+                          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
+                            checked
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border-subtle bg-surface text-secondary'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleLuckySkill('blackMarket', item.key)}
+                            className="h-4 w-4 accent-sheriff"
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 奇蹟商人 */}
+                <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
+                  <div className="text-[12px] font-semibold text-secondary">奇蹟商人</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { key: 'seer_check', label: '查驗' },
+                        { key: 'witch_poison', label: '毒' },
+                        { key: 'guard_shield', label: '盾' },
+                      ] as const
+                    ).map((item) => {
+                      const checked = luckyCfg.miracle[item.key];
+                      return (
+                        <label
+                          key={item.key}
+                          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
+                            checked
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border-subtle bg-surface text-secondary'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleLuckySkill('miracle', item.key)}
+                            className="h-4 w-4 accent-sheriff"
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 超級黑市商人 */}
+                <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
+                  <div className="text-[12px] font-semibold text-secondary">超級黑市商人</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { key: 'seer_check', label: '查驗' },
+                        { key: 'witch_poison', label: '毒' },
+                        { key: 'hunter_gun', label: '槍' },
+                      ] as const
+                    ).map((item) => {
+                      const checked = luckyCfg.superBlackMarket[item.key];
+                      return (
+                        <label
+                          key={item.key}
+                          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
+                            checked
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border-subtle bg-surface text-secondary'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleLuckySkill('superBlackMarket', item.key)}
+                            className="h-4 w-4 accent-sheriff"
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -713,6 +664,62 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
           )}
 
           {settingsTab === 'audio' && <AmbientAudioPlayer />}
+
+          {settingsTab === 'mode' && (
+            <div className="space-y-3">
+              <div className="rounded-md border-l-2 border-sheriff bg-canvas px-3 py-2.5 text-[12px] leading-5 text-secondary">
+                <div className="font-semibold text-primary">
+                  模式 {modeDescriptor.modeNumber} · {modeDescriptor.shortTitle}
+                </div>
+                <p className="mt-1">{modeDescriptor.description}</p>
+              </div>
+
+              {hostMode.judgeMode === 'online_judge' && (
+                <div className="space-y-2.5 rounded-md border border-subtle bg-canvas p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[14px] font-medium text-primary">語音播報</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleToggleTtsPreview}
+                        className={`min-h-10 rounded-md border px-3 text-[12px] font-semibold ${
+                          isTtsPreviewing
+                            ? 'border-good-border bg-good-tint text-good'
+                            : 'border-subtle bg-surface text-primary'
+                        }`}
+                      >
+                        {isTtsPreviewing ? '停止試聽' : '試聽（3 秒）'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateOnlineJudgeSettings({ ttsEnabled: !onlineJudgeSettings.ttsEnabled })
+                        }
+                        className={`min-h-10 rounded-md border px-3 text-[12px] font-semibold ${
+                          onlineJudgeSettings.ttsEnabled
+                            ? 'border-good-border bg-good-tint text-good'
+                            : 'border-subtle bg-surface text-muted'
+                        }`}
+                      >
+                        {onlineJudgeSettings.ttsEnabled ? '開啟' : '靜音'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(false);
+                  goToHostSetup();
+                }}
+                className="min-h-12 w-full rounded-md border border-subtle bg-canvas text-[14px] font-medium text-secondary hover:border-strong hover:text-primary"
+              >
+                返回開房前重新設定 2 × 2 × 2 模式
+              </button>
+            </div>
+          )}
         </div>
       </SlideDrawer>
 

@@ -183,26 +183,43 @@ export type WitchSelfSaveRule = 'first_night_only' | 'never' | 'always';
 /** [V2.0 擴充] 吞警徽規則：單爆吞警徽 / 雙爆吞警徽 */
 export type BadgeSwallowRule = 'single_explode' | 'double_explode';
 
+/** 幸運兒首夜可用技能細部設定 */
+export interface LuckyFirstNightSkillsConfig {
+  blackMarket: {
+    seer_check: boolean;
+    witch_poison: boolean;
+    hunter_gun: boolean;
+  };
+  miracle: {
+    seer_check: boolean;
+    witch_poison: boolean;
+    guard_shield: boolean;
+  };
+  superBlackMarket: {
+    seer_check: boolean;
+    witch_poison: boolean;
+    hunter_gun: boolean;
+  };
+}
+
 export interface RuleOverrides {
-  /** 女巫能否自救：僅首夜可自救 / 全程不可自救 / 全程可自救 */
+  /** 1. 女巫能否自救：不能（預設） / 僅首晚能 / 能 */
   witchSelfSave: WitchSelfSaveRule;
-  /** 白痴白天被放逐翻牌免死後，是否仍需被追刀才算神職出局 */
-  idiotNeedsExtraKill: boolean;
-  /** 機械狼第一晚是否強制學習一名玩家 */
-  mechWolfForceLearnNight1: boolean;
-  /** 狼刀在先（預設 true） */
-  wolfKillPriority: boolean;
-  /** 勝利條件：屠邊（預設）或屠城 */
-  victoryMode: 'slaughter_side' | 'slaughter_all';
-  /** [V2.0 擴充] 是否開啟警長競選（預設 true） */
+  /** 2. 是否有警長（預設 true） */
   enableSheriff: boolean;
-  /** [V2.0 擴充] 吞警徽規則：單爆吞警徽 / 雙爆吞警徽 */
+  /** 3. 吞警徽規則：雙爆吞警徽（預設） / 單爆吞警徽 */
   badgeSwallowRule: BadgeSwallowRule;
-  /** [V2.0 擴充] 無警長時有死訊的發言方向（預設 clockwise 順時針） */
-  noSheriffDeadDirection: SpeakingDirection;
-  /** [V2.0 擴充] 有警長且有死訊時，是否優先採用死左／死右（平安夜切回警左／警右） */
-  sheriffUseDeadSideOnDeath: boolean;
-  /** 混血兒是否計入平民邊屠邊人數（預設 false 不計入屠邊；12 人局混血兒可切換開啟） */
+  /** 4. 勝利條件：屠邊（預設）或屠城 */
+  victoryMode: 'slaughter_side' | 'slaughter_all';
+  /** 5. 機械狼第一晚是否強制學習一名玩家（預設 true） */
+  mechWolfForceLearnNight1: boolean;
+  /** 6. 幸運兒第一晚是否就能使用技能（黑市／奇蹟／超級黑市多選） */
+  luckyFirstNightSkills: LuckyFirstNightSkillsConfig;
+  /** 內部／板子固定規則（不於房間設定 UI 開放修改） */
+  idiotNeedsExtraKill?: boolean;
+  wolfKillPriority?: boolean;
+  noSheriffDeadDirection?: SpeakingDirection;
+  sheriffUseDeadSideOnDeath?: boolean;
   hybridCountsAsVillager?: boolean;
 }
 
@@ -290,6 +307,8 @@ export interface BoardDefinition {
   isFlexibleComposition?: boolean;
   /** 特殊配置或額外規則提醒 */
   compositionNote?: string;
+  /** 板子級首夜／全局特殊限制（源自 docs/boards-raw.md） */
+  specialRules?: string[];
   /** 多人數板子可選的預設人數列表 */
   presetPlayerCounts?: number[];
   /** 自動結算支援層級（full: 全自動結算；partial_manual: 含進階角色需手動標記輔助） */
@@ -306,6 +325,7 @@ export interface BoardDefinition {
 }
 
 export type GamePhase =
+  | 'host_setup'
   | 'board_select'
   | 'seat_setup'
   | 'pass_and_reveal'
@@ -1138,6 +1158,7 @@ export interface GameState {
   finalBatchState?: FinalBatchRuntimeState;
 
   /** 自動發言順序與單人倒數計時引擎 */
+  dailyRandomDirection: SpeakingDirection;
   speakingQueue: number[];
   currentSpeakerIndex: number;
   speakingMeta: SpeakingOrderResult | null;
@@ -1184,7 +1205,7 @@ export interface VictoryResult {
 
 export interface ShootEligibility {
   seatNumber: number;
-  roleId: 'hunter' | 'wolf_king';
+  roleId: 'hunter' | 'wolf_king' | 'awakened_hunter' | 'lucky_gun';
   canShoot: boolean;
   reason: string;
 }
@@ -1369,7 +1390,10 @@ export interface ShootResolutionResult {
 export interface SelfExplodeResult {
   allowed: boolean;
   reason?: string;
+  seats?: PlayerSeat[];
   pendingSelfExplodeSeat: number | null;
+  mechWolfState?: MechWolfRuntimeState;
+  victory?: VictoryResult;
 }
 
 export interface WhiteWolfKingExplodeResult {
@@ -1379,6 +1403,7 @@ export interface WhiteWolfKingExplodeResult {
   wolfSeat: number;
   targetSeat: number | null;
   charmedDeathSeat: number | null;
+  chainedShootEligibility?: ShootEligibility | null;
   pendingSelfExplodeSeat: number | null;
   mechWolfState: MechWolfRuntimeState;
   victory: VictoryResult;

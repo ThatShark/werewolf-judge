@@ -16,6 +16,7 @@ import { DayAnnouncementScreen } from './components/screens/DayAnnouncementScree
 import { DayVoteScreen } from './components/screens/DayVoteScreen';
 import { GameOverScreen } from './components/screens/GameOverScreen';
 import { HomeScreen } from './components/screens/HomeScreen';
+import { HostPreSetupScreen } from './components/screens/HostPreSetupScreen';
 import { JoinRoomScreen } from './components/screens/JoinRoomScreen';
 import { NightConsoleScreen } from './components/screens/NightConsoleScreen';
 import { PassAndRevealScreen } from './components/screens/PassAndRevealScreen';
@@ -55,7 +56,9 @@ function App() {
   const latestUndoLabel = undoStack.length > 0 ? undoStack[undoStack.length - 1].label : undefined;
 
   const board = getBoardById(selectedBoardId);
-  const hasActiveGame = Boolean(selectedBoardId) || phase !== 'board_select';
+  const hasActiveGame =
+    Boolean(selectedBoardId) || (phase !== 'host_setup' && phase !== 'board_select');
+  const showNotebook = hostMode.judgeMode !== 'physical_judge';
 
   useEffect(() => {
     const shouldAutoPlay =
@@ -87,6 +90,8 @@ function App() {
 
   const renderPhaseScreen = () => {
     switch (phase) {
+      case 'host_setup':
+        return <HostPreSetupScreen />;
       case 'board_select':
         return <BoardSelectScreen />;
       case 'seat_setup':
@@ -105,11 +110,16 @@ function App() {
       case 'day_vote':
         return <DayVoteScreen />;
       case 'game_over':
-        return <GameOverScreen onOpenNotebook={() => setNotebookOpen(true)} />;
+        return (
+          <GameOverScreen
+            onOpenNotebook={showNotebook ? () => setNotebookOpen(true) : undefined}
+          />
+        );
     }
   };
 
   const isZeroScrollPhase =
+    phase === 'host_setup' ||
     phase === 'board_select' ||
     phase === 'seat_setup' ||
     phase === 'pass_and_reveal' ||
@@ -160,6 +170,7 @@ function App() {
             phase={phase}
             round={round}
             board={board}
+            showNotebook={showNotebook}
             canUndo={undoStack.length > 0}
             undoLabel={latestUndoLabel}
             onUndo={() => setConfirmUndoOpen(true)}
@@ -201,7 +212,9 @@ function App() {
         onCancel={() => setConfirmUndoOpen(false)}
       />
 
-      <NotebookDrawer open={notebookOpen} onClose={() => setNotebookOpen(false)} />
+      {showNotebook && (
+        <NotebookDrawer open={notebookOpen} onClose={() => setNotebookOpen(false)} />
+      )}
 
       <HistoryDrawer
         open={historyOpen}

@@ -76,6 +76,7 @@ import {
   getUnclaimedSeatNumbers,
   getWolfWitchCheckResult,
   isJackSecondIdentityBoard,
+  isLuckySkillAllowedOnRound,
   isSeatWolfFaction,
 } from '../../logic';
 import type { ActionCheckResult } from '../../logic/types';
@@ -1259,7 +1260,35 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       case 'evil_merchant_gift':
       case 'butler_tea':
       case 'wolf_maid_tea':
-      case 'lucky_item_action':
+      case 'lucky_item_action': {
+        let luckyNight1Blocked = false;
+        if (round === 1) {
+          if (currentNightDraft.miracleMerchantItem) {
+            luckyNight1Blocked = !isLuckySkillAllowedOnRound(
+              'miracle',
+              currentNightDraft.miracleMerchantItem,
+              round,
+              ruleOverrides,
+            );
+          } else if (currentNightDraft.blackMarketItem) {
+            luckyNight1Blocked = !isLuckySkillAllowedOnRound(
+              'blackMarket',
+              currentNightDraft.blackMarketItem,
+              round,
+              ruleOverrides,
+            );
+          } else if (currentNightDraft.superBlackMarketTargets) {
+            const cfg = ruleOverrides.luckyFirstNightSkills.superBlackMarket;
+            luckyNight1Blocked = !cfg.seer_check && !cfg.witch_poison && !cfg.hunter_gun;
+          }
+        }
+        return {
+          selected: !luckyNight1Blocked && pendingTarget === seatNumber,
+          disabled: !isAlive || luckyNight1Blocked,
+          reason: luckyNight1Blocked ? '依房規首夜不可使用' : !isAlive ? '已出局' : undefined,
+          onSelect: toggleTarget,
+        };
+      }
       case 'happy_sheep_action':
       case 'police_dog_action':
       case 'little_girl_identify':
@@ -2948,6 +2977,31 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
                 {pendingTarget !== null
                   ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
                   : '請點選上方座位選擇技能目標（或直接確認跳過）'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'lucky_item_action' && round === 1 && (
+              <div className="rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-2 text-xs text-sheriff">
+                第一晚幸運兒可用技能（依房規）：
+                {currentNightDraft.miracleMerchantItem
+                  ? isLuckySkillAllowedOnRound(
+                      'miracle',
+                      currentNightDraft.miracleMerchantItem,
+                      1,
+                      ruleOverrides,
+                    )
+                    ? '奇蹟商人幸運兒首夜可使用此技能'
+                    : '奇蹟商人幸運兒此技能首夜禁用（次夜起生效），請直接跳過'
+                  : currentNightDraft.blackMarketItem
+                    ? isLuckySkillAllowedOnRound(
+                        'blackMarket',
+                        currentNightDraft.blackMarketItem,
+                        1,
+                        ruleOverrides,
+                      )
+                      ? '黑市商人幸運兒首夜可使用此技能'
+                      : '黑市商人幸運兒此技能首夜禁用（次夜起生效），請直接跳過'
+                    : '請依房規「幸運兒第一晚是否就能使用技能」勾選狀態主持'}
               </div>
             )}
 

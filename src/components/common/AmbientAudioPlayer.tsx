@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ambientAudioEngine } from '../../audio/ambientAudioEngine';
+import { ttsEngine } from '../../audio/ttsEngine';
 import type { AmbientPresetId } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 
@@ -17,14 +18,34 @@ const PRESET_OPTIONS: Array<{
 export function AmbientAudioPlayer() {
   const ambientAudio = useGameStore((s) => s.ambientAudio);
   const updateAmbientAudio = useGameStore((s) => s.updateAmbientAudio);
+  const onlineJudgeSettings = useGameStore((s) => s.onlineJudgeSettings);
+  const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
 
   const [isPlaying, setIsPlaying] = useState(() => ambientAudioEngine.isPlaying());
+  const [isTtsPreviewing, setIsTtsPreviewing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     return ambientAudioEngine.subscribe(setIsPlaying);
   }, []);
+
+  const handleToggleTtsPreview = () => {
+    if (isTtsPreviewing) {
+      ttsEngine.cancel();
+      setIsTtsPreviewing(false);
+      return;
+    }
+    setIsTtsPreviewing(true);
+    ttsEngine.previewShort(
+      {
+        enabled: true,
+        rate: onlineJudgeSettings.ttsRate,
+        onEnd: () => setIsTtsPreviewing(false),
+      },
+      3000,
+    );
+  };
 
   const handleSelectPreset = (presetId: AmbientPresetId) => {
     setNotice(null);
@@ -57,7 +78,7 @@ export function AmbientAudioPlayer() {
       setNotice('重整後需重新選取本機音訊檔案。');
       return;
     }
-    ambientAudioEngine.play(ambientAudio.presetId, ambientAudio.volume);
+    ambientAudioEngine.previewShort(ambientAudio.presetId, ambientAudio.volume, 3000);
   };
 
   const handleVolumeChange = (nextVolume: number) => {
@@ -91,7 +112,7 @@ export function AmbientAudioPlayer() {
               : 'border-subtle bg-canvas text-primary hover:border-strong'
           }`}
         >
-          {isPlaying ? '停止試聽' : '試聽'}
+          {isPlaying ? '停止試聽' : '試聽（3 秒）'}
         </button>
       </div>
 
@@ -174,6 +195,51 @@ export function AmbientAudioPlayer() {
             {ambientAudio.autoPlayAtNight ? '開啟' : '關閉'}
           </span>
         </button>
+      </div>
+
+      {/* 語音播報 TTS 試聽區 */}
+      <div className="space-y-2.5 border-t border-subtle pt-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[14px] font-semibold text-primary">語音播報（TTS）</span>
+          <button
+            type="button"
+            onClick={handleToggleTtsPreview}
+            className={`min-h-11 rounded-md border px-3 text-[12px] font-semibold transition ${
+              isTtsPreviewing
+                ? 'border-good-border bg-good-tint text-good'
+                : 'border-subtle bg-canvas text-primary hover:border-strong'
+            }`}
+          >
+            {isTtsPreviewing ? '停止試聽' : '試聽（3 秒）'}
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-3 py-2">
+          <span className="text-[12px] text-secondary">語速</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                updateOnlineJudgeSettings({ ttsRate: onlineJudgeSettings.ttsRate - 0.1 })
+              }
+              className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+            >
+              −
+            </button>
+            <span className="w-10 text-center text-[14px] font-semibold tabular-nums text-primary">
+              {onlineJudgeSettings.ttsRate.toFixed(1)}×
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                updateOnlineJudgeSettings({ ttsRate: onlineJudgeSettings.ttsRate + 0.1 })
+              }
+              className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+            >
+              +
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

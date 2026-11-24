@@ -15,6 +15,7 @@ import {
   isEvilKnightNightShootImmune,
   isSeatWolfFaction,
 } from './topFiveRoles';
+import { findLuckyGiftForSeat } from './thirdPartySpecialRoles';
 import {
   isTreasureMasterLastWolfMasked,
   syncTreasureMasterTeamStatus,
@@ -31,6 +32,7 @@ import type {
   SelfExplodeResult,
   ShootEligibility,
   ShootResolutionResult,
+  ThirdPartySpecialRuntimeState,
   TreasureMasterRuntimeState,
   VictoryCheckOptions,
   WhiteWolfKingExplodeResult,
@@ -40,7 +42,12 @@ import { checkVictory } from './victory';
 const HUNTER_SHOOTABLE_REASONS: ReadonlySet<DeathReason> = new Set([
   'wolf_kill',
   'milk_pierce',
+  'hunter_shoot',
   'wolf_king_shoot',
+  'white_wolf_king_explode',
+  'pandora_day_gun',
+  'awakened_hunter_shoot',
+  'awakened_wolf_king_shoot',
   'exiled',
   'mech_wolf_kill',
 ]);
@@ -48,37 +55,104 @@ const HUNTER_SHOOTABLE_REASONS: ReadonlySet<DeathReason> = new Set([
 const WOLF_KING_SHOOTABLE_REASONS: ReadonlySet<DeathReason> = new Set([
   'wolf_kill',
   'hunter_shoot',
+  'wolf_king_shoot',
+  'white_wolf_king_explode',
+  'pandora_day_gun',
+  'awakened_hunter_shoot',
+  'awakened_wolf_king_shoot',
   'milk_pierce',
   'exiled',
+]);
+
+const POISON_DEATH_REASONS: ReadonlySet<DeathReason> = new Set([
+  'witch_poison',
+  'poisoner_poison',
+  'mech_wolf_poison',
+  'awakened_witch_poison',
+  'pandora_poison',
 ]);
 
 export function checkCanShoot(
   seats: PlayerSeat[],
   shooterSeat: number,
   deathReason: DeathReason,
-  options: { fearedSeat?: number | null; boardId?: string } = {},
+  options: {
+    fearedSeat?: number | null;
+    boardId?: string;
+    round?: number;
+    ruleOverrides?: RuleOverrides;
+    thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
+  } = {},
 ): ShootEligibility | null {
   const shooter = seats.find((seat) => seat.seatNumber === shooterSeat);
-  if (!shooter || (shooter.roleId !== 'hunter' && shooter.roleId !== 'wolf_king')) {
+  if (!shooter) {
+    return null;
+  }
+
+  const isBuiltInShooter =
+    shooter.roleId === 'hunter' ||
+    shooter.roleId === 'wolf_king' ||
+    shooter.roleId === 'awakened_hunter';
+
+  // 若非內建開槍角色，檢查是否為持有「槍」道具之黑市／超級黑市幸運兒
+  if (!isBuiltInShooter) {
+    const luckyGift = findLuckyGiftForSeat(
+      options.thirdPartySpecialState,
+      shooterSeat,
+      options.round ?? 2,
+      options.ruleOverrides,
+    );
+    if (!luckyGift || luckyGift.item !== 'hunter_gun') {
+      return null;
+    }
+    if (!luckyGift.allowedThisRound) {
+      return {
+        seatNumber: shooterSeat,
+        roleId: 'lucky_gun',
+        canShoot: false,
+        reason: '依房規，此幸運兒第一晚不可使用槍技能',
+      };
+    }
+    if (POISON_DEATH_REASONS.has(deathReason)) {
+      return {
+        seatNumber: shooterSeat,
+        roleId: 'lucky_gun',
+        canShoot: false,
+        reason: '幸運兒被毒殺，無法發動槍技能',
+      };
+    }
+    if (HUNTER_SHOOTABLE_REASONS.has(deathReason)) {
+      return {
+        seatNumber: shooterSeat,
+        roleId: 'lucky_gun',
+        canShoot: true,
+        reason: '幸運兒持有獵人槍，可開槍帶走一名存活玩家或選擇壓槍',
+      };
+    }
     return null;
   }
 
   // 被種狼感染轉化為狼人後失去原有神職技能（不可開槍）
-  if (shooter.infectedBySeedWolf && shooter.roleId === 'hunter') {
+  if (
+    shooter.infectedBySeedWolf &&
+    (shooter.roleId === 'hunter' || shooter.roleId === 'awakened_hunter')
+  ) {
     return {
       seatNumber: shooterSeat,
-      roleId: 'hunter',
+      roleId: shooter.roleId,
       canShoot: false,
       reason: '獵人已被種狼感染失去原有技能，無法開槍',
     };
   }
 
-  if (shooter.roleId === 'hunter') {
+  if (shooter.roleId === 'hunter' || shooter.roleId === 'awakened_hunter') {
+    const roleId = shooter.roleId;
+    const roleName = roleId === 'awakened_hunter' ? '覺醒獵人' : '獵人';
     // 娛樂局「獵殺潛狼 / 獵人局」：只要出局就能開槍
     if (options.boardId === 'multi-hunter') {
       return {
         seatNumber: shooterSeat,
-        roleId: 'hunter',
+        roleId,
         canShoot: true,
         reason: '獵人局規則：只要出局即可開槍帶走一名存活玩家或選擇壓槍',
       };
@@ -86,48 +160,46 @@ export function checkCanShoot(
     if (
       options.fearedSeat === shooterSeat &&
       deathReason !== 'exiled' &&
-      deathReason !== 'wolf_king_shoot'
+      deathReason !== 'wolf_king_shoot' &&
+      deathReason !== 'white_wolf_king_explode' &&
+      deathReason !== 'pandora_day_gun'
     ) {
       return {
         seatNumber: shooterSeat,
-        roleId: 'hunter',
+        roleId,
         canShoot: false,
-        reason: '獵人昨晚遭夢魘恐懼，晚上倒牌無法開槍',
+        reason: `${roleName}昨晚遭夢魘恐懼，晚上倒牌無法開槍`,
       };
     }
-    if (
-      deathReason === 'witch_poison' ||
-      deathReason === 'poisoner_poison' ||
-      deathReason === 'mech_wolf_poison'
-    ) {
+    if (POISON_DEATH_REASONS.has(deathReason)) {
       return {
         seatNumber: shooterSeat,
-        roleId: 'hunter',
+        roleId,
         canShoot: false,
-        reason: '獵人被毒殺，無法開槍',
+        reason: `${roleName}被毒殺，無法開槍`,
       };
     }
     if (deathReason === 'wolf_girl_breakup') {
       return {
         seatNumber: shooterSeat,
-        roleId: 'hunter',
+        roleId,
         canShoot: false,
-        reason: '獵人因愛情破裂出局，無法開槍',
+        reason: `${roleName}因愛情破裂出局，無法開槍`,
       };
     }
     if (HUNTER_SHOOTABLE_REASONS.has(deathReason)) {
       return {
         seatNumber: shooterSeat,
-        roleId: 'hunter',
+        roleId,
         canShoot: true,
-        reason: '獵人符合開槍條件，可開槍帶走一名存活玩家或選擇壓槍',
+        reason: `${roleName}符合開槍條件，可開槍帶走一名存活玩家或選擇壓槍`,
       };
     }
     return {
       seatNumber: shooterSeat,
-      roleId: 'hunter',
+      roleId,
       canShoot: false,
-      reason: '不符合獵人開槍條件',
+      reason: `不符合${roleName}開槍條件`,
     };
   }
 
@@ -140,11 +212,7 @@ export function checkCanShoot(
       reason: '狼王自爆，無法開槍',
     };
   }
-  if (
-    deathReason === 'witch_poison' ||
-    deathReason === 'poisoner_poison' ||
-    deathReason === 'mech_wolf_poison'
-  ) {
+  if (POISON_DEATH_REASONS.has(deathReason)) {
     return {
       seatNumber: shooterSeat,
       roleId: 'wolf_king',
@@ -197,7 +265,11 @@ export function resolveShoot(
   treasureMasterState?: TreasureMasterRuntimeState,
   victoryOptions?: VictoryCheckOptions,
 ): ShootResolutionResult {
-  const eligibility = checkCanShoot(seats, shooterSeat, shooterDeathReason);
+  const eligibility = checkCanShoot(seats, shooterSeat, shooterDeathReason, {
+    round,
+    ruleOverrides,
+    thirdPartySpecialState: victoryOptions?.thirdPartySpecialState,
+  });
   if (!eligibility || !eligibility.canShoot) {
     throw new Error(eligibility?.reason ?? '該玩家無法開槍');
   }
@@ -211,13 +283,15 @@ export function resolveShoot(
   }
 
   const shootReason: 'hunter_shoot' | 'wolf_king_shoot' =
-    eligibility.roleId === 'hunter' ? 'hunter_shoot' : 'wolf_king_shoot';
+    eligibility.roleId === 'wolf_king' ? 'wolf_king_shoot' : 'hunter_shoot';
+  const immuneCheckRoleId: 'hunter' | 'wolf_king' =
+    eligibility.roleId === 'wolf_king' ? 'wolf_king' : 'hunter';
 
   // 惡靈騎士／惡魔免疫夜間傷害、戰狼免疫所有神職傷害、白貓翻牌免死
   const whiteCatCheck = shouldWhiteCatSurviveDeath(target, shootReason);
   if (
-    isEvilKnightNightShootImmune(target, eligibility.roleId, shooterDeathReason) ||
-    isDemonWolfNightShootImmune(target, eligibility.roleId, shooterDeathReason) ||
+    isEvilKnightNightShootImmune(target, immuneCheckRoleId, shooterDeathReason) ||
+    isDemonWolfNightShootImmune(target, immuneCheckRoleId, shooterDeathReason) ||
     isWarWolfImmuneToDeath(target, shootReason) ||
     whiteCatCheck.survive
   ) {
@@ -289,7 +363,13 @@ export function resolveShoot(
     victoryOptions,
   );
   const chainedShootEligibility =
-    victory.winner === null ? checkCanShoot(updatedSeats, targetSeat, shootReason) : null;
+    victory.winner === null
+      ? checkCanShoot(updatedSeats, targetSeat, shootReason, {
+          round,
+          ruleOverrides,
+          thirdPartySpecialState: victoryOptions?.thirdPartySpecialState,
+        })
+      : null;
 
   return {
     seats: updatedSeats,
@@ -507,6 +587,13 @@ export function resolveSelfExplode(
   seats: PlayerSeat[],
   wolfSeat: number,
   finalBatchState?: FinalBatchRuntimeState,
+  options?: {
+    round?: number;
+    ruleOverrides?: RuleOverrides;
+    mechWolfState?: MechWolfRuntimeState;
+    treasureMasterState?: TreasureMasterRuntimeState;
+    victoryOptions?: VictoryCheckOptions;
+  },
 ): SelfExplodeResult {
   const player = seats.find((seat) => seat.seatNumber === wolfSeat);
   if (!player || !player.isAlive) {
@@ -635,9 +722,36 @@ export function resolveSelfExplode(
     };
   }
 
+  // 狼人自爆即刻死亡，不可再成為騎士決鬥、開槍等任何後續技能目標
+  const updatedSeats = seats.map((seat) =>
+    seat.seatNumber === wolfSeat
+      ? {
+          ...seat,
+          isAlive: false,
+          deathReason: 'self_explode' as const,
+          deathRound: options?.round ?? seat.deathRound,
+        }
+      : { ...seat },
+  );
+
+  const nextMechWolfState = options?.mechWolfState
+    ? syncMechWolfTeamStatus(updatedSeats, options.mechWolfState)
+    : undefined;
+  const victory = options?.ruleOverrides
+    ? checkVictory(
+        updatedSeats,
+        options.ruleOverrides,
+        options.treasureMasterState,
+        options.victoryOptions,
+      )
+    : undefined;
+
   return {
     allowed: true,
-    pendingSelfExplodeSeat: wolfSeat,
+    seats: updatedSeats,
+    pendingSelfExplodeSeat: null,
+    ...(nextMechWolfState ? { mechWolfState: nextMechWolfState } : {}),
+    ...(victory ? { victory } : {}),
   };
 }
 
@@ -733,7 +847,17 @@ export function resolveWhiteWolfKingExplode(
     };
   }
 
-  let updatedSeats = seats.map((seat) => ({ ...seat }));
+  // 白狼王自爆即刻死亡，不可再成為任何技能目標
+  let updatedSeats = seats.map((seat) =>
+    seat.seatNumber === wolfSeat
+      ? {
+          ...seat,
+          isAlive: false,
+          deathReason: 'self_explode' as const,
+          deathRound: round,
+        }
+      : { ...seat },
+  );
   let charmedDeathSeat: number | null = null;
 
   if (targetSeat !== null) {
@@ -745,6 +869,7 @@ export function resolveWhiteWolfKingExplode(
         wolfSeat,
         targetSeat,
         charmedDeathSeat: null,
+        chainedShootEligibility: null,
         pendingSelfExplodeSeat: null,
         mechWolfState,
         victory: { winner: null, winReason: null },
@@ -759,6 +884,7 @@ export function resolveWhiteWolfKingExplode(
         wolfSeat,
         targetSeat,
         charmedDeathSeat: null,
+        chainedShootEligibility: null,
         pendingSelfExplodeSeat: null,
         mechWolfState,
         victory: { winner: null, winReason: null },
@@ -789,6 +915,14 @@ export function resolveWhiteWolfKingExplode(
 
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
   const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
+  const chainedShootEligibility =
+    targetSeat !== null && victory.winner === null
+      ? checkCanShoot(updatedSeats, targetSeat, 'white_wolf_king_explode', {
+          round,
+          ruleOverrides,
+          thirdPartySpecialState: victoryOptions?.thirdPartySpecialState,
+        })
+      : null;
 
   return {
     allowed: true,
@@ -796,7 +930,8 @@ export function resolveWhiteWolfKingExplode(
     wolfSeat,
     targetSeat,
     charmedDeathSeat,
-    pendingSelfExplodeSeat: wolfSeat,
+    chainedShootEligibility,
+    pendingSelfExplodeSeat: null,
     mechWolfState: nextMechWolfState,
     victory,
   };

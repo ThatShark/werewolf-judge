@@ -148,10 +148,16 @@ describe('MVP 板子靜態資料與發牌驗證', () => {
   });
 
   it('新增房規預設值與 3D 主持矩陣（8 種模式）正確定義', () => {
+    expect(DEFAULT_RULE_OVERRIDES.witchSelfSave).toBe('never');
     expect(DEFAULT_RULE_OVERRIDES.enableSheriff).toBe(true);
-    expect(DEFAULT_RULE_OVERRIDES.badgeSwallowRule).toBe('single_explode');
-    expect(DEFAULT_RULE_OVERRIDES.noSheriffDeadDirection).toBe('clockwise');
-    expect(DEFAULT_RULE_OVERRIDES.sheriffUseDeadSideOnDeath).toBe(false);
+    expect(DEFAULT_RULE_OVERRIDES.badgeSwallowRule).toBe('double_explode');
+    expect(DEFAULT_RULE_OVERRIDES.victoryMode).toBe('slaughter_side');
+    expect(DEFAULT_RULE_OVERRIDES.mechWolfForceLearnNight1).toBe(true);
+    expect(DEFAULT_RULE_OVERRIDES.luckyFirstNightSkills).toEqual({
+      blackMarket: { seer_check: false, witch_poison: false, hunter_gun: false },
+      miracle: { seer_check: true, witch_poison: true, guard_shield: true },
+      superBlackMarket: { seer_check: false, witch_poison: false, hunter_gun: true },
+    });
 
     expect(DEFAULT_HOST_MODE).toEqual({
       judgeMode: 'physical_judge',

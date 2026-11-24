@@ -5,6 +5,7 @@ import type {
   ClaimSeatRoleResult,
   HostModeConfig,
   HostModeDescriptor,
+  LuckyFirstNightSkillsConfig,
   MechWolfRuntimeState,
   NightActionDraft,
   NightStepScript,
@@ -18,22 +19,86 @@ import type {
   StepClaimSummary,
 } from './types';
 
+export const DEFAULT_LUCKY_FIRST_NIGHT_SKILLS: LuckyFirstNightSkillsConfig = {
+  blackMarket: {
+    seer_check: false,
+    witch_poison: false,
+    hunter_gun: false,
+  },
+  miracle: {
+    seer_check: true,
+    witch_poison: true,
+    guard_shield: true,
+  },
+  superBlackMarket: {
+    seer_check: false,
+    witch_poison: false,
+    hunter_gun: true,
+  },
+};
+
+export function cloneLuckyFirstNightSkills(
+  config?: Partial<LuckyFirstNightSkillsConfig>,
+): LuckyFirstNightSkillsConfig {
+  return {
+    blackMarket: {
+      ...DEFAULT_LUCKY_FIRST_NIGHT_SKILLS.blackMarket,
+      ...(config?.blackMarket ?? {}),
+    },
+    miracle: {
+      ...DEFAULT_LUCKY_FIRST_NIGHT_SKILLS.miracle,
+      ...(config?.miracle ?? {}),
+    },
+    superBlackMarket: {
+      ...DEFAULT_LUCKY_FIRST_NIGHT_SKILLS.superBlackMarket,
+      ...(config?.superBlackMarket ?? {}),
+    },
+  };
+}
+
 export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
-  witchSelfSave: 'first_night_only',
-  idiotNeedsExtraKill: false,
-  mechWolfForceLearnNight1: true,
-  wolfKillPriority: true,
-  victoryMode: 'slaughter_side',
+  witchSelfSave: 'never',
   enableSheriff: true,
-  badgeSwallowRule: 'single_explode',
-  noSheriffDeadDirection: 'clockwise',
-  sheriffUseDeadSideOnDeath: false,
+  badgeSwallowRule: 'double_explode',
+  victoryMode: 'slaughter_side',
+  mechWolfForceLearnNight1: true,
+  luckyFirstNightSkills: cloneLuckyFirstNightSkills(),
+  idiotNeedsExtraKill: false,
+  wolfKillPriority: true,
   hybridCountsAsVillager: false,
 };
 
+export function mergeRuleOverrides(
+  base: RuleOverrides,
+  partial?: Partial<RuleOverrides>,
+): RuleOverrides {
+  return {
+    ...DEFAULT_RULE_OVERRIDES,
+    ...base,
+    ...(partial ?? {}),
+    luckyFirstNightSkills: cloneLuckyFirstNightSkills({
+      blackMarket: {
+        ...base.luckyFirstNightSkills?.blackMarket,
+        ...(partial?.luckyFirstNightSkills?.blackMarket ?? {}),
+      },
+      miracle: {
+        ...base.luckyFirstNightSkills?.miracle,
+        ...(partial?.luckyFirstNightSkills?.miracle ?? {}),
+      },
+      superBlackMarket: {
+        ...base.luckyFirstNightSkills?.superBlackMarket,
+        ...(partial?.luckyFirstNightSkills?.superBlackMarket ?? {}),
+      },
+    }),
+  };
+}
+
 /** 依板子規則特徵自動套用對應的預設 RuleOverrides（混血兒計邊／白痴追刀／屠城／女巫自救） */
 export function getDefaultRuleOverridesForBoard(boardId?: string | null): RuleOverrides {
-  const base: RuleOverrides = { ...DEFAULT_RULE_OVERRIDES };
+  const base: RuleOverrides = {
+    ...DEFAULT_RULE_OVERRIDES,
+    luckyFirstNightSkills: cloneLuckyFirstNightSkills(),
+  };
   if (!boardId) return base;
   if (
     boardId === '12p-hybrid' ||

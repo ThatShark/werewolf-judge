@@ -131,7 +131,16 @@ export function resolveWolfGirlExplode(
     };
   }
 
-  let updatedSeats = seats.map((seat) => ({ ...seat }));
+  let updatedSeats = seats.map((seat) =>
+    seat.seatNumber === wolfGirlSeat
+      ? {
+          ...seat,
+          isAlive: false,
+          deathReason: 'self_explode' as const,
+          deathRound: round,
+        }
+      : { ...seat },
+  );
   let breakupDeathSeat: number | null = null;
 
   if (wolfGirlState.confessedSeat !== null) {
@@ -160,7 +169,7 @@ export function resolveWolfGirlExplode(
     wolfGirlSeat,
     breakupDeathSeat,
     voidedExileVote: options.voidExileVote ?? true,
-    pendingSelfExplodeSeat: wolfGirlSeat,
+    pendingSelfExplodeSeat: null,
     mechWolfState: nextMechWolfState,
     victory,
   };

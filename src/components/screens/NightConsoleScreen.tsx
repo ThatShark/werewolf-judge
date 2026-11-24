@@ -5,6 +5,7 @@ import { getRoleById } from '../../data/roles';
 import {
   applyMechWolfLearn,
   canAwakenedDreamCatcherDream,
+  canAwakenedGargoyleConvert,
   canAwakenedIdiotShield,
   canAwakenedWolfBeautyCharm,
   canAwakenedWolfKingGiveGun,
@@ -21,6 +22,7 @@ import {
   canFoxCubCharm,
   canGuardTarget,
   canHybridChooseIdol,
+  canJackRipperSelectFanatic,
   canMechWolfLearn,
   canMechWolfUseLearnedSkill,
   canMedusaPetrify,
@@ -29,6 +31,7 @@ import {
   canNightmareFear,
   canPenguinFreeze,
   canPerseusExecute,
+  canPuppetChoose,
   canRadiantEarlShield,
   canScarletAttach,
   canSeedWolfInfect,
@@ -37,12 +40,14 @@ import {
   canSuperGravekeeperChooseHeir,
   canTimeEclipseLock,
   canTroublemakerPrank,
+  canTwinsGuard,
   canWitchUseAntidote,
   canWitchUsePoison,
   canWolfBeautyCharm,
   canWolfRavenClawKill,
   canWolfYoungerBrotherAwakenedKill,
   createInitialCombatState,
+  createInitialConversionState,
   createInitialGargoyleState,
   createInitialInterferenceState,
   createInitialPumpkinGhostState,
@@ -196,6 +201,26 @@ function getInitialTargetForStep(
       return draft.nightNobleServantTarget ?? null;
     case 'awakened_idiot_shield':
       return draft.awakenedIdiotShieldTarget ?? null;
+    case 'twins_guard':
+      return draft.twinsGuardTarget ?? null;
+    case 'white_snake_action':
+      return draft.whiteSnakeTarget ?? null;
+    case 'awakened_gargoyle_convert':
+      return draft.awakenedGargoyleConvertTarget ?? null;
+    case 'awakened_lonely_girl_choose':
+      return draft.awakenedLonelyGirlIdolTarget ?? null;
+    case 'wild_child_choose':
+      return draft.wildChildIdolTarget ?? null;
+    case 'shadow_choose':
+      return draft.shadowMasterTarget ?? null;
+    case 'puppet_wolf_choose':
+      return draft.puppetTarget ?? null;
+    case 'chameleon_wolf_choose':
+      return draft.chameleonWolfTarget ?? null;
+    case 'jack_ripper_action':
+      return draft.round === 1
+        ? (draft.jackRipperFanaticTarget ?? null)
+        : (draft.jackRipperKillTarget ?? null);
     default:
       return null;
   }
@@ -272,6 +297,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     (s) => s.interferenceState ?? createInitialInterferenceState(),
   );
   const combatState = useGameStore((s) => s.combatState ?? createInitialCombatState());
+  const conversionState = useGameStore(
+    (s) => s.conversionState ?? createInitialConversionState(),
+  );
 
   const claimSeatRole = useGameStore((s) => s.claimSeatRole);
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
@@ -368,7 +396,18 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                 ? [currentNightDraft.anubisDeadSeat ?? null, currentNightDraft.anubisAliveSeat ?? null]
                 : currentStep.actionType === 'warden_wolf_trade'
                   ? (currentNightDraft.wardenTradePair ?? [null, null])
-                  : (currentNightDraft.awakenedSeerTargets ?? [null, null]),
+                  : currentStep.actionType === 'cupid_link'
+                    ? (currentNightDraft.cupidLoversPair ?? [null, null])
+                    : currentStep.actionType === 'ghost_bride_link'
+                      ? [
+                          currentNightDraft.ghostBrideGroomTarget ?? null,
+                          currentNightDraft.ghostBrideWitnessTarget ?? null,
+                        ]
+                      : currentStep.actionType === 'scent_phantom_link'
+                        ? (currentNightDraft.scentPhantomChainPair ?? [null, null])
+                        : currentStep.actionType === 'xu_xian_action'
+                          ? (currentNightDraft.xuXianBindPair ?? [null, null])
+                          : (currentNightDraft.awakenedSeerTargets ?? [null, null]),
     );
     setPendingAssassinRoleId(currentNightDraft.assassinGuessedRoleId ?? '');
     setPendingWardenChoices(currentNightDraft.wardenTradeChoices ?? ['trade', 'trade']);
@@ -377,7 +416,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     setPendingMultiTargets(
       currentStep.actionType === 'awakened_witch_action'
         ? (currentNightDraft.awakenedWitchHelpers ?? [])
-        : (currentNightDraft.alchemyFogTargets ?? []),
+        : currentStep.actionType === 'zombie_infect'
+          ? (currentNightDraft.zombieInfectTargets ?? [])
+          : (currentNightDraft.alchemyFogTargets ?? []),
     );
     setPendingAmplifyMode(
       currentStep.actionType === 'silent_night_mentor_action'
@@ -1285,6 +1326,74 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           },
         };
       }
+      case 'cupid_link':
+      case 'ghost_bride_link':
+      case 'scent_phantom_link':
+      case 'xu_xian_action': {
+        const [a, b] = pendingDualTargets;
+        return {
+          selected: a === seatNumber || b === seatNumber,
+          disabled: !isAlive,
+          reason: !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingDualTargets(([first, second]) => {
+              if (first === seatNumber) return [second, null];
+              if (second === seatNumber) return [first, null];
+              if (first === null) return [seatNumber, second];
+              if (second === null) return [first, seatNumber];
+              return [second, seatNumber];
+            });
+          },
+        };
+      }
+      case 'zombie_infect': {
+        const alreadyInf = conversionState.zombieInfectedSeats.includes(seatNumber);
+        const isZombie = seat?.roleId === 'zombie';
+        const isSelected = pendingMultiTargets.includes(seatNumber);
+        const disabled =
+          !isAlive || alreadyInf || isZombie || (!isSelected && pendingMultiTargets.length >= 2);
+        return {
+          selected: isSelected,
+          disabled,
+          reason: isZombie ? '殭屍本人' : alreadyInf ? '已感染' : !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingMultiTargets((prev) =>
+              prev.includes(seatNumber)
+                ? prev.filter((n) => n !== seatNumber)
+                : prev.length < 2
+                  ? [...prev, seatNumber]
+                  : prev,
+            );
+          },
+        };
+      }
+      case 'twins_guard': {
+        const check = canTwinsGuard(seats, conversionState, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'awakened_gargoyle_convert': {
+        const check = canAwakenedGargoyleConvert(seats, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'puppet_wolf_choose': {
+        const check = canPuppetChoose(seats, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'jack_ripper_action': {
+        const check = round === 1 ? canJackRipperSelectFanatic(seats, seatNumber, round) : { allowed: isAlive };
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'white_snake_action':
+      case 'awakened_lonely_girl_choose':
+      case 'wild_child_choose':
+      case 'shadow_choose':
+      case 'chameleon_wolf_choose':
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !isAlive,
+          reason: !isAlive ? '已出局' : undefined,
+          onSelect: toggleTarget,
+        };
       default:
         return {
           selected: false,
@@ -1500,6 +1609,55 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           wardenTradePair: pendingDualTargets,
           wardenTradeChoices: pendingWardenChoices,
         });
+        break;
+      case 'cupid_link':
+        updateNightDraft({ cupidLoversPair: pendingDualTargets });
+        break;
+      case 'ghost_bride_link':
+        updateNightDraft({
+          ghostBrideGroomTarget: pendingDualTargets[0],
+          ghostBrideWitnessTarget: pendingDualTargets[1],
+        });
+        break;
+      case 'scent_phantom_link':
+        updateNightDraft({ scentPhantomChainPair: pendingDualTargets });
+        break;
+      case 'twins_guard':
+        updateNightDraft({ twinsGuardTarget: pendingTarget });
+        break;
+      case 'white_snake_action':
+        updateNightDraft({ whiteSnakeTarget: pendingTarget });
+        break;
+      case 'xu_xian_action':
+        updateNightDraft({ xuXianBindPair: pendingDualTargets });
+        break;
+      case 'awakened_gargoyle_convert':
+        updateNightDraft({ awakenedGargoyleConvertTarget: pendingTarget });
+        break;
+      case 'awakened_lonely_girl_choose':
+        updateNightDraft({ awakenedLonelyGirlIdolTarget: pendingTarget });
+        break;
+      case 'wild_child_choose':
+        updateNightDraft({ wildChildIdolTarget: pendingTarget });
+        break;
+      case 'shadow_choose':
+        updateNightDraft({ shadowMasterTarget: pendingTarget });
+        break;
+      case 'puppet_wolf_choose':
+        updateNightDraft({ puppetTarget: pendingTarget });
+        break;
+      case 'zombie_infect':
+        updateNightDraft({ zombieInfectTargets: pendingMultiTargets });
+        break;
+      case 'chameleon_wolf_choose':
+        updateNightDraft({ chameleonWolfTarget: pendingTarget });
+        break;
+      case 'jack_ripper_action':
+        if (round === 1) {
+          updateNightDraft({ jackRipperFanaticTarget: pendingTarget });
+        } else {
+          updateNightDraft({ jackRipperKillTarget: pendingTarget });
+        }
         break;
       default:
         break;
@@ -2779,11 +2937,39 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'awakened_wolf_beauty_charm' ||
               currentStep.actionType === 'scarlet_wolf_king_attach' ||
               currentStep.actionType === 'night_noble_servant' ||
-              currentStep.actionType === 'awakened_idiot_shield') && (
+              currentStep.actionType === 'awakened_idiot_shield' ||
+              currentStep.actionType === 'twins_guard' ||
+              currentStep.actionType === 'white_snake_action' ||
+              currentStep.actionType === 'awakened_gargoyle_convert' ||
+              currentStep.actionType === 'awakened_lonely_girl_choose' ||
+              currentStep.actionType === 'wild_child_choose' ||
+              currentStep.actionType === 'shadow_choose' ||
+              currentStep.actionType === 'puppet_wolf_choose' ||
+              currentStep.actionType === 'chameleon_wolf_choose' ||
+              currentStep.actionType === 'jack_ripper_action') && (
               <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-center text-xs font-bold text-slate-200">
                 {pendingTarget !== null
                   ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
                   : '請點選上方座位選擇技能目標（或直接確認跳過）'}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'cupid_link' ||
+              currentStep.actionType === 'ghost_bride_link' ||
+              currentStep.actionType === 'scent_phantom_link' ||
+              currentStep.actionType === 'xu_xian_action') && (
+              <div className="rounded-xl border border-pink-400/40 bg-pink-950/35 px-3 py-2 text-center text-xs font-bold text-pink-100">
+                💞 已選連線對象：
+                {pendingDualTargets.filter((n) => n !== null).join(' ⇄ ') || '請點選 2 位存活玩家'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'zombie_infect' && (
+              <div className="rounded-xl border border-lime-400/40 bg-lime-950/35 px-3 py-2 text-center text-xs font-bold text-lime-100">
+                🧟 殭屍感染（每晚 0～2 人）：
+                {pendingMultiTargets.length > 0
+                  ? `已預選感染 ${pendingMultiTargets.join('、')} 號`
+                  : `目前累計已感染 ${conversionState.zombieInfectedSeats.length} 人`}
               </div>
             )}
 

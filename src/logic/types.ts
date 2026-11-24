@@ -111,6 +111,21 @@ export type NightActionType =
   | 'night_noble_servant'
   | 'awakened_idiot_shield'
   | 'warden_wolf_trade'
+  | 'cupid_link'
+  | 'ghost_bride_link'
+  | 'scent_phantom_link'
+  | 'twins_guard'
+  | 'white_snake_action'
+  | 'xu_xian_action'
+  | 'awakened_gargoyle_convert'
+  | 'awakened_lonely_girl_choose'
+  | 'wild_child_choose'
+  | 'shadow_choose'
+  | 'puppet_wolf_choose'
+  | 'zombie_infect'
+  | 'chameleon_wolf_choose'
+  | 'thief_choose'
+  | 'jack_ripper_action'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -337,6 +352,15 @@ export type DeathReason =
   | 'old_rascal_delayed_death'
   | 'rusty_sword_counter'
   | 'warden_trade_death'
+  | 'cupid_lover_link'
+  | 'ghost_bride_link'
+  | 'scent_phantom_link'
+  | 'twins_link'
+  | 'white_snake_kill'
+  | 'xu_xian_kill'
+  | 'xu_xian_link'
+  | 'avenger_assassinate'
+  | 'jack_ripper_kill'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -366,6 +390,12 @@ export interface PlayerSeat {
   oldRascalDelayedDeath?: boolean;
   /** 特殊狀態：血月使徒作為最後一狼被放逐免死，隔夜復仇刀後正式出局 */
   bloodMoonExileSurvived?: boolean;
+  /** 特殊狀態：遭覺醒石像鬼轉化為狼人陣營（轉化者） */
+  convertedByAwakenedGargoyle?: boolean;
+  /** 特殊狀態：遭傀儡狼選為傀儡（驗查殺、技能錯亂） */
+  isPuppetized?: boolean;
+  /** 特殊狀態：遭殭屍感染 */
+  infectedByZombie?: boolean;
 }
 
 export interface MechWolfRuntimeState {
@@ -581,6 +611,43 @@ export interface CombatRuntimeState {
   wardenTradedSeats: number[];
 }
 
+/** 第 4 批：死亡連帶、首夜認主、換牌與陣營轉換類持久化狀態 */
+export interface ConversionRuntimeState {
+  cupidLovers: [number, number] | null;
+  cupidAffiliation: 'good' | 'wolf' | 'third_party' | null;
+  ghostBrideGroomSeat: number | null;
+  ghostBrideWitnessSeat: number | null;
+  scentPhantomChain: [number, number] | null;
+  scentPhantomTriggered: boolean;
+  scentPhantomJoinedTeam: boolean;
+  twinsDeadRound: number | null;
+  twinsGuardUsed: boolean;
+  whiteSnakeUnlockedAttack: boolean;
+  xuXianLastBoundPair: [number, number] | null;
+  xuXianActiveBoundPair: [number, number] | null;
+  xuXianTriggered: boolean;
+  xuXianThirdPartyInstantWin: boolean;
+  awakenedGargoyleConvertedSeat: number | null;
+  awakenedLonelyGirlIdolSeat: number | null;
+  awakenedLonelyGirlStatus: 'good' | 'wolf' | 'inherited';
+  awakenedLonelyGirlInheritedRoleId: string | null;
+  wildChildIdolSeat: number | null;
+  wildChildTurnedWolf: boolean;
+  shadowMasterSeat: number | null;
+  shadowInheritedRoleId: string | null;
+  shadowAvengerThirdParty: boolean;
+  avengerAlignedFaction: 'good' | 'wolf' | 'third_party' | null;
+  avengerInstantWin: boolean;
+  puppetSeat: number | null;
+  zombieInfectedSeats: number[];
+  chameleonWolfSeat: number | null;
+  chameleonJoinedTeam: boolean;
+  thiefBottomCards: string[];
+  thiefChosenRoleId: string | null;
+  jackRipperFanaticSeat: number | null;
+  jackRipperKillUnlocked: boolean;
+}
+
 export interface NightActionDraft {
   round: number;
   guardTarget: number | null;
@@ -658,6 +725,25 @@ export interface NightActionDraft {
   awakenedIdiotShieldTarget?: number | null;
   wardenTradePair?: [number | null, number | null];
   wardenTradeChoices?: ['trade' | 'betray', 'trade' | 'betray'];
+  /** 第 4 批：死亡連帶、認主、換牌與陣營轉換夜間草稿 */
+  cupidLoversPair?: [number | null, number | null];
+  ghostBrideGroomTarget?: number | null;
+  ghostBrideWitnessTarget?: number | null;
+  scentPhantomChainPair?: [number | null, number | null];
+  twinsGuardTarget?: number | null;
+  whiteSnakeTarget?: number | null;
+  xuXianBindPair?: [number | null, number | null];
+  xuXianKillTarget?: number | null;
+  awakenedGargoyleConvertTarget?: number | null;
+  awakenedLonelyGirlIdolTarget?: number | null;
+  wildChildIdolTarget?: number | null;
+  shadowMasterTarget?: number | null;
+  puppetTarget?: number | null;
+  zombieInfectTargets?: number[];
+  chameleonWolfTarget?: number | null;
+  thiefChosenRoleId?: string | null;
+  jackRipperFanaticTarget?: number | null;
+  jackRipperKillTarget?: number | null;
 }
 
 export interface BearRoarResult {
@@ -849,6 +935,8 @@ export interface GameState {
   interferenceState?: InterferenceRuntimeState;
   /** 第 3 批：免疫／反傷／額外傷害／特殊擊殺持久化狀態 */
   combatState?: CombatRuntimeState;
+  /** 第 4 批：死亡連帶／認主／換牌／陣營轉換持久化狀態 */
+  conversionState?: ConversionRuntimeState;
 
   /** 自動發言順序與單人倒數計時引擎 */
   speakingQueue: number[];
@@ -947,6 +1035,7 @@ export interface NightResolutionInput {
   lastAwakenedDreamTarget?: number | null;
   interferenceState?: InterferenceRuntimeState;
   combatState?: CombatRuntimeState;
+  conversionState?: ConversionRuntimeState;
   /** 測試可注入之亂數產生器（酒鬼預言家預設隨機用） */
   rng?: () => number;
 }
@@ -977,6 +1066,7 @@ export interface NightResolutionResult {
   lastAwakenedDreamTarget: number | null;
   interferenceState: InterferenceRuntimeState;
   combatState: CombatRuntimeState;
+  conversionState: ConversionRuntimeState;
   /** 今晚白貓觸發翻牌免死的座號 */
   whiteCatRevealedSeats: number[];
   /** 今晚因蒙面人被動而進入負傷／中毒延遲死亡的座號 */

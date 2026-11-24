@@ -554,6 +554,9 @@ export function resolveSelfExplode(
     anubis: '阿努比斯不可自爆',
     awakened_wolf_beauty: '覺醒狼美人不可自爆',
     scarlet_wolf_king: '猩紅狼王不可自爆',
+    scent_phantom: '尋香魅影不可自爆',
+    puppet_wolf: '傀儡不可自爆',
+    chameleon_wolf_king: '百變狼王不可自爆',
   };
   if (player.roleId && nonExplodableCombatRoles[player.roleId]) {
     return {

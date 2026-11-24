@@ -75,6 +75,15 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   old_rascal_delayed_death: '老流氓中毒／負傷延遲出局',
   rusty_sword_counter: '鏽劍騎士左狼反殺出局',
   warden_trade_death: '典獄長交易裁決出局',
+  cupid_lover_link: '邱比特情侶殉情出局',
+  ghost_bride_link: '鬼魂新娘情侶殉情出局',
+  scent_phantom_link: '尋香魅影鏈子殉情出局',
+  twins_link: '雙子同生共死出局',
+  white_snake_kill: '白蛇預言家靈襲出局',
+  xu_xian_kill: '許仙尋香魅影靈襲出局',
+  xu_xian_link: '許仙綁定鏈殉情出局',
+  avenger_assassinate: '復仇者刺殺出局',
+  jack_ripper_kill: '開膛手傑克擊殺出局',
   manual_judge: '法官手動標記出局',
 };
 

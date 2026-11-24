@@ -1,5 +1,7 @@
 import { getRoleById } from '../data/roles';
+import { checkConversionThirdPartyVictory } from './conversionRoles';
 import type {
+  ConversionRuntimeState,
   ManualVictoryOverrideKind,
   PlayerSeat,
   RuleOverrides,
@@ -17,11 +19,28 @@ function getEffectiveSide(
   seat: PlayerSeat,
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
+  conversionState?: ConversionRuntimeState,
 ): 'wolf' | 'villager' | 'god' | null {
   if (!seat.roleId) return null;
-  // 被種狼感染轉化為狼人者，即時改計入狼人陣營（從原好人邊扣除）
-  if (seat.infectedBySeedWolf) {
+  // 被種狼感染或覺醒石像鬼轉化為狼人者，即時改計入狼人陣營
+  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) {
     return 'wolf';
+  }
+  if (seat.roleId === 'wild_child') {
+    return conversionState?.wildChildTurnedWolf ? 'wolf' : 'villager';
+  }
+  if (seat.roleId === 'awakened_lonely_girl') {
+    if (conversionState?.awakenedLonelyGirlStatus === 'wolf') return 'wolf';
+    if (
+      conversionState?.awakenedLonelyGirlStatus === 'inherited' &&
+      conversionState.awakenedLonelyGirlInheritedRoleId
+    ) {
+      const inh = getRoleById(conversionState.awakenedLonelyGirlInheritedRoleId);
+      if (inh?.faction === 'wolf') return 'wolf';
+      if (inh?.category === 'god') return 'god';
+      return 'villager';
+    }
+    return 'villager';
   }
   if (seat.roleId === 'treasure_master' && treasureMasterState?.affiliation) {
     return treasureMasterState.affiliation;
@@ -42,6 +61,7 @@ export function countAliveFactions(
   seats: PlayerSeat[],
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
+  conversionState?: ConversionRuntimeState,
 ): AliveFactionCounts {
   let wolves = 0;
   let villagers = 0;
@@ -49,7 +69,7 @@ export function countAliveFactions(
 
   for (const seat of seats) {
     if (!seat.isAlive) continue;
-    const side = getEffectiveSide(seat, ruleOverrides, treasureMasterState);
+    const side = getEffectiveSide(seat, ruleOverrides, treasureMasterState, conversionState);
     if (!side) continue;
 
     if (side === 'wolf') {
@@ -72,17 +92,31 @@ export function checkVictory(
   seats: PlayerSeat[],
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
-  options: { cursedFoxDiedThisResolution?: boolean } = {},
+  options: {
+    cursedFoxDiedThisResolution?: boolean;
+    conversionState?: ConversionRuntimeState;
+  } = {},
 ): VictoryResult {
   if (seats.length === 0) {
     return { winner: null, winReason: null };
+  }
+
+  // 第 4 批第三方陣營專屬勝利條件優先判定（殭屍全場感染、許仙白蛇雙死、復仇者獨勝、人狼戀／鬼魂新娘／白蛇許仙屠城）
+  const conversionTpWin = checkConversionThirdPartyVictory(seats, options.conversionState);
+  if (conversionTpWin.winner !== null) {
+    return conversionTpWin;
   }
 
   let hasAnyWolf = false;
   let hasAnyVillager = false;
   let hasAnyGod = false;
   for (const seat of seats) {
-    const side = getEffectiveSide(seat, ruleOverrides, treasureMasterState);
+    const side = getEffectiveSide(
+      seat,
+      ruleOverrides,
+      treasureMasterState,
+      options.conversionState,
+    );
     if (side === 'wolf') hasAnyWolf = true;
     else if (side === 'villager') hasAnyVillager = true;
     else if (side === 'god') hasAnyGod = true;
@@ -99,6 +133,7 @@ export function checkVictory(
     seats,
     ruleOverrides,
     treasureMasterState,
+    options.conversionState,
   );
 
   const villagersEliminated = hasAnyVillager && villagers === 0;

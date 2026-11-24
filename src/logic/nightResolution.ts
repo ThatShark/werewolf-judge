@@ -33,6 +33,22 @@ import {
   syncWolfBrothersState,
   syncWolfRavenClawTeamStatus,
 } from './combatRoles';
+import {
+  canAwakenedGargoyleConvert,
+  canCupidLink,
+  canGhostBrideChoose,
+  canJackRipperSelectFanatic,
+  canPuppetChoose,
+  canScentPhantomLink,
+  canThiefChooseCard,
+  canTwinsGuard,
+  canXuXianBind,
+  canZombieInfect,
+  cloneConversionState,
+  createInitialConversionState,
+  evaluateCupidAffiliation,
+  syncConversionOnDeaths,
+} from './conversionRoles';
 import { checkCanShoot } from './dayResolution';
 import {
   canAwakenedDreamCatcherDream,
@@ -369,6 +385,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     lastAwakenedDreamTarget = null,
     interferenceState = createInitialInterferenceState(),
     combatState = createInitialCombatState(),
+    conversionState = createInitialConversionState(),
     rng,
   } = input;
 
@@ -420,6 +437,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     updatedSeats,
     nextCombatState,
   );
+  let nextConversionState = cloneConversionState(conversionState);
   let nextFoxLostAbility = foxLostAbility;
   let nextLastAwakenedDreamTarget: number | null = lastAwakenedDreamTarget;
   let nextWitchAntidoteUsed = witchAntidoteUsed;
@@ -880,6 +898,126 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextCombatState.awakenedWolfKingGuns -= 1;
     const t = draft.awakenedWolfKingGiveGunTarget;
     nextCombatState.wolfDistributedGuns[t] = (nextCombatState.wolfDistributedGuns[t] ?? 0) + 1;
+  }
+
+  // === 第 4 批前置：盜賊／邱比特／鬼魂新娘／尋香魅影／雙子守護／覺醒石像鬼／覺醒孤獨少女／野孩子／影子／傀儡／殭屍／百變狼王／開膛手傑克／白蛇／許仙 ===
+  if (round === 1 && draft.thiefChosenRoleId) {
+    const check = canThiefChooseCard(nextConversionState.thiefBottomCards, draft.thiefChosenRoleId);
+    if (!check.allowed) throw new Error(check.reason);
+    nextConversionState.thiefChosenRoleId = draft.thiefChosenRoleId;
+    updatedSeats = updatedSeats.map((s) =>
+      s.roleId === 'thief' ? { ...s, roleId: draft.thiefChosenRoleId! } : s,
+    );
+  }
+
+  if (draft.cupidLoversPair && draft.cupidLoversPair[0] !== null && draft.cupidLoversPair[1] !== null) {
+    const check = canCupidLink(updatedSeats, draft.cupidLoversPair, round);
+    if (!check.allowed) throw new Error(check.reason);
+    const pair: [number, number] = [draft.cupidLoversPair[0], draft.cupidLoversPair[1]];
+    nextConversionState.cupidLovers = pair;
+    nextConversionState.cupidAffiliation = evaluateCupidAffiliation(updatedSeats, pair);
+  }
+
+  if (draft.ghostBrideGroomTarget != null || draft.ghostBrideWitnessTarget != null) {
+    const check = canGhostBrideChoose(
+      updatedSeats,
+      draft.ghostBrideGroomTarget,
+      draft.ghostBrideWitnessTarget,
+      round,
+    );
+    if (!check.allowed) throw new Error(check.reason);
+    if (draft.ghostBrideGroomTarget != null) {
+      nextConversionState.ghostBrideGroomSeat = draft.ghostBrideGroomTarget;
+    }
+    if (draft.ghostBrideWitnessTarget != null) {
+      nextConversionState.ghostBrideWitnessSeat = draft.ghostBrideWitnessTarget;
+    }
+  }
+
+  if (
+    draft.scentPhantomChainPair &&
+    draft.scentPhantomChainPair[0] !== null &&
+    draft.scentPhantomChainPair[1] !== null
+  ) {
+    const check = canScentPhantomLink(updatedSeats, nextConversionState, draft.scentPhantomChainPair);
+    if (!check.allowed) throw new Error(check.reason);
+    nextConversionState.scentPhantomChain = [
+      draft.scentPhantomChainPair[0],
+      draft.scentPhantomChainPair[1],
+    ];
+  }
+
+  let twinsGuardedSeat: number | null = null;
+  if (draft.twinsGuardTarget !== undefined && draft.twinsGuardTarget !== null) {
+    const check = canTwinsGuard(updatedSeats, nextConversionState, draft.twinsGuardTarget, round);
+    if (!check.allowed) throw new Error(check.reason);
+    twinsGuardedSeat = draft.twinsGuardTarget;
+    nextConversionState.twinsGuardUsed = true;
+  }
+
+  if (draft.awakenedGargoyleConvertTarget !== undefined && draft.awakenedGargoyleConvertTarget !== null) {
+    const check = canAwakenedGargoyleConvert(updatedSeats, draft.awakenedGargoyleConvertTarget, round);
+    if (!check.allowed) throw new Error(check.reason);
+    nextConversionState.awakenedGargoyleConvertedSeat = draft.awakenedGargoyleConvertTarget;
+    updatedSeats = updatedSeats.map((s) =>
+      s.seatNumber === draft.awakenedGargoyleConvertTarget
+        ? { ...s, convertedByAwakenedGargoyle: true }
+        : s,
+    );
+  }
+
+  if (round === 1 && draft.awakenedLonelyGirlIdolTarget != null) {
+    nextConversionState.awakenedLonelyGirlIdolSeat = draft.awakenedLonelyGirlIdolTarget;
+  }
+  if (round === 1 && draft.wildChildIdolTarget != null) {
+    nextConversionState.wildChildIdolSeat = draft.wildChildIdolTarget;
+  }
+  if (round === 1 && draft.shadowMasterTarget != null) {
+    nextConversionState.shadowMasterSeat = draft.shadowMasterTarget;
+    const master = updatedSeats.find((s) => s.seatNumber === draft.shadowMasterTarget);
+    if (master?.roleId === 'avenger') {
+      nextConversionState.shadowAvengerThirdParty = true;
+      nextConversionState.avengerAlignedFaction = 'third_party';
+    } else if (master) {
+      nextConversionState.avengerAlignedFaction = isSeatWolfFaction(master) ? 'good' : 'wolf';
+    }
+  }
+
+  if (draft.puppetTarget !== undefined && draft.puppetTarget !== null) {
+    const check = canPuppetChoose(updatedSeats, draft.puppetTarget, round);
+    if (!check.allowed) throw new Error(check.reason);
+    nextConversionState.puppetSeat = draft.puppetTarget;
+    updatedSeats = updatedSeats.map((s) =>
+      s.seatNumber === draft.puppetTarget ? { ...s, isPuppetized: true } : s,
+    );
+  }
+
+  if (draft.chameleonWolfTarget != null) {
+    nextConversionState.chameleonWolfSeat = draft.chameleonWolfTarget;
+  }
+
+  if (round === 1 && draft.jackRipperFanaticTarget !== undefined && draft.jackRipperFanaticTarget !== null) {
+    const check = canJackRipperSelectFanatic(updatedSeats, draft.jackRipperFanaticTarget, round);
+    if (!check.allowed) throw new Error(check.reason);
+    nextConversionState.jackRipperFanaticSeat = draft.jackRipperFanaticTarget;
+  }
+
+  if (draft.zombieInfectTargets && draft.zombieInfectTargets.length > 0) {
+    const check = canZombieInfect(updatedSeats, nextConversionState, draft.zombieInfectTargets);
+    if (!check.allowed) throw new Error(check.reason);
+    const uniqueZ = Array.from(new Set(draft.zombieInfectTargets));
+    nextConversionState.zombieInfectedSeats.push(...uniqueZ);
+    updatedSeats = updatedSeats.map((s) =>
+      uniqueZ.includes(s.seatNumber) ? { ...s, infectedByZombie: true } : s,
+    );
+  }
+
+  if (draft.xuXianBindPair && draft.xuXianBindPair[0] !== null && draft.xuXianBindPair[1] !== null) {
+    const check = canXuXianBind(updatedSeats, nextConversionState, draft.xuXianBindPair);
+    if (!check.allowed) throw new Error(check.reason);
+    const pair: [number, number] = [draft.xuXianBindPair[0], draft.xuXianBindPair[1]];
+    nextConversionState.xuXianActiveBoundPair = pair;
+    nextConversionState.xuXianLastBoundPair = pair;
   }
 
   const isSeatBlockedByInterference = (seatNum: number): boolean => {
@@ -1424,7 +1562,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     !isSpecialNightImmune(effectiveWolfTarget) &&
     !wolfTargetIsCursedFox
   ) {
-    const guardedByNormal = hasAliveGuard && effectiveGuardTarget === effectiveWolfTarget;
+    const guardedByNormal =
+      (hasAliveGuard && effectiveGuardTarget === effectiveWolfTarget) ||
+      twinsGuardedSeat === effectiveWolfTarget;
     const guardedByMech = mechGuardTarget === effectiveWolfTarget;
     const isGuarded = guardedByNormal || guardedByMech;
 
@@ -1836,6 +1976,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         lastAwakenedDreamTarget: nextLastAwakenedDreamTarget,
         interferenceState: nextInterferenceState,
         combatState: nextCombatState,
+        conversionState: nextConversionState,
         whiteCatRevealedSeats,
         maskedDelayedSeats,
         bearRoar: evaluateBearRoar(updatedSeats, nextMechWolfState, fearedSeat),
@@ -2432,6 +2573,40 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
+  // 8.65 第 4 批第三方額外擊殺（白蛇靈襲／許仙靈襲／開膛手傑克擊殺）與全量殉情／轉化同步
+  if (draft.whiteSnakeTarget != null) {
+    const aliveWhiteSnake = updatedSeats.find((s) => s.roleId === 'white_snake_seer' && s.isAlive);
+    if (aliveWhiteSnake) {
+      if (!nextConversionState.whiteSnakeUnlockedAttack) {
+        const t = updatedSeats.find((s) => s.seatNumber === draft.whiteSnakeTarget);
+        if (t?.roleId === 'xu_xian_phantom') {
+          nextConversionState.whiteSnakeUnlockedAttack = true;
+        }
+      } else {
+        doKill(draft.whiteSnakeTarget, 'white_snake_kill');
+      }
+    }
+  }
+
+  if (draft.xuXianKillTarget != null) {
+    const aliveXuXian = updatedSeats.find((s) => s.roleId === 'xu_xian_phantom' && s.isAlive);
+    const hasAliveWolf = updatedSeats.some((s) => s.isAlive && isSeatWolfFaction(s));
+    if (aliveXuXian && !hasAliveWolf) {
+      doKill(draft.xuXianKillTarget, 'xu_xian_kill');
+    }
+  }
+
+  if (draft.jackRipperKillTarget != null && nextConversionState.jackRipperKillUnlocked) {
+    doKill(draft.jackRipperKillTarget, 'jack_ripper_kill');
+  }
+
+  const convSync = syncConversionOnDeaths(updatedSeats, nextConversionState, round);
+  updatedSeats = convSync.seats;
+  nextConversionState = convSync.state;
+  for (const ld of convSync.linkedDeaths) {
+    deaths.push(ld);
+  }
+
   // 9. 更新機械狼／盜寶大師／隱狼／石像鬼入隊狀態、南瓜鬼／超級守墓人繼承、混血兒榜樣同步、開槍資格、熊咆哮與最終勝負
   nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
   nextTreasureMasterState = syncTreasureMasterTeamStatus(updatedSeats, nextTreasureMasterState);
@@ -2462,7 +2637,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     updatedSeats,
     hadWolfBeautyCharmDeath ? { ...ruleOverrides, wolfKillPriority: true } : ruleOverrides,
     nextTreasureMasterState,
-    { cursedFoxDiedThisResolution: cursedFoxDiedTonight },
+    { cursedFoxDiedThisResolution: cursedFoxDiedTonight, conversionState: nextConversionState },
   );
 
   return {
@@ -2491,6 +2666,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     lastAwakenedDreamTarget: nextLastAwakenedDreamTarget,
     interferenceState: nextInterferenceState,
     combatState: nextCombatState,
+    conversionState: nextConversionState,
     whiteCatRevealedSeats,
     maskedDelayedSeats,
     bearRoar,

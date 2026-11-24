@@ -885,6 +885,24 @@ const AUTOMATED_ROLE_IDS = new Set([
   'old_rascal',
   'rusty_sword_knight',
   'warden_wolf',
+  // 第 4 批：死亡連帶、首夜認主、換牌與陣營轉換類（17 角色）
+  'cupid',
+  'ghost_bride',
+  'scent_phantom',
+  'twins',
+  'white_snake_seer',
+  'xu_xian_phantom',
+  'awakened_gargoyle',
+  'awakened_lonely_girl',
+  'wild_child',
+  'shadow',
+  'avenger',
+  'puppet_wolf',
+  'zombie',
+  'chameleon_wolf_king',
+  'thief',
+  'jack_the_ripper',
+  'fanatic',
 ]);
 
 function stripMarkdownFormatting(input: string): string {
@@ -1091,6 +1109,11 @@ function resolveRoleIdsFromLabel(
     ['覺醒狼美人', 'awakened_wolf_beauty'],
     ['覺醒獵人', 'awakened_hunter'],
     ['覺醒白痴', 'awakened_idiot'],
+    ['覺醒石像鬼', 'awakened_gargoyle'],
+    ['覺醒孤獨少女', 'awakened_lonely_girl'],
+    ['白蛇預言家', 'white_snake_seer'],
+    ['許仙尋香魅影', 'xu_xian_phantom'],
+    ['百變狼王', 'chameleon_wolf_king'],
     ['猩紅狼王', 'scarlet_wolf_king'],
     ['煉金魔女', 'alchemy_witch'],
     ['超級守墓人', 'super_gravekeeper'],
@@ -1624,6 +1647,97 @@ function inferNightActionType(
     combined.includes('交易')
   ) {
     return 'warden_wolf_trade';
+  }
+
+  // === 第 4 批：死亡連帶、首夜認主、換牌與陣營轉換類角色 ===
+  if (actorRoleIds.includes('cupid') && actorRoleIds.length === 1 && combined.includes('情侶')) {
+    return 'cupid_link';
+  }
+  if (
+    actorRoleIds.includes('ghost_bride') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('新郎') || combined.includes('證婚人'))
+  ) {
+    return 'ghost_bride_link';
+  }
+  if (
+    actorRoleIds.includes('scent_phantom') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('綁定') || combined.includes('鍊子'))
+  ) {
+    return 'scent_phantom_link';
+  }
+  if (actorRoleIds.includes('twins') && actorRoleIds.length === 1 && combined.includes('守護')) {
+    return 'twins_guard';
+  }
+  if (
+    actorRoleIds.includes('white_snake_seer') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('查驗') || combined.includes('靈襲'))
+  ) {
+    return 'white_snake_action';
+  }
+  if (
+    actorRoleIds.includes('xu_xian_phantom') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('綁定') || combined.includes('靈襲'))
+  ) {
+    return 'xu_xian_action';
+  }
+  if (
+    actorRoleIds.includes('awakened_gargoyle') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('轉化')
+  ) {
+    return 'awakened_gargoyle_convert';
+  }
+  if (
+    actorRoleIds.includes('awakened_lonely_girl') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('偶像')
+  ) {
+    return 'awakened_lonely_girl_choose';
+  }
+  if (
+    actorRoleIds.includes('wild_child') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('榜樣')
+  ) {
+    return 'wild_child_choose';
+  }
+  if (actorRoleIds.includes('shadow') && actorRoleIds.length === 1 && combined.includes('主人')) {
+    return 'shadow_choose';
+  }
+  if (
+    actorRoleIds.includes('puppet_wolf') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('傀儡')
+  ) {
+    return 'puppet_wolf_choose';
+  }
+  if (actorRoleIds.includes('zombie') && actorRoleIds.length === 1 && combined.includes('感染')) {
+    return 'zombie_infect';
+  }
+  if (
+    actorRoleIds.includes('chameleon_wolf_king') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('百變')
+  ) {
+    return 'chameleon_wolf_choose';
+  }
+  if (
+    actorRoleIds.includes('thief') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('底牌') || combined.includes('選擇'))
+  ) {
+    return 'thief_choose';
+  }
+  if (
+    actorRoleIds.includes('jack_the_ripper') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('狂熱粉') || combined.includes('擊殺'))
+  ) {
+    return 'jack_ripper_action';
   }
 
   return 'confirm_only';

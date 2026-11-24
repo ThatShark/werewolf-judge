@@ -29,9 +29,9 @@ export function createInitialHiddenWolfState(): HiddenWolfRuntimeState {
   };
 }
 
-/** 判斷該座位目前是否屬於狼人陣營（含被種狼感染轉化為狼人者） */
+/** 判斷該座位目前是否屬於狼人陣營（含被種狼感染或覺醒石像鬼轉化者） */
 export function isSeatWolfFaction(seat: PlayerSeat): boolean {
-  if (seat.infectedBySeedWolf) return true;
+  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) return true;
   if (!seat.roleId) return false;
   const role = getRoleById(seat.roleId);
   return role?.faction === 'wolf';

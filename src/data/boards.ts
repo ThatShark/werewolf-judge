@@ -4814,7 +4814,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -4840,18 +4840,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "scent_phantom_link",
           "actorLabel": "尋香魅影",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -4889,18 +4886,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scent_phantom_link",
           "actorLabel": "尋香魅影",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影請睜眼",
           "actionPrompt": "今晚的入隊手勢為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -5188,7 +5182,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -5214,18 +5208,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_gargoyle_convert",
           "actorLabel": "覺醒石像鬼",
           "actorRoleIds": [
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_gargoyle_convert",
           "openPrompt": "覺醒石像鬼請睜眼",
           "actionPrompt": "請選擇轉化的玩家",
-          "closePrompt": "覺醒石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒石像鬼請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -7170,18 +7161,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "混血兒請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "cupid_link",
           "actorLabel": "邱比特",
           "actorRoleIds": [
             "cupid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "cupid_link",
           "openPrompt": "邱比特請睜眼",
           "actionPrompt": "請選擇情侶",
-          "closePrompt": "邱比特請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "邱比特請閉眼"
         },
         {
           "stepId": "step_3",
@@ -7680,7 +7668,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -7706,32 +7694,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_gargoyle_convert",
           "actorLabel": "覺醒石像鬼 A",
           "actorRoleIds": [
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_gargoyle_convert",
           "openPrompt": "覺醒石像鬼 A 請睜眼",
           "actionPrompt": "請選擇要轉化的玩家",
-          "closePrompt": "覺醒石像鬼 A 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒石像鬼 A 請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "awakened_gargoyle_convert_2",
           "actorLabel": "覺醒石像鬼 B",
           "actorRoleIds": [
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_gargoyle_convert",
           "openPrompt": "覺醒石像鬼 B 請睜眼",
           "actionPrompt": "請選擇要轉化的玩家",
-          "closePrompt": "覺醒石像鬼 B 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒石像鬼 B 請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -8307,18 +8289,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_lonely_girl_choose",
           "actorLabel": "覺醒孤獨少女",
           "actorRoleIds": [
             "awakened_lonely_girl"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_lonely_girl_choose",
           "openPrompt": "覺醒孤獨少女請睜眼",
           "actionPrompt": "請選擇你的偶像",
-          "closePrompt": "覺醒孤獨少女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒孤獨少女請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -8669,33 +8648,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "xu_xian_action",
           "actorLabel": "許仙尋香魅影",
           "actorRoleIds": [
             "xu_xian_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "xu_xian_action",
           "openPrompt": "許仙尋香魅影請睜眼",
           "actionPrompt": "請選擇要綁定的兩名玩家",
-          "closePrompt": "許仙尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "許仙尋香魅影請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "white_snake_action",
           "actorLabel": "白蛇預言家",
           "actorRoleIds": [
-            "white_snake_seer",
-            "seer"
+            "white_snake_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "white_snake_action",
           "openPrompt": "白蛇預言家請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他是否為許仙尋香魅影",
-          "closePrompt": "白蛇預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "白蛇預言家請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -8773,33 +8745,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "xu_xian_action",
           "actorLabel": "許仙尋香魅影",
           "actorRoleIds": [
             "xu_xian_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "xu_xian_action",
           "openPrompt": "許仙尋香魅影請睜眼",
           "actionPrompt": "請選擇要綁定的兩名玩家\n今晚的靈襲手勢為...請選擇要擊殺的目標",
-          "closePrompt": "許仙尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "許仙尋香魅影請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "white_snake_action",
           "actorLabel": "白蛇預言家",
           "actorRoleIds": [
-            "white_snake_seer",
-            "seer"
+            "white_snake_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "white_snake_action",
           "openPrompt": "白蛇預言家請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他是否為許仙尋香魅影\n今晚的靈襲手勢為...請選擇要擊殺的目標",
-          "closePrompt": "白蛇預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "白蛇預言家請閉眼"
         },
         {
           "stepId": "radiant_earl_shield",
@@ -8952,18 +8917,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "zombie_infect",
           "actorLabel": "殭屍",
           "actorRoleIds": [
             "zombie"
           ],
-          "actionType": "confirm_only",
+          "actionType": "zombie_infect",
           "openPrompt": "殭屍請睜眼",
           "actionPrompt": "請選擇要感染的玩家",
-          "closePrompt": "殭屍請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "殭屍請閉眼"
         },
         {
           "stepId": "step_2",
@@ -9025,18 +8987,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "zombie_infect",
           "actorLabel": "殭屍",
           "actorRoleIds": [
             "zombie"
           ],
-          "actionType": "confirm_only",
+          "actionType": "zombie_infect",
           "openPrompt": "殭屍請睜眼",
           "actionPrompt": "請選擇要感染的玩家",
-          "closePrompt": "殭屍請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "殭屍請閉眼"
         },
         {
           "stepId": "step_2",
@@ -9205,18 +9164,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "混血兒請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "shadow_choose",
           "actorLabel": "影子",
           "actorRoleIds": [
             "shadow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "shadow_choose",
           "openPrompt": "影子請睜眼",
           "actionPrompt": "請選擇你的主人",
-          "closePrompt": "影子請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "影子請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -14959,7 +14915,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -14985,18 +14941,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "scent_phantom_link",
           "actorLabel": "尋香魅影",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -15045,18 +14998,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scent_phantom_link",
           "actorLabel": "尋香魅影",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影請睜眼",
           "actionPrompt": "今晚的入隊手勢為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -15439,18 +15389,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "chameleon_wolf_choose",
           "actorLabel": "百變狼王",
           "actorRoleIds": [
             "chameleon_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "chameleon_wolf_choose",
           "openPrompt": "百變狼王請睜眼",
           "actionPrompt": "今晚的入隊手勢為...",
-          "closePrompt": "百變狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "百變狼王請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -16017,7 +15964,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -16044,18 +15991,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_gargoyle_convert",
           "actorLabel": "覺醒石像鬼",
           "actorRoleIds": [
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_gargoyle_convert",
           "openPrompt": "覺醒石像鬼請睜眼",
           "actionPrompt": "請選擇轉化的玩家",
-          "closePrompt": "覺醒石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒石像鬼請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -19484,7 +19428,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -19612,18 +19556,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_1_cond_5",
+          "stepId": "twins_guard_cond_5",
           "actorLabel": "雙子",
           "actorRoleIds": [
             "twins"
           ],
-          "actionType": "confirm_only",
+          "actionType": "twins_guard",
           "openPrompt": "雙子請睜眼",
           "actionPrompt": "請選擇要守護的玩家",
           "closePrompt": "雙子請閉眼",
           "judgeTips": [
-            "條件分支步驟（雙子出局下晚）",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "條件分支步驟（雙子出局下晚）"
           ]
         }
       ]
@@ -26299,18 +26242,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "jack_ripper_action",
           "actorLabel": "開膛手傑克",
           "actorRoleIds": [
             "jack_the_ripper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "jack_ripper_action",
           "openPrompt": "開膛手傑克請睜眼",
           "actionPrompt": "請選擇要擊殺的目標",
-          "closePrompt": "開膛手傑克請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "開膛手傑克請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -26370,18 +26310,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "jack_ripper_action",
           "actorLabel": "開膛手傑克",
           "actorRoleIds": [
             "jack_the_ripper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "jack_ripper_action",
           "openPrompt": "開膛手傑克請睜眼",
           "actionPrompt": "請選擇要擊殺的目標",
-          "closePrompt": "開膛手傑克請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "開膛手傑克請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -26935,32 +26872,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "thief_choose",
           "actorLabel": "盜賊",
           "actorRoleIds": [
             "thief"
           ],
-          "actionType": "confirm_only",
+          "actionType": "thief_choose",
           "openPrompt": "盜賊請睜眼",
           "actionPrompt": "請選擇一個身分",
-          "closePrompt": "盜賊請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "盜賊請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "cupid_link",
           "actorLabel": "邱比特",
           "actorRoleIds": [
             "cupid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "cupid_link",
           "openPrompt": "邱比特請睜眼",
           "actionPrompt": "請選擇情侶",
-          "closePrompt": "邱比特請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "邱比特請閉眼"
         },
         {
           "stepId": "step_3",
@@ -27211,18 +27142,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "混血兒請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "cupid_link",
           "actorLabel": "邱比特",
           "actorRoleIds": [
             "cupid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "cupid_link",
           "openPrompt": "邱比特請睜眼",
           "actionPrompt": "請選擇情侶",
-          "closePrompt": "邱比特請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "邱比特請閉眼"
         },
         {
           "stepId": "step_3",
@@ -28054,32 +27982,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_5",
+          "stepId": "awakened_gargoyle_convert",
           "actorLabel": "覺醒石像鬼 A",
           "actorRoleIds": [
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_gargoyle_convert",
           "openPrompt": "覺醒石像鬼 A 請睜眼",
           "actionPrompt": "請選擇轉化的玩家",
-          "closePrompt": "覺醒石像鬼 A 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒石像鬼 A 請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "awakened_gargoyle_convert_2",
           "actorLabel": "覺醒石像鬼 B",
           "actorRoleIds": [
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_gargoyle_convert",
           "openPrompt": "覺醒石像鬼 B 請睜眼",
           "actionPrompt": "請選擇轉化的玩家",
-          "closePrompt": "覺醒石像鬼 B 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒石像鬼 B 請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -29202,18 +29124,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_lonely_girl_choose",
           "actorLabel": "覺醒孤獨少女",
           "actorRoleIds": [
             "awakened_lonely_girl"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_lonely_girl_choose",
           "openPrompt": "覺醒孤獨少女請睜眼",
           "actionPrompt": "請選擇你的偶像",
-          "closePrompt": "覺醒孤獨少女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒孤獨少女請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -29418,18 +29337,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "wild_child_choose",
           "actorLabel": "野孩子",
           "actorRoleIds": [
             "wild_child"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wild_child_choose",
           "openPrompt": "野孩子請睜眼",
           "actionPrompt": "請選擇你的榜樣",
-          "closePrompt": "野孩子請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "野孩子請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -29631,33 +29547,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "xu_xian_action",
           "actorLabel": "許仙尋香魅影",
           "actorRoleIds": [
             "xu_xian_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "xu_xian_action",
           "openPrompt": "許仙尋香魅影請睜眼",
           "actionPrompt": "請選擇要綁定的兩名玩家",
-          "closePrompt": "許仙尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "許仙尋香魅影請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "white_snake_action",
           "actorLabel": "白蛇預言家",
           "actorRoleIds": [
-            "white_snake_seer",
-            "seer"
+            "white_snake_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "white_snake_action",
           "openPrompt": "白蛇預言家請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他是否為許仙尋香魅影",
-          "closePrompt": "白蛇預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "白蛇預言家請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -29746,33 +29655,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "xu_xian_action",
           "actorLabel": "許仙尋香魅影",
           "actorRoleIds": [
             "xu_xian_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "xu_xian_action",
           "openPrompt": "許仙尋香魅影請睜眼",
           "actionPrompt": "請選擇要綁定的兩名玩家\n今晚的靈襲手勢為...請選擇要擊殺的目標",
-          "closePrompt": "許仙尋香魅影請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "許仙尋香魅影請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "white_snake_action",
           "actorLabel": "白蛇預言家",
           "actorRoleIds": [
-            "white_snake_seer",
-            "seer"
+            "white_snake_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "white_snake_action",
           "openPrompt": "白蛇預言家請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他是否為許仙尋香魅影\n今晚的靈襲手勢為...請選擇要擊殺的目標",
-          "closePrompt": "白蛇預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "白蛇預言家請閉眼"
         },
         {
           "stepId": "radiant_earl_shield",
@@ -29943,32 +29845,28 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "ghost_bride_link",
           "actorLabel": "鬼魂新娘",
           "actorRoleIds": [
             "ghost_bride"
           ],
-          "actionType": "confirm_only",
+          "actionType": "ghost_bride_link",
           "openPrompt": "鬼魂新娘請睜眼",
           "actionPrompt": "請選擇你的新郎",
-          "closePrompt": "鬼魂新娘請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "鬼魂新娘請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "ghost_bride_link_2",
           "actorLabel": "鬼魂新娘和新郎",
           "actorRoleIds": [
             "ghost_bride"
           ],
-          "actionType": "confirm_only",
+          "actionType": "ghost_bride_link",
           "openPrompt": "鬼魂新娘和新郎請睜眼",
           "actionPrompt": "請選擇你們的證婚人",
           "closePrompt": "鬼魂新娘和新郎請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知新郎是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知新郎是誰)"
           ]
         },
         {
@@ -30043,18 +29941,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "ghost_bride_link",
           "actorLabel": "鬼魂新娘和新郎",
           "actorRoleIds": [
             "ghost_bride"
           ],
-          "actionType": "confirm_only",
+          "actionType": "ghost_bride_link",
           "openPrompt": "鬼魂新娘和新郎請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...\n請選擇擊殺的目標",
-          "closePrompt": "鬼魂新娘和新郎請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "鬼魂新娘和新郎請閉眼"
         },
         {
           "stepId": "step_2",
@@ -30207,18 +30102,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "zombie_infect",
           "actorLabel": "殭屍",
           "actorRoleIds": [
             "zombie"
           ],
-          "actionType": "confirm_only",
+          "actionType": "zombie_infect",
           "openPrompt": "殭屍請睜眼",
           "actionPrompt": "請選擇要感染的玩家",
-          "closePrompt": "殭屍請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "殭屍請閉眼"
         },
         {
           "stepId": "step_2",
@@ -30291,18 +30183,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "zombie_infect",
           "actorLabel": "殭屍",
           "actorRoleIds": [
             "zombie"
           ],
-          "actionType": "confirm_only",
+          "actionType": "zombie_infect",
           "openPrompt": "殭屍請睜眼",
           "actionPrompt": "請選擇要感染的玩家",
-          "closePrompt": "殭屍請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "殭屍請閉眼"
         },
         {
           "stepId": "step_2",
@@ -30704,178 +30593,142 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ]
     },
     "compositionNote": "娛樂局：6 名尋香魅影 vs 4 名獵魔人，第一晚無狼刀。",
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "scent_phantom_link",
           "actorLabel": "尋香魅影 A",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 A 請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 A 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 A 請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scent_phantom_link_2",
           "actorLabel": "尋香魅影 B",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 B 請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 B 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 B 請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "scent_phantom_link_3",
           "actorLabel": "尋香魅影 C",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 C 請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 C 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 C 請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "scent_phantom_link_4",
           "actorLabel": "尋香魅影 D",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 D 請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 D 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 D 請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "scent_phantom_link_5",
           "actorLabel": "尋香魅影 E",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 E 請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 E 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 E 請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "scent_phantom_link_6",
           "actorLabel": "尋香魅影 F",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 F 請睜眼",
           "actionPrompt": "你其中的一位狼隊友為...\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 F 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 F 請閉眼"
         }
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "scent_phantom_link",
           "actorLabel": "尋香魅影 A",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 A 請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...，請選擇今晚要擊殺的目標\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 A 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 A 請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scent_phantom_link_2",
           "actorLabel": "尋香魅影 B",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 B 請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...，請選擇今晚要擊殺的目標\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 B 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 B 請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "scent_phantom_link_3",
           "actorLabel": "尋香魅影 C",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 C 請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...，請選擇今晚要擊殺的目標\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 C 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 C 請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "scent_phantom_link_4",
           "actorLabel": "尋香魅影 D",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 D 請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...，請選擇今晚要擊殺的目標\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 D 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 D 請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "scent_phantom_link_5",
           "actorLabel": "尋香魅影 E",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 E 請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...，請選擇今晚要擊殺的目標\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 E 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 E 請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "scent_phantom_link_6",
           "actorLabel": "尋香魅影 F",
           "actorRoleIds": [
             "scent_phantom"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scent_phantom_link",
           "openPrompt": "尋香魅影 F 請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...，請選擇今晚要擊殺的目標\n請選擇要綁定的兩位玩家",
-          "closePrompt": "尋香魅影 F 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "尋香魅影 F 請閉眼"
         },
         {
           "stepId": "demon_hunter_hunt",

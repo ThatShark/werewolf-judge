@@ -97,20 +97,27 @@ export function getSeerCheckResult(
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.roleId) return null;
 
-  // 被種狼感染轉化為狼人者（含被感染的隱狼）被預言家查驗皆為狼人（查殺）
-  if (target.infectedBySeedWolf) {
+  // 被種狼感染轉化、被覺醒石像鬼轉化、被傀儡狼傀儡化者，以及白蛇／許仙被預言家查驗皆為狼人（查殺）
+  if (
+    target.infectedBySeedWolf ||
+    target.convertedByAwakenedGargoyle ||
+    target.isPuppetized ||
+    target.roleId === 'white_snake_seer' ||
+    target.roleId === 'xu_xian_phantom'
+  ) {
     return {
       targetSeat,
       faction: 'wolf',
     };
   }
 
-  // 隱狼、雪狼、混血兒與咒狐被預言家查驗恆為好人（金水）
+  // 隱狼、雪狼、混血兒、咒狐與邱比特被預言家查驗恆為好人（金水）
   if (
     target.roleId === 'hidden_wolf' ||
     target.roleId === 'snow_wolf' ||
     target.roleId === 'hybrid' ||
-    target.roleId === 'cursed_fox'
+    target.roleId === 'cursed_fox' ||
+    target.roleId === 'cupid'
   ) {
     return {
       targetSeat,

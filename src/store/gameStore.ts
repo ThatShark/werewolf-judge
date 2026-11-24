@@ -11,6 +11,7 @@ import {
   clampOnlineJudgeSettings,
   createEmptyNightDraft,
   createInitialCombatState,
+  createInitialConversionState,
   createInitialGargoyleState,
   createInitialHiddenWolfState,
   createInitialHybridState,
@@ -31,6 +32,7 @@ import {
   handleSheriffElectionExplode,
   isValidPlayerCountForBoard,
   resolveAlchemySnakeRevive,
+  resolveAvengerAssassinate,
   resolveAwakenedHunterDirectionShoot,
   resolveDayExile,
   resolveGoodSelfExplode,
@@ -48,6 +50,7 @@ import {
   shouldTriggerAutoVictory,
   startSheriffElection as startSheriffElectionLogic,
   syncGargoyleTeamStatus,
+  syncConversionOnDeaths,
   syncPumpkinGhostInheritance,
   syncSheriffBadgeOnDeaths,
   syncSuperGravekeeperInheritance,
@@ -129,6 +132,7 @@ export type UndoSnapshotData = Pick<
   | 'lastSeniorVillagerReveal'
   | 'interferenceState'
   | 'combatState'
+  | 'conversionState'
   | 'speakingQueue'
   | 'currentSpeakerIndex'
   | 'speakingMeta'
@@ -229,6 +233,7 @@ export interface GameStore extends GameState {
   pufferfishExplode: (voterSeats: number[]) => { allowed: boolean; reason?: string; killedSeats?: number[] };
   awakenedHunterShoot: (hunterSeat: number, direction: 'left' | 'right') => { allowed: boolean; killedSeat?: number | null };
   triggerOldRascalDelayedDeath: () => void;
+  avengerAssassinate: (targetSeat: number) => { allowed: boolean; reason?: string; killedSeat?: number | null };
   advanceToNextNight: () => void;
 
   toggleSeatAlive: (seatNumber: number, options?: { reason?: DeathReason }) => void;
@@ -291,6 +296,7 @@ function createInitialGameState(): GameState & {
     lastSeniorVillagerReveal: null,
     interferenceState: createInitialInterferenceState(),
     combatState: createInitialCombatState(),
+    conversionState: createInitialConversionState(),
     speakingQueue: [],
     currentSpeakerIndex: 0,
     speakingMeta: null,
@@ -345,6 +351,7 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     lastSeniorVillagerReveal: state.lastSeniorVillagerReveal,
     interferenceState: state.interferenceState,
     combatState: state.combatState,
+    conversionState: state.conversionState,
     speakingQueue: state.speakingQueue,
     currentSpeakerIndex: state.currentSpeakerIndex,
     speakingMeta: state.speakingMeta,
@@ -754,6 +761,7 @@ export const useGameStore = create<GameStore>()(
           lastAwakenedDreamTarget: state.lastAwakenedDreamTarget ?? null,
           interferenceState: state.interferenceState ?? createInitialInterferenceState(),
           combatState: state.combatState ?? createInitialCombatState(),
+          conversionState: state.conversionState ?? createInitialConversionState(),
         });
 
         const deathMap = new Map(result.deaths.map((d) => [d.seat, d.reason]));
@@ -826,6 +834,7 @@ export const useGameStore = create<GameStore>()(
           lastSeniorVillagerReveal: result.seniorVillagerReveal,
           interferenceState: result.interferenceState,
           combatState: result.combatState,
+          conversionState: result.conversionState,
           sheriffState: nextSheriffState,
           speakingQueue: [],
           currentSpeakerIndex: 0,
@@ -1351,13 +1360,19 @@ export const useGameStore = create<GameStore>()(
           result.seats,
           state.superGravekeeperState ?? createInitialSuperGravekeeperState(),
         );
+        const convSync = syncConversionOnDeaths(
+          result.seats,
+          state.conversionState ?? createInitialConversionState(),
+          state.round,
+        );
 
         set({
-          seats: result.seats,
+          seats: convSync.seats,
           mechWolfState: result.mechWolfState,
           gargoyleState: nextGargoyleState,
           pumpkinGhostState: nextPumpkinGhostState,
           superGravekeeperState: nextSuperGravekeeperState,
+          conversionState: convSync.state,
           exiledHistory: nextExiledHistory,
           activeCharmedSeat:
             result.charmedDeathSeat !== null ? null : state.activeCharmedSeat,
@@ -1595,6 +1610,42 @@ export const useGameStore = create<GameStore>()(
           phase: triggerGameOver ? 'game_over' : state.phase,
           undoStack: pushUndo(state, `老流氓延遲出局（${res.eliminatedSeat} 號）`),
         });
+      },
+
+      avengerAssassinate: (targetSeat) => {
+        const state = get();
+        const res = resolveAvengerAssassinate(
+          state.seats,
+          state.conversionState ?? createInitialConversionState(),
+          targetSeat,
+          state.round,
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const triggerGameOver = shouldTriggerAutoVictory(
+          res.instantVictory,
+          state.forceContinueAfterVictory,
+        );
+        const summary =
+          res.instantVictory.winner !== null
+            ? res.instantVictory.winReason ?? '復仇者獨自勝利'
+            : res.killedSeat !== null
+              ? `復仇者出局刺殺對立陣營 ${res.killedSeat} 號`
+              : `復仇者刺殺 ${targetSeat} 號（同陣營，目標存活）`;
+        set({
+          seats: res.seats,
+          conversionState: res.state,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat,
+          }),
+          winner: triggerGameOver ? res.instantVictory.winner : state.winner,
+          winReason: triggerGameOver ? res.instantVictory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, `復仇者刺殺 ${targetSeat} 號`),
+        });
+        return { allowed: true, killedSeat: res.killedSeat };
       },
 
       selfExplode: (wolfSeat) => {

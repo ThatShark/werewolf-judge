@@ -1,4 +1,5 @@
 export * from './types';
+export * from './factionHelpers';
 export * from './setup';
 export * from './victory';
 export * from './mechWolf';

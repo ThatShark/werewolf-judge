@@ -4,6 +4,8 @@ import type {
   MechWolfRuntimeState,
   PlayerSeat,
   RuleOverrides,
+  TreasureMasterRuntimeState,
+  VictoryCheckOptions,
   VictoryResult,
 } from './types';
 import { checkVictory } from './victory';
@@ -26,6 +28,8 @@ export function toggleSeatAliveManually(
   mechWolfState: MechWolfRuntimeState,
   ruleOverrides: RuleOverrides,
   reason: DeathReason = 'manual_judge',
+  treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): ManualToggleSeatResult {
   const target = seats.find((seat) => seat.seatNumber === seatNumber);
   if (!target) {
@@ -52,7 +56,7 @@ export function toggleSeatAliveManually(
   });
 
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
-  const victory = checkVictory(updatedSeats, ruleOverrides);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
 
   return {
     seats: updatedSeats,

@@ -4,6 +4,7 @@ import { isSheriffElectionActive, resolveSelfExplode } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { formatSeatDisplay } from '../common/displayHelpers';
+import { ExtraDaySkillsSection } from './ExtraDaySkillsSection';
 
 interface DayBurstSkillsPanelProps {
   disabled?: boolean;
@@ -370,6 +371,8 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
         }}
         onCancel={() => setConfirmGoodExplodeOpen(false)}
       />
+
+      <ExtraDaySkillsSection disabled={disabled} />
 
       {/* 確認普通狼人自爆 */}
       <ConfirmModal

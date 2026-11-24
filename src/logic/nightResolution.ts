@@ -37,6 +37,7 @@ import {
   canAwakenedGargoyleConvert,
   canCupidLink,
   canGhostBrideChoose,
+  canJackRipperKill,
   canJackRipperSelectFanatic,
   canPuppetChoose,
   canScentPhantomLink,
@@ -47,6 +48,7 @@ import {
   cloneConversionState,
   createInitialConversionState,
   evaluateCupidAffiliation,
+  isJackSecondIdentityBoard,
   syncConversionOnDeaths,
 } from './conversionRoles';
 import {
@@ -1093,10 +1095,24 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextConversionState.chameleonWolfSeat = draft.chameleonWolfTarget;
   }
 
-  if (round === 1 && draft.jackRipperFanaticTarget !== undefined && draft.jackRipperFanaticTarget !== null) {
-    const check = canJackRipperSelectFanatic(updatedSeats, draft.jackRipperFanaticTarget, round);
+  if (
+    round === 1 &&
+    isJackSecondIdentityBoard(updatedSeats, input.boardId) &&
+    draft.jackRipperFanaticTarget !== undefined &&
+    draft.jackRipperFanaticTarget !== null
+  ) {
+    const check = canJackRipperSelectFanatic(
+      updatedSeats,
+      draft.jackRipperFanaticTarget,
+      round,
+      input.boardId,
+    );
     if (!check.allowed) throw new Error(check.reason);
     nextConversionState.jackRipperFanaticSeat = draft.jackRipperFanaticTarget;
+    // 被選為狂熱粉的偵探，原偵探身分自動失效
+    updatedSeats = updatedSeats.map((s) =>
+      s.seatNumber === draft.jackRipperFanaticTarget ? { ...s, secondRoleId: 'fanatic' } : s,
+    );
   }
 
   if (draft.zombieInfectTargets && draft.zombieInfectTargets.length > 0) {
@@ -1282,11 +1298,15 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       guardTroublemakerSelfGuardDeath = true;
     }
     effectiveGuardTarget = redirectedGuard;
-    nextLastGuardedSeat = effectiveGuardTarget;
+    // 邱比特奇緣 Q&A #5：守衛守護被蝕時狼妃封鎖的目標反彈為自守時，次晚仍可自守，但不可再守原本點擊的封鎖目標
+    nextLastGuardedSeat =
+      timeEclipseLockedSeat !== null && draft.guardTarget === timeEclipseLockedSeat
+        ? draft.guardTarget
+        : effectiveGuardTarget;
     trackBlackBatTarget(aliveGuard.seatNumber, effectiveGuardTarget);
   }
 
-  // 2.5 攝夢人行動檢核（若被夢魘恐懼則無法攝夢且重置連夢紀錄；被種狼感染則失能）
+  // 2.5 攝夢人行動檢核（若被夢魘恐懼則無法攝夢且重置連夢紀錄；被種狼感染則失能；受蝕時狼妃封鎖依板子區分無效或自攝）
   const aliveDreamCatcher = updatedSeats.find(
     (seat) => seat.roleId === 'dream_catcher' && seat.isAlive && !seat.infectedBySeedWolf,
   );
@@ -1304,7 +1324,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     if (!dreamCheck.allowed) {
       throw new Error(dreamCheck.reason);
     }
-    dreamTarget = requestedDreamTarget;
+    if (
+      timeEclipseLockedSeat !== null &&
+      requestedDreamTarget === timeEclipseLockedSeat &&
+      !nextInterferenceState.timeEclipseUsed
+    ) {
+      nextInterferenceState.timeEclipseUsed = true;
+      // 沙龍之夜：攝夢人攝夢被封鎖目標視為攝夢自己；邱比特奇緣等其餘板子：攝夢無效
+      dreamTarget =
+        input.boardId === '12p-salon-night' ? aliveDreamCatcher.seatNumber : null;
+    } else {
+      dreamTarget = requestedDreamTarget;
+    }
     nextLastDreamTarget = dreamTarget;
   }
 
@@ -2061,7 +2092,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 7. 狼刀在先判定：若狼刀階段（含種狼感染轉化）已達狼人勝利條件，直接判狼人勝利（優先於女巫與毒師毒藥）
   if (ruleOverrides.wolfKillPriority) {
-    const wolfPhaseVictory = checkVictory(updatedSeats, ruleOverrides, nextTreasureMasterState);
+    const wolfPhaseVictory = checkVictory(updatedSeats, ruleOverrides, nextTreasureMasterState, {
+      conversionState: nextConversionState,
+      thirdPartySpecialState: nextThirdPartySpecialState,
+      boardId: input.boardId,
+    });
     if (wolfPhaseVictory.winner === 'wolf' || wolfPhaseVictory.winner === 'third_party') {
       nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
       nextTreasureMasterState = syncTreasureMasterTeamStatus(updatedSeats, nextTreasureMasterState);
@@ -2725,8 +2760,22 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  if (draft.jackRipperKillTarget != null && nextConversionState.jackRipperKillUnlocked) {
-    doKill(draft.jackRipperKillTarget, 'jack_ripper_kill');
+  if (draft.jackRipperKillTarget != null) {
+    const jackKillCheck = canJackRipperKill(
+      updatedSeats,
+      nextConversionState,
+      draft.jackRipperKillTarget,
+      round,
+      input.boardId,
+    );
+    if (jackKillCheck.allowed) {
+      // 守衛可守護玩家免受開膛手傑克殺害；女巫解藥則無法救開膛手傑克之刀
+      const guardedFromJack =
+        hasAliveGuard && effectiveGuardTarget === draft.jackRipperKillTarget;
+      if (!guardedFromJack) {
+        doKill(draft.jackRipperKillTarget, 'jack_ripper_kill');
+      }
+    }
   }
 
   const convSync = syncConversionOnDeaths(updatedSeats, nextConversionState, round);

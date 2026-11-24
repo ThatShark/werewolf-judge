@@ -44,6 +44,8 @@ export function createInitialConversionState(): ConversionRuntimeState {
     thiefChosenRoleId: null,
     jackRipperFanaticSeat: null,
     jackRipperKillUnlocked: false,
+    jackRipperDetAccusationUsed: false,
+    jackRipperThirdPartyDefeated: false,
   };
 }
 
@@ -301,19 +303,173 @@ export function canThiefChooseCard(
   return { allowed: true };
 }
 
+/** 判斷是否為「開膛手傑克 (第二身分)」板子 */
+export function isJackSecondIdentityBoard(seats: PlayerSeat[], boardId?: string): boolean {
+  if (boardId === '12p-jack-the-ripper-2') return true;
+  if (boardId === '12p-jack-the-ripper') return false;
+  return seats.some(
+    (s) => s.secondRoleId === 'jack_the_ripper' || s.secondRoleId === 'detective',
+  );
+}
+
+/** 尋找開膛手傑克座位（相容主身分板與第二身分板） */
+export function findJackRipperSeat(seats: PlayerSeat[]): PlayerSeat | undefined {
+  return seats.find(
+    (s) => s.roleId === 'jack_the_ripper' || s.secondRoleId === 'jack_the_ripper',
+  );
+}
+
 export function canJackRipperSelectFanatic(
   seats: PlayerSeat[],
   targetSeat: number | null,
   round: number,
+  boardId?: string,
 ): ActionCheckResult {
-  const jack = seats.find((s) => s.roleId === 'jack_the_ripper' && s.isAlive);
-  if (!jack) return { allowed: false, reason: '場上沒有存活的開膛手傑克' };
+  if (!isJackSecondIdentityBoard(seats, boardId)) {
+    return { allowed: false, reason: '主身分版開膛手傑克無狂熱粉機制，每晚直接擊殺' };
+  }
+  const jack = findJackRipperSeat(seats);
+  if (!jack || !jack.isAlive) return { allowed: false, reason: '場上沒有存活的開膛手傑克' };
   if (targetSeat === null) return { allowed: true };
   if (round !== 1) return { allowed: false, reason: '開膛手傑克僅於第一晚指定狂熱粉' };
   if (targetSeat === jack.seatNumber) return { allowed: false, reason: '不可選擇自己為狂熱粉' };
   const target = seats.find((s) => s.seatNumber === targetSeat);
   if (!target || !target.isAlive) return { allowed: false, reason: '狂熱粉目標不存在或已出局' };
   return { allowed: true };
+}
+
+/**
+ * 檢核開膛手傑克夜間擊殺：
+ * - 板子 A（主身分版 12p-jack-the-ripper）：每晚（含第一晚）必須擊殺自己以外 1 位存活玩家（傑克須存活）
+ * - 板子 B（第二身分版 12p-jack-the-ripper-2）：須狂熱粉或開膛手傑克任一方死亡解鎖後，無論傑克出局與否皆可擊殺自己以外 1 位存活玩家
+ */
+export function canJackRipperKill(
+  seats: PlayerSeat[],
+  state: ConversionRuntimeState,
+  targetSeat: number | null,
+  round: number,
+  boardId?: string,
+): ActionCheckResult {
+  const isSecondId = isJackSecondIdentityBoard(seats, boardId);
+  const jack = findJackRipperSeat(seats);
+  if (!jack) return { allowed: false, reason: '場上沒有開膛手傑克' };
+  if (state.jackRipperThirdPartyDefeated) {
+    return { allowed: false, reason: '偵探已指證開膛手傑克成功，第三方陣營已失敗' };
+  }
+
+  if (isSecondId) {
+    if (!state.jackRipperKillUnlocked) {
+      return {
+        allowed: false,
+        reason: '須待開膛手傑克或狂熱粉任一方死亡後，後續夜晚方可發動擊殺',
+      };
+    }
+    if (round < 2 && !state.jackRipperKillUnlocked) {
+      return { allowed: false, reason: '第一晚僅能指定狂熱粉，尚未解鎖擊殺' };
+    }
+  } else {
+    if (!jack.isAlive) {
+      return { allowed: false, reason: '開膛手傑克已出局，無法擊殺' };
+    }
+  }
+
+  if (targetSeat === null) {
+    return isSecondId
+      ? { allowed: true }
+      : { allowed: false, reason: '開膛手傑克每晚必須選擇一位目標擊殺，不可空刀' };
+  }
+  if (targetSeat === jack.seatNumber) {
+    return { allowed: false, reason: '開膛手傑克不可擊殺自己' };
+  }
+  const target = seats.find((s) => s.seatNumber === targetSeat);
+  if (!target || !target.isAlive) {
+    return { allowed: false, reason: '擊殺目標不存在或已出局' };
+  }
+  return { allowed: true };
+}
+
+/**
+ * 第二身分板「已出局偵探集結指證開膛手傑克」：
+ * - 所有已出局的偵探（不含被轉為狂熱粉者）須達 2 人以上，且至少半數同意集結才能指證（整場僅限 1 次）
+ * - 指證成功 → 第三方陣營失敗（jackRipperThirdPartyDefeated = true）
+ */
+export function resolveDetectiveCollectiveAccusation(
+  seats: PlayerSeat[],
+  state: ConversionRuntimeState,
+  accusedSeat: number,
+  agreeCount: number,
+): {
+  allowed: boolean;
+  reason?: string;
+  success: boolean;
+  deadDetectiveCount: number;
+  requiredAgreeCount: number;
+  state: ConversionRuntimeState;
+} {
+  if (state.jackRipperDetAccusationUsed) {
+    return {
+      allowed: false,
+      reason: '已出局偵探整場僅擁有一次集結指證開膛手傑克的機會',
+      success: false,
+      deadDetectiveCount: 0,
+      requiredAgreeCount: 0,
+      state,
+    };
+  }
+  const deadDetectives = seats.filter(
+    (s) =>
+      !s.isAlive &&
+      s.secondRoleId === 'detective' &&
+      s.seatNumber !== state.jackRipperFanaticSeat,
+  );
+  const deadDetectiveCount = deadDetectives.length;
+  const requiredAgreeCount = Math.ceil(deadDetectiveCount / 2);
+  if (deadDetectiveCount < 2) {
+    return {
+      allowed: false,
+      reason: `已出局偵探目前僅 ${deadDetectiveCount} 人，須滿足 2 人以上方可集結指證`,
+      success: false,
+      deadDetectiveCount,
+      requiredAgreeCount: 2,
+      state,
+    };
+  }
+  if (agreeCount < requiredAgreeCount) {
+    return {
+      allowed: false,
+      reason: `目前同意人數（${agreeCount} 人）未達半數門檻（至少 ${requiredAgreeCount} 人）`,
+      success: false,
+      deadDetectiveCount,
+      requiredAgreeCount,
+      state,
+    };
+  }
+  const accused = seats.find((s) => s.seatNumber === accusedSeat);
+  if (!accused) {
+    return {
+      allowed: false,
+      reason: '指證目標座位不存在',
+      success: false,
+      deadDetectiveCount,
+      requiredAgreeCount,
+      state,
+    };
+  }
+
+  const nextState = cloneConversionState(state);
+  nextState.jackRipperDetAccusationUsed = true;
+  const success =
+    accused.secondRoleId === 'jack_the_ripper' || accused.roleId === 'jack_the_ripper';
+  if (success) {
+    nextState.jackRipperThirdPartyDefeated = true;
+  }
+  return {
+    allowed: true,
+    success,
+    deadDetectiveCount,
+    requiredAgreeCount,
+    state: nextState,
+  };
 }
 
 /** 同步認主／轉化類角色於有玩家死亡後的狀態轉移（野孩子、覺醒孤獨少女、影子、傑克狂熱粉） */
@@ -443,12 +599,12 @@ export function syncConversionOnDeaths(
     }
   }
 
-  // 10. 開膛手傑克／狂熱粉任一方死亡解鎖擊殺
-  const jack = updatedSeats.find((s) => s.roleId === 'jack_the_ripper');
+  // 10. 開膛手傑克／狂熱粉任一方死亡解鎖擊殺（第二身分版）
+  const jack = findJackRipperSeat(updatedSeats);
   const fanatic =
     nextState.jackRipperFanaticSeat !== null
       ? updatedSeats.find((s) => s.seatNumber === nextState.jackRipperFanaticSeat)
-      : updatedSeats.find((s) => s.roleId === 'fanatic');
+      : updatedSeats.find((s) => s.secondRoleId === 'fanatic' || s.roleId === 'fanatic');
   if ((jack && !jack.isAlive) || (fanatic && !fanatic.isAlive)) {
     nextState.jackRipperKillUnlocked = true;
   }
@@ -540,6 +696,24 @@ export function checkConversionThirdPartyVictory(
   seats: PlayerSeat[],
   state?: ConversionRuntimeState,
 ): VictoryResult {
+  // 開膛手傑克單一性別獨立勝利（主身分版與第二身分版共用，若偵探已指證成功則第三方失敗不可獲勝）
+  const hasJackRipper = seats.some(
+    (s) => s.roleId === 'jack_the_ripper' || s.secondRoleId === 'jack_the_ripper',
+  );
+  if (hasJackRipper && !state?.jackRipperThirdPartyDefeated) {
+    const alive = seats.filter((s) => s.isAlive);
+    if (alive.length > 0 && alive.every((s) => s.gender === 'male' || s.gender === 'female')) {
+      const genders = new Set(alive.map((s) => s.gender));
+      if (genders.size === 1) {
+        const onlyGender = alive[0].gender === 'male' ? '男性' : '女性';
+        return {
+          winner: 'third_party',
+          winReason: `場上存活玩家僅剩單一性別（全${onlyGender}），開膛手傑克（第三方）單獨獲勝！`,
+        };
+      }
+    }
+  }
+
   if (!state) return { winner: null, winReason: null };
 
   if (state.xuXianThirdPartyInstantWin) {

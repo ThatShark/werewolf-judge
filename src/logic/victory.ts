@@ -8,6 +8,7 @@ import type {
   RuleOverrides,
   ThirdPartySpecialRuntimeState,
   TreasureMasterRuntimeState,
+  VictoryCheckOptions,
   VictoryResult,
 } from './types';
 
@@ -112,11 +113,7 @@ export function checkVictory(
   seats: PlayerSeat[],
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
-  options: {
-    cursedFoxDiedThisResolution?: boolean;
-    conversionState?: ConversionRuntimeState;
-    thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
-  } = {},
+  options: VictoryCheckOptions = {},
 ): VictoryResult {
   if (seats.length === 0) {
     return { winner: null, winReason: null };
@@ -179,7 +176,7 @@ export function checkVictory(
 
   const goodWon = hasAnyWolf && wolves === 0;
 
-  // 咒狐勝利覆蓋：當好人或狼人任一方達成勝利條件時，若咒狐仍在場（或同結算中同時出局），咒狐單獨獲勝
+  // 咒狐／睡美人勝利覆蓋：當好人或狼人任一方達成勝利條件時
   if (wolfWon || goodWon) {
     const cursedFox = seats.find((s) => s.roleId === 'cursed_fox');
     if (cursedFox && (cursedFox.isAlive || options.cursedFoxDiedThisResolution)) {
@@ -187,6 +184,19 @@ export function checkVictory(
         winner: 'third_party',
         winReason: '第三方陣營（咒狐）單獨獲勝（結算時咒狐仍在場／同時達成條件）',
       };
+    }
+    const sleepingBeautySeatNum = options.thirdPartySpecialState?.sleepingBeautySeat;
+    if (
+      sleepingBeautySeatNum != null &&
+      !options.thirdPartySpecialState?.sleepingBeautyAwakened
+    ) {
+      const sbSeat = seats.find((s) => s.seatNumber === sleepingBeautySeatNum);
+      if (sbSeat?.isAlive) {
+        return {
+          winner: 'third_party',
+          winReason: `第三方陣營（睡美人 ${sleepingBeautySeatNum} 號）單獨獲勝（好人／狼人達標時睡美人仍存活且未被異族王子驗出）`,
+        };
+      }
     }
   }
 

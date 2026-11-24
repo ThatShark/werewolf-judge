@@ -14,6 +14,9 @@ interface SeatStatusDrawerProps {
 export function SeatStatusDrawer({ open, board, onClose }: SeatStatusDrawerProps) {
   const seats = useGameStore((s) => s.seats);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
+  const treasureMasterState = useGameStore((s) => s.treasureMasterState);
+  const conversionState = useGameStore((s) => s.conversionState);
+  const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const toggleSeatAlive = useGameStore((s) => s.toggleSeatAlive);
   const declareWinner = useGameStore((s) => s.declareWinner);
   const overrideVictory = useGameStore((s) => s.overrideVictory);
@@ -24,8 +27,13 @@ export function SeatStatusDrawer({ open, board, onClose }: SeatStatusDrawerProps
 
   const aliveCount = useMemo(() => seats.filter((s) => s.isAlive).length, [seats]);
   const victoryPreview = useMemo(
-    () => checkVictory(seats, ruleOverrides),
-    [seats, ruleOverrides],
+    () =>
+      checkVictory(seats, ruleOverrides, treasureMasterState, {
+        conversionState,
+        thirdPartySpecialState,
+        boardId: board?.id,
+      }),
+    [seats, ruleOverrides, treasureMasterState, conversionState, thirdPartySpecialState, board?.id],
   );
 
   if (!open) return null;

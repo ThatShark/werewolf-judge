@@ -31,6 +31,30 @@ export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
   hybridCountsAsVillager: false,
 };
 
+/** 依板子規則特徵自動套用對應的預設 RuleOverrides（混血兒計邊／白痴追刀／屠城／女巫自救） */
+export function getDefaultRuleOverridesForBoard(boardId?: string | null): RuleOverrides {
+  const base: RuleOverrides = { ...DEFAULT_RULE_OVERRIDES };
+  if (!boardId) return base;
+  if (
+    boardId === '12p-hybrid' ||
+    boardId === '12p-wind-espionage' ||
+    boardId === '10p-cloud-tracking' ||
+    boardId === '12p-cloud-exploration'
+  ) {
+    base.hybridCountsAsVillager = true;
+  }
+  if (boardId === 'multi-avenger-shadow') {
+    base.idiotNeedsExtraKill = true;
+  }
+  if (boardId === '10p-cupid' || boardId === '12p-cupid') {
+    base.victoryMode = 'slaughter_all';
+  }
+  if (boardId === '12p-green-prairie' || boardId === '12p-green-grassland') {
+    base.witchSelfSave = 'always';
+  }
+  return base;
+}
+
 export const DEFAULT_HOST_MODE: HostModeConfig = {
   judgeMode: 'physical_judge',
   dealMode: 'physical_deal',

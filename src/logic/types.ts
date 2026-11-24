@@ -398,6 +398,7 @@ export type DeathReason =
   | 'detective_execute'
   | 'police_dog_bite'
   | 'little_girl_caught'
+  | 'pandora_day_gun'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -437,6 +438,10 @@ export interface PlayerSeat {
   baiZeDualFaction?: boolean;
   /** 特殊狀態：白澤繼承人（神職）夜死延遲至下一放逐投票結束後生效 */
   baiZeDelayedDeath?: boolean;
+  /** 玩家性別（開膛手傑克雙板子使用：男 × 6、女 × 6） */
+  gender?: 'male' | 'female';
+  /** 第二身分（開膛手傑克第二身分板使用：開膛手傑克 / 狂熱粉 / 偵探） */
+  secondRoleId?: 'jack_the_ripper' | 'fanatic' | 'detective' | null;
 }
 
 export interface MechWolfRuntimeState {
@@ -687,6 +692,10 @@ export interface ConversionRuntimeState {
   thiefChosenRoleId: string | null;
   jackRipperFanaticSeat: number | null;
   jackRipperKillUnlocked: boolean;
+  /** 第二身分板：已出局偵探是否已使用過一次集結指證 */
+  jackRipperDetAccusationUsed: boolean;
+  /** 第二身分板：偵探集結指證開膛手傑克成功後，第三方陣營失敗 */
+  jackRipperThirdPartyDefeated: boolean;
 }
 
 /** 潘朵拉魔盒道具類型 */
@@ -1105,6 +1114,8 @@ export interface GameState {
   hybridState?: HybridRuntimeState;
   seedWolfState?: SeedWolfRuntimeState;
   hiddenWolfState?: HiddenWolfRuntimeState;
+  treasureMasterState?: TreasureMasterRuntimeState;
+  wolfGirlState?: WolfGirlRuntimeState;
   /** 第 1 批：查驗與資訊感知類角色持久化狀態 */
   gargoyleState?: GargoyleRuntimeState;
   pumpkinGhostState?: PumpkinGhostRuntimeState;
@@ -1188,11 +1199,19 @@ export interface PsychicCheckOutcome {
   perceivedRoleId: string;
 }
 
+export interface VictoryCheckOptions {
+  cursedFoxDiedThisResolution?: boolean;
+  conversionState?: ConversionRuntimeState;
+  thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
+  boardId?: string;
+}
+
 export interface NightResolutionInput {
   seats: PlayerSeat[];
   round: number;
   draft: NightActionDraft;
   ruleOverrides: RuleOverrides;
+  boardId?: string;
   witchAntidoteUsed: boolean;
   witchPoisonUsed: boolean;
   poisonerPoisonUsed?: boolean;

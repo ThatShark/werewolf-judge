@@ -26077,7 +26077,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -26281,15 +26281,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
-          "actorLabel": "開膛手傑克",
-          "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "stepId": "jack_ripper_action",
+          "actorLabel": "開膛手傑克（指定狂熱粉）",
+          "actorRoleIds": [
+            "jack_the_ripper"
+          ],
+          "actionType": "jack_ripper_action",
           "openPrompt": "開膛手傑克請睜眼",
-          "actionPrompt": "請選擇要擊殺的目標",
+          "actionPrompt": "請選擇一位偵探成為狂熱粉",
           "closePrompt": "開膛手傑克請閉眼",
           "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "第一晚開膛手傑克指定一名偵探成為狂熱粉（其偵探身分自動失效）。"
           ]
         },
         {

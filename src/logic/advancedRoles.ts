@@ -133,7 +133,7 @@ export function canDreamCatcherDream(
 }
 
 function isSeatWolfForBear(seat: PlayerSeat, mechWolfState: MechWolfRuntimeState): boolean {
-  if (seat.infectedBySeedWolf) return true;
+  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) return true;
   if (!seat.roleId) return false;
   if (seat.roleId === 'mech_wolf') {
     if (!mechWolfState.learnedRoleId) {

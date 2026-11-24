@@ -32,6 +32,7 @@ import type {
   ShootEligibility,
   ShootResolutionResult,
   TreasureMasterRuntimeState,
+  VictoryCheckOptions,
   WhiteWolfKingExplodeResult,
 } from './types';
 import { checkVictory } from './victory';
@@ -55,7 +56,7 @@ export function checkCanShoot(
   seats: PlayerSeat[],
   shooterSeat: number,
   deathReason: DeathReason,
-  options: { fearedSeat?: number | null } = {},
+  options: { fearedSeat?: number | null; boardId?: string } = {},
 ): ShootEligibility | null {
   const shooter = seats.find((seat) => seat.seatNumber === shooterSeat);
   if (!shooter || (shooter.roleId !== 'hunter' && shooter.roleId !== 'wolf_king')) {
@@ -73,6 +74,15 @@ export function checkCanShoot(
   }
 
   if (shooter.roleId === 'hunter') {
+    // 娛樂局「獵殺潛狼 / 獵人局」：只要出局就能開槍
+    if (options.boardId === 'multi-hunter') {
+      return {
+        seatNumber: shooterSeat,
+        roleId: 'hunter',
+        canShoot: true,
+        reason: '獵人局規則：只要出局即可開槍帶走一名存活玩家或選擇壓槍',
+      };
+    }
     if (
       options.fearedSeat === shooterSeat &&
       deathReason !== 'exiled' &&
@@ -184,6 +194,8 @@ export function resolveShoot(
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
   activeCharmedSeat: number | null = null,
+  treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): ShootResolutionResult {
   const eligibility = checkCanShoot(seats, shooterSeat, shooterDeathReason);
   if (!eligibility || !eligibility.canShoot) {
@@ -214,7 +226,7 @@ export function resolveShoot(
           seat.seatNumber === targetSeat ? { ...seat, whiteCatRevealed: true } : { ...seat },
         )
       : seats.map((seat) => ({ ...seat }));
-    const victory = checkVictory(survivedSeats, ruleOverrides);
+    const victory = checkVictory(survivedSeats, ruleOverrides, treasureMasterState, victoryOptions);
     return {
       seats: survivedSeats,
       shooterSeat,
@@ -242,7 +254,7 @@ export function resolveShoot(
       charmedDeathSeat: null,
       chainedShootEligibility: null,
       mechWolfState,
-      victory: checkVictory(delayedSeats, ruleOverrides),
+      victory: checkVictory(delayedSeats, ruleOverrides, treasureMasterState, victoryOptions),
     };
   }
 
@@ -273,6 +285,8 @@ export function resolveShoot(
     charmResult.charmedDeathSeat !== null
       ? { ...ruleOverrides, wolfKillPriority: true }
       : ruleOverrides,
+    treasureMasterState,
+    victoryOptions,
   );
   const chainedShootEligibility =
     victory.winner === null ? checkCanShoot(updatedSeats, targetSeat, shootReason) : null;
@@ -298,6 +312,7 @@ export function resolveDayExile(
   activeCharmedSeat: number | null = null,
   treasureMasterState?: TreasureMasterRuntimeState,
   finalBatchState?: FinalBatchRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): DayExileResult {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.isAlive) {
@@ -381,7 +396,7 @@ export function resolveDayExile(
           }
         : seat,
     );
-    const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
+    const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
     return {
       seats: updatedSeats,
       exiledSeat: targetSeat,
@@ -411,7 +426,7 @@ export function resolveDayExile(
         : seat,
     );
 
-    const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
+    const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
     return {
       seats: updatedSeats,
       exiledSeat: targetSeat,
@@ -473,6 +488,7 @@ export function resolveDayExile(
       ? { ...ruleOverrides, wolfKillPriority: true }
       : ruleOverrides,
     nextTreasureMasterState,
+    victoryOptions,
   );
 
   return {
@@ -585,6 +601,7 @@ export function resolveSelfExplode(
   }
 
   const nonExplodableCombatRoles: Record<string, string> = {
+    war_wolf: '戰狼不可自爆',
     wolf_raven_claw: '狼鴉之爪不可自爆',
     big_grey_wolf: '大灰狼不可自爆',
     wolf_brother: '狼兄不可自爆',
@@ -634,6 +651,7 @@ export function resolveGoodSelfExplode(
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
   treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): GoodSelfExplodeResult {
   const check = canGoodSelfExplode(seats, actorSeat);
   if (!check.allowed) {
@@ -660,7 +678,7 @@ export function resolveGoodSelfExplode(
   );
 
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
-  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
 
   return {
     allowed: true,
@@ -683,6 +701,8 @@ export function resolveWhiteWolfKingExplode(
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
   activeCharmedSeat: number | null = null,
+  treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): WhiteWolfKingExplodeResult {
   const wolf = seats.find((seat) => seat.seatNumber === wolfSeat);
   if (!wolf || !wolf.isAlive) {
@@ -768,7 +788,7 @@ export function resolveWhiteWolfKingExplode(
   }
 
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
-  const victory = checkVictory(updatedSeats, ruleOverrides);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
 
   return {
     allowed: true,
@@ -795,6 +815,8 @@ export function resolveKnightDuel(
   round: number,
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
+  treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): KnightDuelResult {
   const knight = seats.find((seat) => seat.seatNumber === knightSeat);
   if (!knight || !knight.isAlive) {
@@ -904,7 +926,7 @@ export function resolveKnightDuel(
       : seats.map((seat) => ({ ...seat }));
 
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
-  const victory = checkVictory(updatedSeats, ruleOverrides);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
 
   return {
     allowed: true,
@@ -930,6 +952,7 @@ export function resolveWhiteCatDelayedDeath(
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
   treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): {
   seats: PlayerSeat[];
   eliminatedSeat: number | null;
@@ -942,7 +965,7 @@ export function resolveWhiteCatDelayedDeath(
       seats: seats.map((s) => ({ ...s })),
       eliminatedSeat: null,
       mechWolfState,
-      victory: checkVictory(seats, ruleOverrides, treasureMasterState),
+      victory: checkVictory(seats, ruleOverrides, treasureMasterState, victoryOptions),
     };
   }
   const updatedSeats = seats.map((s) =>
@@ -957,7 +980,7 @@ export function resolveWhiteCatDelayedDeath(
       : s,
   );
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
-  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
   return {
     seats: updatedSeats,
     eliminatedSeat: revealedCat.seatNumber,
@@ -1005,6 +1028,7 @@ export function resolveOldRascalDelayedDeath(
   ruleOverrides: RuleOverrides,
   mechWolfState: MechWolfRuntimeState,
   treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): {
   seats: PlayerSeat[];
   eliminatedSeat: number | null;
@@ -1017,7 +1041,7 @@ export function resolveOldRascalDelayedDeath(
       seats: seats.map((s) => ({ ...s })),
       eliminatedSeat: null,
       mechWolfState,
-      victory: checkVictory(seats, ruleOverrides, treasureMasterState),
+      victory: checkVictory(seats, ruleOverrides, treasureMasterState, victoryOptions),
     };
   }
   const updatedSeats = seats.map((s) =>
@@ -1036,6 +1060,6 @@ export function resolveOldRascalDelayedDeath(
     seats: updatedSeats,
     eliminatedSeat: delayed.seatNumber,
     mechWolfState: nextMechWolfState,
-    victory: checkVictory(updatedSeats, ruleOverrides, treasureMasterState),
+    victory: checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions),
   };
 }

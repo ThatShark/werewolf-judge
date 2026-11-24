@@ -53,6 +53,9 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
   const updateRuleOverrides = useGameStore((s) => s.updateRuleOverrides);
   const setSeatNickname = useGameStore((s) => s.setSeatNickname);
+  const setSeatGender = useGameStore((s) => s.setSeatGender);
+  const setSeatSecondRole = useGameStore((s) => s.setSeatSecondRole);
+  const randomizeJackSetup = useGameStore((s) => s.randomizeJackSetup);
   const clearSavedNicknames = useGameStore((s) => s.clearSavedNicknames);
   const startGame = useGameStore((s) => s.startGame);
 
@@ -773,13 +776,46 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
               </div>
             )}
 
+            {(board.id === '12p-jack-the-ripper' || board.id === '12p-jack-the-ripper-2') && (() => {
+              const maleCount = seats.filter((s) => s.gender === 'male').length;
+              const femaleCount = seats.filter((s) => s.gender === 'female').length;
+              const jackSecondSeat = seats.find((s) => s.secondRoleId === 'jack_the_ripper');
+              return (
+                <div className="rounded-2xl border border-rose-500/35 bg-rose-950/25 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-extrabold text-rose-200">
+                        🔪 開膛手傑克性別{board.id === '12p-jack-the-ripper-2' ? '與第二身分' : ''}配置
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-rose-200/80">
+                        目前性別：男 {maleCount} 人 / 女 {femaleCount} 人（標準 6 男 6 女）
+                        {board.id === '12p-jack-the-ripper-2'
+                          ? ` ｜ 第二身分開膛手傑克：${jackSecondSeat ? `${jackSecondSeat.seatNumber} 號` : '尚未指定'}`
+                          : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={randomizeJackSetup}
+                      className="min-h-12 shrink-0 rounded-xl border border-rose-400/50 bg-rose-500/20 px-3 text-xs font-extrabold text-rose-100 hover:bg-rose-500/30"
+                    >
+                      🎲 一鍵隨機分配
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {seats.map((seat) => {
                 const role = getRoleById(seat.roleId);
+                const isJackBoard =
+                  board.id === '12p-jack-the-ripper' || board.id === '12p-jack-the-ripper-2';
+                const isJackSecondIdBoard = board.id === '12p-jack-the-ripper-2';
                 return (
                   <div
                     key={seat.seatNumber}
-                    className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/80 p-2"
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/80 p-2"
                   >
                     <div className="flex h-12 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-sm font-extrabold text-amber-300">
                       {seat.seatNumber}
@@ -798,6 +834,52 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
                       >
                         {role.name}
                       </span>
+                    )}
+                    {isJackBoard && (
+                      <div className="flex w-full items-center gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setSeatGender(seat.seatNumber, 'male')}
+                          className={`min-h-10 flex-1 rounded-lg border text-xs font-bold transition ${
+                            seat.gender === 'male'
+                              ? 'border-sky-400 bg-sky-500/25 text-sky-100'
+                              : 'border-slate-700 bg-slate-950 text-slate-400 hover:bg-slate-800'
+                          }`}
+                        >
+                          ♂ 男
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSeatGender(seat.seatNumber, 'female')}
+                          className={`min-h-10 flex-1 rounded-lg border text-xs font-bold transition ${
+                            seat.gender === 'female'
+                              ? 'border-pink-400 bg-pink-500/25 text-pink-100'
+                              : 'border-slate-700 bg-slate-950 text-slate-400 hover:bg-slate-800'
+                          }`}
+                        >
+                          ♀ 女
+                        </button>
+                        {isJackSecondIdBoard && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSeatSecondRole(
+                                seat.seatNumber,
+                                seat.secondRoleId === 'jack_the_ripper'
+                                  ? 'detective'
+                                  : 'jack_the_ripper',
+                              )
+                            }
+                            className={`min-h-10 shrink-0 rounded-lg border px-2.5 text-xs font-bold transition ${
+                              seat.secondRoleId === 'jack_the_ripper'
+                                ? 'border-rose-400 bg-rose-500/25 text-rose-100'
+                                : 'border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            {seat.secondRoleId === 'jack_the_ripper' ? '🔪 開膛手傑克' : '🔍 偵探'}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 );

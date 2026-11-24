@@ -1,5 +1,5 @@
 import { ROLES_BY_ID } from '../data/roles';
-import { isSeatWolfFaction } from './topFiveRoles';
+import { isSeatEffectiveWolf } from './factionHelpers';
 import type {
   ActionCheckResult,
   GameWinner,
@@ -81,10 +81,7 @@ function isEffectiveWolf(
   seat: PlayerSeat,
   state?: ThirdPartySpecialRuntimeState,
 ): boolean {
-  if (seat.roleId === 'super_black_market_merchant' && state?.superBlackMarketTurnedWolf) {
-    return true;
-  }
-  return isSeatWolfFaction(seat);
+  return isSeatEffectiveWolf(seat, { thirdPartySpecialState: state });
 }
 
 // ============================================================================

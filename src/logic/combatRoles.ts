@@ -6,6 +6,8 @@ import type {
   DeathReason,
   PlayerSeat,
   RuleOverrides,
+  TreasureMasterRuntimeState,
+  VictoryCheckOptions,
   VictoryResult,
 } from './types';
 import { checkVictory } from './victory';
@@ -358,6 +360,8 @@ export function resolvePufferfishExplode(
   pufferfishBombUsed: boolean,
   round: number,
   ruleOverrides: RuleOverrides,
+  treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): {
   allowed: boolean;
   reason?: string;
@@ -385,7 +389,7 @@ export function resolvePufferfishExplode(
       ? { ...s, isAlive: false, deathReason: 'pufferfish_explode' as const, deathRound: round }
       : s,
   );
-  const victory = checkVictory(updatedSeats, ruleOverrides);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
   return {
     allowed: true,
     seats: updatedSeats,
@@ -491,6 +495,8 @@ export function resolveAwakenedHunterDirectionShoot(
   direction: 'left' | 'right',
   round: number,
   ruleOverrides: RuleOverrides,
+  treasureMasterState?: TreasureMasterRuntimeState,
+  victoryOptions?: VictoryCheckOptions,
 ): {
   allowed: boolean;
   reason?: string;
@@ -508,7 +514,7 @@ export function resolveAwakenedHunterDirectionShoot(
       allowed: true,
       seats: seats.map((s) => ({ ...s })),
       killedSeat: null,
-      victory: checkVictory(seats, ruleOverrides),
+      victory: checkVictory(seats, ruleOverrides, treasureMasterState, victoryOptions),
     };
   }
   const updatedSeats = seats.map((s) =>
@@ -525,7 +531,7 @@ export function resolveAwakenedHunterDirectionShoot(
     allowed: true,
     seats: updatedSeats,
     killedSeat: targetWolf.seatNumber,
-    victory: checkVictory(updatedSeats, ruleOverrides),
+    victory: checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions),
   };
 }
 

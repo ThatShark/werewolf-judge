@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { getRoleById } from '../../data/roles';
 import {
+  getBatch5ExileExtraVotes,
   getEligibleExileVoters,
   tallyExileVotes,
   toggleVoterForCandidate,
@@ -20,6 +21,7 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const sheriffState = useGameStore((s) => s.sheriffState);
   const exilePkCandidates = useGameStore((s) => s.exilePkCandidates);
   const voteInputMode = useGameStore((s) => s.voteInputMode);
+  const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const undoStack = useGameStore((s) => s.undoStack);
 
   const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
@@ -86,17 +88,28 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     return targetSeats[0] ?? null;
   }, [selectedCandidateTab, targetSeats]);
 
+  const autoExtraVotes = useMemo(
+    () => getBatch5ExileExtraVotes(thirdPartySpecialState),
+    [thirdPartySpecialState],
+  );
+
   const normalizedExtraVotes = useMemo(() => {
     const validTargets = new Set(targetSeats);
     const result: Record<number, number> = {};
+    for (const [seatKey, bonus] of Object.entries(autoExtraVotes)) {
+      const seatNum = Number(seatKey);
+      if (bonus > 0 && validTargets.has(seatNum)) {
+        result[seatNum] = (result[seatNum] ?? 0) + bonus;
+      }
+    }
     for (const [seatKey, bonus] of Object.entries(extraVotes)) {
       const seatNum = Number(seatKey);
       if (bonus > 0 && validTargets.has(seatNum)) {
-        result[seatNum] = bonus;
+        result[seatNum] = (result[seatNum] ?? 0) + bonus;
       }
     }
     return result;
-  }, [extraVotes, targetSeats]);
+  }, [autoExtraVotes, extraVotes, targetSeats]);
 
   const tallyPreview = useMemo(() => {
     if (eligibleVoters.length === 0) return null;

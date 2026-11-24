@@ -5,19 +5,34 @@ import { getRoleById } from '../../data/roles';
 import {
   applyMechWolfLearn,
   canAwakenedDreamCatcherDream,
+  canBlackBatShield,
+  canDarkNightEnvoyShield,
+  canDaylightScholarAct,
   canDemonWolfCheck,
   canDreamCatcherDream,
+  canEnchanterBewitch,
+  canFortuneTellerMark,
+  canFoxCubCharm,
   canGuardTarget,
   canHybridChooseIdol,
   canMechWolfLearn,
   canMechWolfUseLearnedSkill,
+  canMedusaPetrify,
+  canMuteElderMute,
   canNightmareFear,
+  canPenguinFreeze,
+  canRadiantEarlShield,
   canSeedWolfInfect,
+  canSilentNightMentorAct,
+  canSocialiteFavor,
   canSuperGravekeeperChooseHeir,
+  canTimeEclipseLock,
+  canTroublemakerPrank,
   canWitchUseAntidote,
   canWitchUsePoison,
   canWolfBeautyCharm,
   createInitialGargoyleState,
+  createInitialInterferenceState,
   createInitialPumpkinGhostState,
   createInitialSeedWolfState,
   createInitialSuperGravekeeperState,
@@ -115,6 +130,36 @@ function getInitialTargetForStep(
       return draft.superGravekeeperHeirTarget ?? null;
     case 'awakened_dream_catcher_dream':
       return draft.awakenedDreamTarget ?? null;
+    case 'troublemaker_prank':
+      return draft.troublemakerTarget ?? null;
+    case 'time_eclipse_lock':
+      return draft.timeEclipseTarget ?? null;
+    case 'penguin_freeze':
+      return draft.penguinFreezeTarget ?? null;
+    case 'fox_cub_charm':
+      return draft.foxCubCharmTarget ?? null;
+    case 'mute_elder_mute':
+      return draft.muteElderTarget ?? null;
+    case 'medusa_petrify':
+      return draft.medusaPetrifyTarget ?? null;
+    case 'silent_night_mentor_action':
+      return draft.silentNightMentorTarget ?? null;
+    case 'daylight_scholar_action':
+      return draft.daylightScholarTarget ?? null;
+    case 'fortune_teller_mark':
+      return draft.fortuneTellerMarkTarget ?? null;
+    case 'radiant_earl_shield':
+      return draft.radiantEarlTarget ?? null;
+    case 'socialite_favor':
+      return draft.socialiteTarget ?? null;
+    case 'enchanter_bewitch':
+      return draft.enchanterTarget ?? null;
+    case 'black_bat_shield':
+      return draft.blackBatTarget ?? null;
+    case 'dark_night_envoy_shield':
+      return draft.darkNightEnvoyTarget ?? null;
+    case 'awakened_witch_action':
+      return draft.awakenedWitchPoisonTarget ?? null;
     default:
       return null;
   }
@@ -187,6 +232,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const foxLostAbility = useGameStore((s) => s.foxLostAbility ?? false);
   const exiledHistory = useGameStore((s) => s.exiledHistory ?? []);
   const lastAwakenedDreamTarget = useGameStore((s) => s.lastAwakenedDreamTarget ?? null);
+  const interferenceState = useGameStore(
+    (s) => s.interferenceState ?? createInitialInterferenceState(),
+  );
 
   const claimSeatRole = useGameStore((s) => s.claimSeatRole);
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
@@ -222,6 +270,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const [pendingAwakenedDreamKill, setPendingAwakenedDreamKill] = useState<boolean>(
     () => Boolean(currentNightDraft.awakenedDreamKillTarget),
   );
+  const [pendingMultiTargets, setPendingMultiTargets] = useState<number[]>(
+    () => currentNightDraft.alchemyFogTargets ?? [],
+  );
+  const [pendingAmplifyMode, setPendingAmplifyMode] = useState<'amplify' | 'weaken' | null>(null);
+  const [pendingAwHelpersApproved, setPendingAwHelpersApproved] = useState<boolean>(true);
   const [revealConfirmed, setRevealConfirmed] = useState(false);
 
   // 實體發牌首夜認領狀態
@@ -261,9 +314,30 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     setPendingTarget(getInitialTargetForStep(currentStep.actionType, currentNightDraft));
     setPendingUseAntidote(currentNightDraft.witchUseAntidote);
     setPendingSeedWolfInfect(currentNightDraft.seedWolfInfectTarget != null);
-    setPendingDualTargets(currentNightDraft.awakenedSeerTargets ?? [null, null]);
+    setPendingDualTargets(
+      currentStep.actionType === 'magician_swap'
+        ? (currentNightDraft.magicianSwapPair ?? [null, null])
+        : currentStep.actionType === 'wolf_warlock_swap'
+          ? (currentNightDraft.wolfWarlockSwapPair ?? [null, null])
+          : currentStep.actionType === 'trickster_wolf_swap'
+            ? (currentNightDraft.tricksterSwapPair ?? [null, null])
+            : (currentNightDraft.awakenedSeerTargets ?? [null, null]),
+    );
     setPendingDrunkManual(currentNightDraft.drunkSeerManualResult ?? null);
     setPendingAwakenedDreamKill(Boolean(currentNightDraft.awakenedDreamKillTarget));
+    setPendingMultiTargets(
+      currentStep.actionType === 'awakened_witch_action'
+        ? (currentNightDraft.awakenedWitchHelpers ?? [])
+        : (currentNightDraft.alchemyFogTargets ?? []),
+    );
+    setPendingAmplifyMode(
+      currentStep.actionType === 'silent_night_mentor_action'
+        ? (currentNightDraft.silentNightMentorMode ?? null)
+        : currentStep.actionType === 'daylight_scholar_action'
+          ? (currentNightDraft.daylightScholarMode ?? null)
+          : null,
+    );
+    setPendingAwHelpersApproved(currentNightDraft.awakenedWitchHelpersApproved ?? true);
     setRevealConfirmed(false);
     setPendingClaimSeat(null);
     setClaimError(null);
@@ -607,6 +681,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     currentStep.actionType !== 'super_gravekeeper_heir_check' &&
     currentStep.actionType !== 'nine_tailed_fox_check' &&
     currentStep.actionType !== 'awakened_dream_catcher_judge' &&
+    currentStep.actionType !== 'alchemy_witch_snake' &&
     currentStep.actionType !== 'confirm_only' &&
     !(isInfoRevealStep && revealConfirmed);
 
@@ -849,6 +924,220 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           onSelect: toggleTarget,
         };
       }
+      case 'magician_swap':
+      case 'wolf_warlock_swap':
+      case 'trickster_wolf_swap': {
+        const [a, b] = pendingDualTargets;
+        const isSelected = a === seatNumber || b === seatNumber;
+        const alreadyUsed =
+          currentStep.actionType === 'magician_swap'
+            ? interferenceState.magicianSwappedSeats.includes(seatNumber)
+            : currentStep.actionType === 'wolf_warlock_swap'
+              ? interferenceState.wolfWarlockSwappedSeats.includes(seatNumber)
+              : ((interferenceState.lastTricksterPair ?? []) as number[]).includes(seatNumber);
+        return {
+          selected: isSelected,
+          disabled: !isAlive || alreadyUsed,
+          reason: alreadyUsed ? '不可重複選擇' : !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingDualTargets(([first, second]) => {
+              if (first === seatNumber) return [second, null];
+              if (second === seatNumber) return [first, null];
+              if (first === null) return [seatNumber, second];
+              if (second === null) return [first, seatNumber];
+              return [second, seatNumber];
+            });
+          },
+        };
+      }
+      case 'alchemy_witch_fog': {
+        const isSelected = pendingMultiTargets.includes(seatNumber);
+        const disabled =
+          !isAlive ||
+          interferenceState.alchemyFogUsed ||
+          (!isSelected && pendingMultiTargets.length >= 3);
+        return {
+          selected: isSelected,
+          disabled,
+          reason: interferenceState.alchemyFogUsed ? '已使用' : !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingMultiTargets((prev) =>
+              prev.includes(seatNumber)
+                ? prev.filter((n) => n !== seatNumber)
+                : prev.length < 3
+                  ? [...prev, seatNumber]
+                  : prev,
+            );
+          },
+        };
+      }
+      case 'troublemaker_prank': {
+        const check = canTroublemakerPrank(
+          seats,
+          interferenceState.lastTroublemakerTarget,
+          seatNumber,
+        );
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'time_eclipse_lock': {
+        const check = canTimeEclipseLock(seats, interferenceState, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'penguin_freeze': {
+        const check = canPenguinFreeze(seats, interferenceState.lastPenguinTarget, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'fox_cub_charm': {
+        const check = canFoxCubCharm(seats, interferenceState.foxCubUsed, seatNumber, round);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'mute_elder_mute': {
+        const check = canMuteElderMute(seats, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'medusa_petrify': {
+        const check = canMedusaPetrify(seats, interferenceState.lastMedusaTarget, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'silent_night_mentor_action': {
+        const check = canSilentNightMentorAct(
+          seats,
+          interferenceState,
+          pendingAmplifyMode ?? 'amplify',
+          seatNumber,
+          round,
+        );
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !pendingAmplifyMode || !check.allowed,
+          reason: !pendingAmplifyMode ? '請先選增幅或削弱' : check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'daylight_scholar_action': {
+        const check = canDaylightScholarAct(
+          seats,
+          interferenceState,
+          pendingAmplifyMode ?? 'amplify',
+          seatNumber,
+          round,
+        );
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !pendingAmplifyMode || !check.allowed,
+          reason: !pendingAmplifyMode ? '請先選增幅或削弱' : check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'fortune_teller_mark': {
+        const check = canFortuneTellerMark(seats, interferenceState.fortuneTellerUsed, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'radiant_earl_shield': {
+        const check = canRadiantEarlShield(
+          seats,
+          interferenceState.lastRadiantEarlTarget,
+          seatNumber,
+          round,
+        );
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'socialite_favor': {
+        const check = canSocialiteFavor(seats, interferenceState.lastSocialiteTarget, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'enchanter_bewitch': {
+        const check = canEnchanterBewitch(seats, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'black_bat_shield': {
+        const check = canBlackBatShield(seats, interferenceState, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'dark_night_envoy_shield': {
+        const check = canDarkNightEnvoyShield(
+          seats,
+          interferenceState.lastDarkNightEnvoyTarget,
+          seatNumber,
+        );
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'awakened_witch_action': {
+        const disabled =
+          !isAlive || pendingUseAntidote || interferenceState.awakenedWitchPoisonsUsed >= 3;
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled,
+          reason: pendingUseAntidote
+            ? '已選解藥'
+            : interferenceState.awakenedWitchPoisonsUsed >= 3
+              ? '毒藥已用盡'
+              : !isAlive
+                ? '已出局'
+                : undefined,
+          onSelect: toggleTarget,
+        };
+      }
       default:
         return {
           selected: false,
@@ -942,6 +1231,74 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         break;
       case 'awakened_dream_catcher_judge':
         updateNightDraft({ awakenedDreamKillTarget: round >= 2 ? pendingAwakenedDreamKill : false });
+        break;
+      case 'magician_swap':
+        updateNightDraft({ magicianSwapPair: pendingDualTargets });
+        break;
+      case 'wolf_warlock_swap':
+        updateNightDraft({ wolfWarlockSwapPair: pendingDualTargets });
+        break;
+      case 'trickster_wolf_swap':
+        updateNightDraft({ tricksterSwapPair: pendingDualTargets });
+        break;
+      case 'troublemaker_prank':
+        updateNightDraft({ troublemakerTarget: pendingTarget });
+        break;
+      case 'time_eclipse_lock':
+        updateNightDraft({ timeEclipseTarget: pendingTarget });
+        break;
+      case 'penguin_freeze':
+        updateNightDraft({ penguinFreezeTarget: pendingTarget });
+        break;
+      case 'fox_cub_charm':
+        updateNightDraft({ foxCubCharmTarget: pendingTarget });
+        break;
+      case 'mute_elder_mute':
+        updateNightDraft({ muteElderTarget: pendingTarget });
+        break;
+      case 'medusa_petrify':
+        updateNightDraft({ medusaPetrifyTarget: pendingTarget });
+        break;
+      case 'silent_night_mentor_action':
+        updateNightDraft({
+          silentNightMentorMode: pendingAmplifyMode,
+          silentNightMentorTarget: pendingAmplifyMode ? pendingTarget : null,
+        });
+        break;
+      case 'daylight_scholar_action':
+        updateNightDraft({
+          daylightScholarMode: pendingAmplifyMode,
+          daylightScholarTarget: pendingAmplifyMode ? pendingTarget : null,
+        });
+        break;
+      case 'fortune_teller_mark':
+        updateNightDraft({ fortuneTellerMarkTarget: pendingTarget });
+        break;
+      case 'radiant_earl_shield':
+        updateNightDraft({ radiantEarlTarget: pendingTarget });
+        break;
+      case 'socialite_favor':
+        updateNightDraft({ socialiteTarget: pendingTarget });
+        break;
+      case 'enchanter_bewitch':
+        updateNightDraft({ enchanterTarget: pendingTarget });
+        break;
+      case 'black_bat_shield':
+        updateNightDraft({ blackBatTarget: pendingTarget });
+        break;
+      case 'dark_night_envoy_shield':
+        updateNightDraft({ darkNightEnvoyTarget: pendingTarget });
+        break;
+      case 'alchemy_witch_fog':
+        updateNightDraft({ alchemyFogTargets: pendingMultiTargets });
+        break;
+      case 'awakened_witch_action':
+        updateNightDraft({
+          awakenedWitchUseAntidote: pendingUseAntidote,
+          awakenedWitchPoisonTarget: pendingUseAntidote ? null : pendingTarget,
+          awakenedWitchHelpers: pendingUseAntidote ? [] : pendingMultiTargets,
+          awakenedWitchHelpersApproved: pendingAwHelpersApproved,
+        });
         break;
       default:
         break;
@@ -2042,6 +2399,179 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                       : `是否將 ${awakenedDreamJudgeOutcome.targetSeat} 號夢語出局？（目前：不處決）`}
                   </button>
                 )}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'magician_swap' ||
+              currentStep.actionType === 'wolf_warlock_swap' ||
+              currentStep.actionType === 'trickster_wolf_swap') && (
+              <div className="rounded-xl border border-indigo-400/40 bg-indigo-950/35 px-3 py-2 text-center text-xs font-bold text-indigo-100">
+                🔀 已選交換號碼：
+                {pendingDualTargets[0] !== null && pendingDualTargets[1] !== null
+                  ? `${pendingDualTargets[0]} 號 ⇄ ${pendingDualTargets[1]} 號`
+                  : pendingDualTargets[0] !== null
+                    ? `${pendingDualTargets[0]} 號（請再選第 2 位，或點清除改空換）`
+                    : '空換（點選上方 2 個座位即可交換）'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'alchemy_witch_fog' && (
+              <div className="rounded-xl border border-amber-400/40 bg-amber-950/35 px-3 py-2 text-center text-xs font-bold text-amber-100">
+                🌫️ 未明之霧（限 1 次，選 3 位限制狼刀且禁空刀）：
+                {interferenceState.alchemyFogUsed
+                  ? '已使用完畢'
+                  : pendingMultiTargets.length > 0
+                    ? `已選 ${pendingMultiTargets.join('、')} 號（${pendingMultiTargets.length}/3）`
+                    : '未使用（點選 3 位存活玩家發動，或直接確認跳過）'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'alchemy_witch_snake' && (
+              <div className="rounded-xl border border-emerald-400/45 bg-emerald-950/35 px-3 py-2 text-center text-xs font-bold text-emerald-100">
+                🐍 法老之蛇資訊：
+                {currentNightDraft.wolfTarget !== null
+                  ? `今晚狼刀目標為 ${currentNightDraft.wolfTarget} 號（將於天亮發言後決定是否救活）`
+                  : '今晚無狼刀死亡資訊'}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'silent_night_mentor_action' ||
+              currentStep.actionType === 'daylight_scholar_action') && (
+              <div className="space-y-1.5 rounded-xl border border-purple-400/40 bg-purple-950/35 p-2 text-center text-xs">
+                <div className="flex items-center justify-center gap-2">
+                  {(
+                    [
+                      [null, '不發動'],
+                      ['amplify', '⬆️ 增幅'],
+                      ['weaken', '⬇️ 削弱'],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <button
+                      key={String(mode)}
+                      type="button"
+                      onClick={() => {
+                        setPendingAmplifyMode(mode);
+                        if (!mode) setPendingTarget(null);
+                      }}
+                      className={`min-h-9 rounded-lg border px-2.5 font-bold ${
+                        pendingAmplifyMode === mode
+                          ? 'border-purple-300 bg-purple-600 text-white'
+                          : 'border-slate-700 bg-slate-900 text-slate-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[11px] font-bold text-purple-100">
+                  {pendingAmplifyMode
+                    ? `已選${pendingAmplifyMode === 'amplify' ? '增幅' : '削弱'}，目標：${
+                        pendingTarget !== null ? `${pendingTarget} 號` : '請點選上方座位'
+                      }`
+                    : '選擇增幅或削弱後點選目標（或直接確認跳過）'}
+                </div>
+              </div>
+            )}
+
+            {currentStep.actionType === 'awakened_witch_action' && (
+              <div className="space-y-2 rounded-xl border border-emerald-400/40 bg-slate-950/80 p-2.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-200">
+                    🧪 覺醒女巫（解藥：{interferenceState.awakenedWitchAntidoteUsed ? '已用' : '可用'} ·
+                    毒藥已用 {interferenceState.awakenedWitchPoisonsUsed}/3）
+                  </span>
+                  {!interferenceState.awakenedWitchAntidoteUsed &&
+                    currentNightDraft.wolfTarget !== null && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingUseAntidote((v) => !v);
+                          setPendingTarget(null);
+                        }}
+                        className={`min-h-9 rounded-lg border px-2.5 font-bold ${
+                          pendingUseAntidote
+                            ? 'border-emerald-400 bg-emerald-600 text-white'
+                            : 'border-slate-700 bg-slate-900 text-slate-200'
+                        }`}
+                      >
+                        {pendingUseAntidote ? '💊 已選解藥救人' : '使用解藥'}
+                      </button>
+                    )}
+                </div>
+                {!pendingUseAntidote && pendingTarget !== null && (
+                  <div className="space-y-1.5 border-t border-slate-800 pt-1.5">
+                    <div className="font-bold text-rose-200">
+                      ☠️ 預選毒殺 {pendingTarget} 號 — 請勾選{' '}
+                      {interferenceState.awakenedWitchPoisonsUsed + 1} 位協助者：
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {seats
+                        .filter(
+                          (s) =>
+                            s.isAlive &&
+                            !interferenceState.awakenedWitchUsedHelpers.includes(s.seatNumber),
+                        )
+                        .map((s) => {
+                          const picked = pendingMultiTargets.includes(s.seatNumber);
+                          const limit = interferenceState.awakenedWitchPoisonsUsed + 1;
+                          return (
+                            <button
+                              key={s.seatNumber}
+                              type="button"
+                              onClick={() =>
+                                setPendingMultiTargets((prev) =>
+                                  prev.includes(s.seatNumber)
+                                    ? prev.filter((n) => n !== s.seatNumber)
+                                    : prev.length < limit
+                                      ? [...prev, s.seatNumber]
+                                      : prev,
+                                )
+                              }
+                              className={`min-h-8 rounded-md border px-2 font-bold ${
+                                picked
+                                  ? 'border-amber-400 bg-amber-500/30 text-amber-100'
+                                  : 'border-slate-700 bg-slate-900 text-slate-300'
+                              }`}
+                            >
+                              {s.seatNumber}號
+                            </button>
+                          );
+                        })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingAwHelpersApproved((v) => !v)}
+                      className={`min-h-9 w-full rounded-lg border px-2 font-bold ${
+                        pendingAwHelpersApproved
+                          ? 'border-rose-400 bg-rose-600/80 text-white'
+                          : 'border-slate-600 bg-slate-800 text-slate-300'
+                      }`}
+                    >
+                      {pendingAwHelpersApproved
+                        ? '✅ 協助者全數同意投毒（毒殺生效）'
+                        : '❌ 有協助者反對投毒（毒殺失敗仍耗次數）'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'troublemaker_prank' ||
+              currentStep.actionType === 'time_eclipse_lock' ||
+              currentStep.actionType === 'penguin_freeze' ||
+              currentStep.actionType === 'fox_cub_charm' ||
+              currentStep.actionType === 'mute_elder_mute' ||
+              currentStep.actionType === 'medusa_petrify' ||
+              currentStep.actionType === 'fortune_teller_mark' ||
+              currentStep.actionType === 'radiant_earl_shield' ||
+              currentStep.actionType === 'socialite_favor' ||
+              currentStep.actionType === 'enchanter_bewitch' ||
+              currentStep.actionType === 'black_bat_shield' ||
+              currentStep.actionType === 'dark_night_envoy_shield') && (
+              <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-center text-xs font-bold text-slate-200">
+                {pendingTarget !== null
+                  ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
+                  : '請點選上方座位選擇技能目標（或直接確認跳過）'}
               </div>
             )}
 

@@ -1,6 +1,10 @@
 import { getRoleById } from '../data/roles';
 import { applyWolfBeautyCharmDeath } from './advancedRoles';
 import { canGoodSelfExplode, isDemonWolfNightShootImmune } from './inspectionRoles';
+import {
+  isWarWolfImmuneToDeath,
+  shouldWhiteCatSurviveDeath,
+} from './interferenceRoles';
 import { syncMechWolfTeamStatus } from './mechWolf';
 import {
   isEvilKnightNightShootImmune,
@@ -191,14 +195,22 @@ export function resolveShoot(
   const shootReason: 'hunter_shoot' | 'wolf_king_shoot' =
     eligibility.roleId === 'hunter' ? 'hunter_shoot' : 'wolf_king_shoot';
 
-  // 惡靈騎士／惡魔免疫夜間傷害：晚上倒牌的獵人對其開槍無效（白天放逐開槍則有效）
+  // 惡靈騎士／惡魔免疫夜間傷害、戰狼免疫所有神職傷害、白貓翻牌免死
+  const whiteCatCheck = shouldWhiteCatSurviveDeath(target, shootReason);
   if (
     isEvilKnightNightShootImmune(target, eligibility.roleId, shooterDeathReason) ||
-    isDemonWolfNightShootImmune(target, eligibility.roleId, shooterDeathReason)
+    isDemonWolfNightShootImmune(target, eligibility.roleId, shooterDeathReason) ||
+    isWarWolfImmuneToDeath(target, shootReason) ||
+    whiteCatCheck.survive
   ) {
-    const victory = checkVictory(seats, ruleOverrides);
+    const survivedSeats = whiteCatCheck.newlyRevealed
+      ? seats.map((seat) =>
+          seat.seatNumber === targetSeat ? { ...seat, whiteCatRevealed: true } : { ...seat },
+        )
+      : seats.map((seat) => ({ ...seat }));
+    const victory = checkVictory(survivedSeats, ruleOverrides);
     return {
-      seats: seats.map((seat) => ({ ...seat })),
+      seats: survivedSeats,
       shooterSeat,
       targetSeat,
       deathReason: shootReason,
@@ -299,8 +311,38 @@ export function resolveDayExile(
     };
   }
 
-  // 白痴白天首次被放逐：翻牌免死並失去投票權（若已被種狼感染則失去此技能）
-  if (target.roleId === 'idiot' && !target.idiotRevealed && !target.infectedBySeedWolf) {
+  // 白貓任何原因出局皆可翻牌免疫本次死亡（已翻牌期間亦免疫公投出局，至下次放逐結束才正式死亡）
+  const whiteCatExileCheck = shouldWhiteCatSurviveDeath(target, 'exiled');
+  if (whiteCatExileCheck.survive) {
+    const updatedSeats = seats.map((seat) =>
+      seat.seatNumber === targetSeat
+        ? {
+            ...seat,
+            isAlive: true,
+            whiteCatRevealed: true,
+          }
+        : seat,
+    );
+    const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
+    return {
+      seats: updatedSeats,
+      exiledSeat: targetSeat,
+      idiotRevealed: false,
+      charmedDeathSeat: null,
+      shootEligibility: null,
+      mechWolfState,
+      treasureMasterState,
+      victory,
+    };
+  }
+
+  // 白痴白天首次被放逐：翻牌免死並失去投票權（若已被種狼感染或遭梅杜莎石化則無法翻牌）
+  if (
+    target.roleId === 'idiot' &&
+    !target.idiotRevealed &&
+    !target.infectedBySeedWolf &&
+    !target.petrified
+  ) {
     const updatedSeats = seats.map((seat) =>
       seat.seatNumber === targetSeat
         ? {
@@ -334,6 +376,23 @@ export function resolveDayExile(
         }
       : seat,
   );
+
+  // 若放逐出局者為梅杜莎（非自爆），被石化的玩家跟隨出局
+  if (target.roleId === 'medusa') {
+    const petrifiedSeat = updatedSeats.find((s) => s.isAlive && s.petrified);
+    if (petrifiedSeat) {
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === petrifiedSeat.seatNumber
+          ? {
+              ...s,
+              isAlive: false,
+              deathReason: 'medusa_petrify_link' as const,
+              deathRound: round,
+            }
+          : s,
+      );
+    }
+  }
 
   // 若放逐出局者為狼美人，前一晚魅惑對象跟著殉情（無技能）
   const charmResult = applyWolfBeautyCharmDeath(
@@ -427,6 +486,22 @@ export function resolveSelfExplode(
     return {
       allowed: false,
       reason: '惡魔不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (player.roleId === 'troublemaker_wolf') {
+    return {
+      allowed: false,
+      reason: '搗蛋鬼不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (player.roleId === 'silent_night_mentor') {
+    return {
+      allowed: false,
+      reason: '寂夜導師不可自爆',
       pendingSelfExplodeSeat: null,
     };
   }
@@ -702,21 +777,27 @@ export function resolveKnightDuel(
   }
 
   const targetWasWolf = isSeatWolfFaction(target);
-  const eliminatedSeat = targetWasWolf ? targetSeat : knightSeat;
-  const deathReason: 'knight_duel' | 'knight_duel_fail' = targetWasWolf
-    ? 'knight_duel'
-    : 'knight_duel_fail';
+  const warWolfImmune = targetWasWolf && isWarWolfImmuneToDeath(target, 'knight_duel');
+  const eliminatedSeat = warWolfImmune ? null : targetWasWolf ? targetSeat : knightSeat;
+  const deathReason: 'knight_duel' | 'knight_duel_fail' | null = warWolfImmune
+    ? null
+    : targetWasWolf
+      ? 'knight_duel'
+      : 'knight_duel_fail';
 
-  const updatedSeats = seats.map((seat) =>
-    seat.seatNumber === eliminatedSeat
-      ? {
-          ...seat,
-          isAlive: false,
-          deathReason,
-          deathRound: round,
-        }
-      : seat,
-  );
+  const updatedSeats =
+    eliminatedSeat !== null && deathReason !== null
+      ? seats.map((seat) =>
+          seat.seatNumber === eliminatedSeat
+            ? {
+                ...seat,
+                isAlive: false,
+                deathReason,
+                deathRound: round,
+              }
+            : seat,
+        )
+      : seats.map((seat) => ({ ...seat }));
 
   const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
   const victory = checkVictory(updatedSeats, ruleOverrides);
@@ -729,9 +810,84 @@ export function resolveKnightDuel(
     targetWasWolf,
     eliminatedSeat,
     deathReason,
-    enterNightImmediately: targetWasWolf && victory.winner === null,
+    enterNightImmediately: targetWasWolf && !warWolfImmune && victory.winner === null,
     knightDuelUsed: true,
     mechWolfState: nextMechWolfState,
     victory,
+  };
+}
+
+/**
+ * 白貓翻牌免死延遲結算：於下一次放逐階段結束後正式淘汰已翻牌之白貓。
+ */
+export function resolveWhiteCatDelayedDeath(
+  seats: PlayerSeat[],
+  round: number,
+  ruleOverrides: RuleOverrides,
+  mechWolfState: MechWolfRuntimeState,
+  treasureMasterState?: TreasureMasterRuntimeState,
+): {
+  seats: PlayerSeat[];
+  eliminatedSeat: number | null;
+  mechWolfState: MechWolfRuntimeState;
+  victory: ReturnType<typeof checkVictory>;
+} {
+  const revealedCat = seats.find((s) => s.isAlive && s.roleId === 'white_cat' && s.whiteCatRevealed);
+  if (!revealedCat) {
+    return {
+      seats: seats.map((s) => ({ ...s })),
+      eliminatedSeat: null,
+      mechWolfState,
+      victory: checkVictory(seats, ruleOverrides, treasureMasterState),
+    };
+  }
+  const updatedSeats = seats.map((s) =>
+    s.seatNumber === revealedCat.seatNumber
+      ? {
+          ...s,
+          isAlive: false,
+          whiteCatRevealed: false,
+          deathReason: 'white_cat_delayed_death' as const,
+          deathRound: round,
+        }
+      : s,
+  );
+  const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
+  return {
+    seats: updatedSeats,
+    eliminatedSeat: revealedCat.seatNumber,
+    mechWolfState: nextMechWolfState,
+    victory,
+  };
+}
+
+/**
+ * 煉金魔女法老之蛇救活昨夜出局玩家（整局限 1 次，於隔天發言階段結束後發動）。
+ */
+export function resolveAlchemySnakeRevive(
+  seats: PlayerSeat[],
+  victimSeat: number,
+): {
+  allowed: boolean;
+  reason?: string;
+  seats: PlayerSeat[];
+} {
+  const victim = seats.find((s) => s.seatNumber === victimSeat);
+  if (!victim || victim.isAlive) {
+    return { allowed: false, reason: '目標不存在或仍存活，無法使用法老之蛇救活', seats };
+  }
+  return {
+    allowed: true,
+    seats: seats.map((s) =>
+      s.seatNumber === victimSeat
+        ? {
+            ...s,
+            isAlive: true,
+            deathReason: undefined,
+            deathRound: undefined,
+          }
+        : s,
+    ),
   };
 }

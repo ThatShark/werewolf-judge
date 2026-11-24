@@ -13,6 +13,7 @@ import {
   createInitialGargoyleState,
   createInitialHiddenWolfState,
   createInitialHybridState,
+  createInitialInterferenceState,
   createInitialMechWolfState,
   createInitialNotebookState,
   createInitialPumpkinGhostState,
@@ -28,6 +29,7 @@ import {
   getNightSteps,
   handleSheriffElectionExplode,
   isValidPlayerCountForBoard,
+  resolveAlchemySnakeRevive,
   resolveDayExile,
   resolveGoodSelfExplode,
   resolveKnightDuel,
@@ -35,6 +37,7 @@ import {
   resolveSelfExplode,
   resolveSheriffVoteRound,
   resolveShoot,
+  resolveWhiteCatDelayedDeath,
   resolveWhiteWolfKingExplode,
   resumeDeferredSheriffElection,
   setNotebookGridCell as setNotebookGridCellLogic,
@@ -120,6 +123,7 @@ export type UndoSnapshotData = Pick<
   | 'lastMoonSpiritHowl'
   | 'lastNineTailedFoxResult'
   | 'lastSeniorVillagerReveal'
+  | 'interferenceState'
   | 'speakingQueue'
   | 'currentSpeakerIndex'
   | 'speakingMeta'
@@ -215,6 +219,8 @@ export interface GameStore extends GameState {
     targetSeat: number | null,
   ) => WhiteWolfKingExplodeResult & { swallowedBadge?: boolean; deferredBadge?: boolean };
   knightDuel: (knightSeat: number, targetSeat: number) => KnightDuelResult;
+  reviveWithAlchemySnake: (victimSeat: number) => { allowed: boolean; reason?: string };
+  triggerWhiteCatDelayedDeath: () => void;
   advanceToNextNight: () => void;
 
   toggleSeatAlive: (seatNumber: number, options?: { reason?: DeathReason }) => void;
@@ -275,6 +281,7 @@ function createInitialGameState(): GameState & {
     lastMoonSpiritHowl: null,
     lastNineTailedFoxResult: null,
     lastSeniorVillagerReveal: null,
+    interferenceState: createInitialInterferenceState(),
     speakingQueue: [],
     currentSpeakerIndex: 0,
     speakingMeta: null,
@@ -327,6 +334,7 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     lastMoonSpiritHowl: state.lastMoonSpiritHowl,
     lastNineTailedFoxResult: state.lastNineTailedFoxResult,
     lastSeniorVillagerReveal: state.lastSeniorVillagerReveal,
+    interferenceState: state.interferenceState,
     speakingQueue: state.speakingQueue,
     currentSpeakerIndex: state.currentSpeakerIndex,
     speakingMeta: state.speakingMeta,
@@ -734,6 +742,7 @@ export const useGameStore = create<GameStore>()(
           foxLostAbility: state.foxLostAbility ?? false,
           exiledHistory: state.exiledHistory ?? [],
           lastAwakenedDreamTarget: state.lastAwakenedDreamTarget ?? null,
+          interferenceState: state.interferenceState ?? createInitialInterferenceState(),
         });
 
         const deathMap = new Map(result.deaths.map((d) => [d.seat, d.reason]));
@@ -804,6 +813,7 @@ export const useGameStore = create<GameStore>()(
           lastMoonSpiritHowl: result.moonSpiritHowl,
           lastNineTailedFoxResult: result.nineTailedFoxResult,
           lastSeniorVillagerReveal: result.seniorVillagerReveal,
+          interferenceState: result.interferenceState,
           sheriffState: nextSheriffState,
           speakingQueue: [],
           currentSpeakerIndex: 0,
@@ -1160,6 +1170,7 @@ export const useGameStore = create<GameStore>()(
           extraVotes: options.extraVotes,
           pkCandidates: state.exilePkCandidates,
           roundIndex: isPkRound ? 2 : 1,
+          tricksterVoteSwap: state.interferenceState?.activeTricksterVoteSwap ?? null,
         });
 
         if (tally.outcome === 'tie') {
@@ -1412,6 +1423,65 @@ export const useGameStore = create<GameStore>()(
           swallowedBadge,
           deferredBadge,
         };
+      },
+
+      reviveWithAlchemySnake: (victimSeat) => {
+        const state = get();
+        const curInt = state.interferenceState ?? createInitialInterferenceState();
+        if (curInt.alchemySnakeUsed) {
+          return { allowed: false, reason: '法老之蛇整局僅能使用一次' };
+        }
+        const res = resolveAlchemySnakeRevive(state.seats, victimSeat);
+        if (!res.allowed) {
+          return { allowed: false, reason: res.reason };
+        }
+        const summary = `煉金魔女發動「法老之蛇」救活 ${victimSeat} 號`;
+        set({
+          seats: res.seats,
+          interferenceState: {
+            ...curInt,
+            alchemySnakeUsed: true,
+            alchemySnakePendingVictimSeat: null,
+          },
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat: victimSeat,
+          }),
+          undoStack: pushUndo(state, `法老之蛇救活 ${victimSeat} 號`),
+        });
+        return { allowed: true };
+      },
+
+      triggerWhiteCatDelayedDeath: () => {
+        const state = get();
+        const res = resolveWhiteCatDelayedDeath(
+          state.seats,
+          state.round,
+          state.ruleOverrides,
+          state.mechWolfState,
+        );
+        if (res.eliminatedSeat === null) return;
+        const triggerGameOver = shouldTriggerAutoVictory(
+          res.victory,
+          state.forceContinueAfterVictory,
+        );
+        const summary = `放逐階段結束：已翻牌之白貓（${res.eliminatedSeat} 號）正式出局`;
+        set({
+          seats: res.seats,
+          mechWolfState: res.mechWolfState,
+          sheriffState: syncSheriffBadgeOnDeaths(state.sheriffState, res.seats),
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat: res.eliminatedSeat,
+          }),
+          winner: triggerGameOver ? res.victory.winner : state.winner,
+          winReason: triggerGameOver ? res.victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, `白貓延遲出局（${res.eliminatedSeat} 號）`),
+        });
       },
 
       selfExplode: (wolfSeat) => {

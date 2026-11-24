@@ -6,6 +6,7 @@ export * from './wolfGirl';
 export * from './treasureMaster';
 export * from './topFiveRoles';
 export * from './inspectionRoles';
+export * from './interferenceRoles';
 export * from './advancedRoles';
 export * from './speakingOrder';
 export * from './sheriff';

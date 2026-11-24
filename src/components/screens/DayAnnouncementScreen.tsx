@@ -23,6 +23,9 @@ export function DayAnnouncementScreen() {
   const lastBearRoar = useGameStore((s) => s.lastBearRoar);
   const lastMoonSpiritHowl = useGameStore((s) => s.lastMoonSpiritHowl ?? null);
   const lastSeniorVillagerReveal = useGameStore((s) => s.lastSeniorVillagerReveal ?? null);
+  const interferenceState = useGameStore((s) => s.interferenceState);
+  const reviveWithAlchemySnake = useGameStore((s) => s.reviveWithAlchemySnake);
+  const triggerWhiteCatDelayedDeath = useGameStore((s) => s.triggerWhiteCatDelayedDeath);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const pendingShooters = useGameStore((s) => s.pendingShooters);
   const forceContinueAfterVictory = useGameStore((s) => s.forceContinueAfterVictory);
@@ -159,6 +162,63 @@ export function DayAnnouncementScreen() {
           <section className="rounded-2xl border border-amber-400/50 bg-amber-950/35 p-3 text-xs font-bold text-amber-100">
             👮 雙爆吞警徽續選：進入白天後將自動跳過「上警報名與警上發言」，直接由候選人（
             {sheriffState.candidates.join('、')} 號）進入退水與警下投票。
+          </section>
+        )}
+
+        {/* 禁言長老／梅杜莎／詭術師／煉金魔女／白貓日間狀態卡 */}
+        {interferenceState?.activeMutedSeat !== null &&
+          interferenceState?.activeMutedSeat !== undefined && (
+            <section className="rounded-2xl border border-amber-400/55 bg-amber-950/35 p-3.5 text-xs font-bold text-amber-100">
+              🔇 禁言長老公告：{interferenceState.activeMutedSeat} 號玩家今日遭禁言，發言階段不可出聲，僅能以手勢／肢體表達。
+            </section>
+          )}
+
+        {interferenceState?.activePetrifiedSeat !== null &&
+          interferenceState?.activePetrifiedSeat !== undefined && (
+            <section className="rounded-2xl border border-purple-400/50 bg-purple-950/35 p-3.5 text-xs font-bold text-purple-100">
+              🗿 梅杜莎石化狀態：{interferenceState.activePetrifiedSeat} 號今日遭石化，無法參與放逐投票（若為白痴被放逐無法翻牌）。
+            </section>
+          )}
+
+        {!isOnlineJudge && interferenceState?.activeTricksterVoteSwap && (
+          <section className="rounded-2xl border border-rose-400/45 bg-rose-950/30 p-3 text-xs font-bold text-rose-100">
+            🃏 詭術師換票生效（法官視角）：{interferenceState.activeTricksterVoteSwap[0]} 號 ⇄{' '}
+            {interferenceState.activeTricksterVoteSwap[1]} 號於今日放逐計票時將自動對調票數。
+          </section>
+        )}
+
+        {!isOnlineJudge &&
+          interferenceState &&
+          !interferenceState.alchemySnakeUsed &&
+          interferenceState.alchemySnakePendingVictimSeat !== null && (
+            <section className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/50 bg-emerald-950/35 p-3.5">
+              <div className="text-xs font-bold text-emerald-100">
+                🐍 煉金魔女「法老之蛇」可用：發言結束後可救活 {interferenceState.alchemySnakePendingVictimSeat} 號
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  reviveWithAlchemySnake(interferenceState.alchemySnakePendingVictimSeat!)
+                }
+                className="min-h-11 shrink-0 rounded-xl bg-emerald-600 px-3 text-xs font-extrabold text-white hover:bg-emerald-500"
+              >
+                發動救活
+              </button>
+            </section>
+          )}
+
+        {seats.some((s) => s.isAlive && s.roleId === 'white_cat' && s.whiteCatRevealed) && (
+          <section className="flex items-center justify-between gap-3 rounded-2xl border border-sky-400/50 bg-sky-950/35 p-3.5">
+            <div className="text-xs font-bold text-sky-100">
+              🐱 白貓已翻牌免死（免疫本輪死亡，於本次放逐階段結束後正式出局）
+            </div>
+            <button
+              type="button"
+              onClick={() => triggerWhiteCatDelayedDeath()}
+              className="min-h-11 shrink-0 rounded-xl bg-sky-600 px-3 text-xs font-extrabold text-white hover:bg-sky-500"
+            >
+              結算白貓出局
+            </button>
           </section>
         )}
 

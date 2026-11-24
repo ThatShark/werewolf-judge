@@ -841,6 +841,28 @@ const AUTOMATED_ROLE_IDS = new Set([
   'nine_tailed_fox',
   'senior_villager',
   'awakened_dream_catcher',
+  // 第 2 批：干擾、封鎖、目標交換與特殊守護類（21 角色）
+  'magician',
+  'wolf_warlock',
+  'trickster_wolf',
+  'troublemaker_wolf',
+  'time_eclipse_consort',
+  'penguin',
+  'fox_cub',
+  'mute_elder',
+  'medusa',
+  'silent_night_mentor',
+  'daylight_scholar',
+  'fortune_teller',
+  'radiant_earl',
+  'socialite',
+  'enchanter',
+  'black_bat',
+  'dark_night_envoy',
+  'alchemy_witch',
+  'awakened_witch',
+  'white_cat',
+  'war_wolf',
 ]);
 
 function stripMarkdownFormatting(input: string): string {
@@ -1042,6 +1064,8 @@ function resolveRoleIdsFromLabel(
   const exactSingleOverrides: Array<[string, string]> = [
     ['覺醒預言家', 'awakened_seer'],
     ['覺醒攝夢人', 'awakened_dream_catcher'],
+    ['覺醒女巫', 'awakened_witch'],
+    ['煉金魔女', 'alchemy_witch'],
     ['超級守墓人', 'super_gravekeeper'],
     ['高級平民', 'senior_villager'],
   ];
@@ -1350,6 +1374,122 @@ function inferNightActionType(
   if (actorRoleIds.includes('awakened_dream_catcher') && actorRoleIds.length === 1) {
     if (combined.includes('是否有行動')) return 'awakened_dream_catcher_judge';
     if (combined.includes('夢語')) return 'awakened_dream_catcher_dream';
+  }
+
+  // === 第 2 批：干擾、封鎖、目標交換與特殊守護類角色 ===
+  if (actorRoleIds.includes('magician') && actorRoleIds.length === 1 && combined.includes('交換')) {
+    return 'magician_swap';
+  }
+  if (
+    actorRoleIds.includes('wolf_warlock') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('交換')
+  ) {
+    return 'wolf_warlock_swap';
+  }
+  if (
+    actorRoleIds.includes('trickster_wolf') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('交換')
+  ) {
+    return 'trickster_wolf_swap';
+  }
+  if (
+    actorRoleIds.includes('troublemaker_wolf') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('耍寶') || combined.includes('技能'))
+  ) {
+    return 'troublemaker_prank';
+  }
+  if (
+    actorRoleIds.includes('time_eclipse_consort') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('封鎖')
+  ) {
+    return 'time_eclipse_lock';
+  }
+  if (actorRoleIds.includes('penguin') && actorRoleIds.length === 1 && combined.includes('冰凍')) {
+    return 'penguin_freeze';
+  }
+  if (actorRoleIds.includes('fox_cub') && actorRoleIds.length === 1 && combined.includes('魅惑')) {
+    return 'fox_cub_charm';
+  }
+  if (
+    actorRoleIds.includes('mute_elder') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('禁言')
+  ) {
+    return 'mute_elder_mute';
+  }
+  if (actorRoleIds.includes('medusa') && actorRoleIds.length === 1 && combined.includes('石化')) {
+    return 'medusa_petrify';
+  }
+  if (
+    actorRoleIds.includes('silent_night_mentor') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('增幅') || combined.includes('削弱') || combined.includes('技能'))
+  ) {
+    return 'silent_night_mentor_action';
+  }
+  if (
+    actorRoleIds.includes('daylight_scholar') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('增幅') || combined.includes('削弱') || combined.includes('技能'))
+  ) {
+    return 'daylight_scholar_action';
+  }
+  if (
+    actorRoleIds.includes('fortune_teller') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('標記')
+  ) {
+    return 'fortune_teller_mark';
+  }
+  if (
+    actorRoleIds.includes('radiant_earl') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('庇護')
+  ) {
+    return 'radiant_earl_shield';
+  }
+  if (
+    actorRoleIds.includes('socialite') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('寵幸')
+  ) {
+    return 'socialite_favor';
+  }
+  if (
+    actorRoleIds.includes('enchanter') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('蠱惑')
+  ) {
+    return 'enchanter_bewitch';
+  }
+  if (
+    actorRoleIds.includes('black_bat') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('庇護')
+  ) {
+    return 'black_bat_shield';
+  }
+  if (
+    actorRoleIds.includes('dark_night_envoy') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('庇護')
+  ) {
+    return 'dark_night_envoy_shield';
+  }
+  if (actorRoleIds.includes('alchemy_witch') && actorRoleIds.length === 1) {
+    if (combined.includes('未明之霧')) return 'alchemy_witch_fog';
+    if (combined.includes('殺死了') || combined.includes('法老之蛇')) return 'alchemy_witch_snake';
+  }
+  if (
+    actorRoleIds.includes('awakened_witch') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('解藥') || combined.includes('毒藥'))
+  ) {
+    return 'awakened_witch_action';
   }
 
   return 'confirm_only';

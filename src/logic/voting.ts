@@ -14,6 +14,8 @@ export interface TallyExileVotesInput {
   pkCandidates?: number[];
   /** 第幾輪投票（1=首輪，2+=PK 輪） */
   roundIndex?: number;
+  /** 詭術師昨晚交換之兩位玩家號碼（隔天白天放逐票數對調） */
+  tricksterVoteSwap?: [number, number] | null;
 }
 
 function roundVoteScore(value: number): number {
@@ -22,11 +24,13 @@ function roundVoteScore(value: number): number {
 
 /**
  * 取得白天放逐投票具投票權的座位清單：
- * 所有存活玩家，自動排除「已翻牌免死之白痴」。
+ * 所有存活玩家，自動排除「已翻牌免死之白痴」與「遭梅杜莎石化之玩家」。
  */
 export function getEligibleExileVoters(seats: PlayerSeat[]): number[] {
   return seats
-    .filter((seat) => seat.isAlive && !(seat.roleId === 'idiot' && seat.idiotRevealed))
+    .filter(
+      (seat) => seat.isAlive && !(seat.roleId === 'idiot' && seat.idiotRevealed) && !seat.petrified,
+    )
     .map((seat) => seat.seatNumber)
     .sort((a, b) => a - b);
 }
@@ -46,6 +50,7 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
     extraVotes = {},
     pkCandidates = [],
     roundIndex = 1,
+    tricksterVoteSwap = null,
   } = input;
 
   const eligibleVoters = new Set(getEligibleExileVoters(seats));
@@ -62,6 +67,9 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
       const seatObj = seats.find((s) => s.seatNumber === voterSeat);
       if (seatObj?.roleId === 'idiot' && seatObj.idiotRevealed) {
         throw new Error(`${voterSeat} 號（白痴）已翻牌免死，失去放逐投票權`);
+      }
+      if (seatObj?.petrified) {
+        throw new Error(`${voterSeat} 號遭梅杜莎石化，本輪無法投票`);
       }
       throw new Error(`${voterSeat} 號不具放逐投票權（不存在或已出局）`);
     }
@@ -95,6 +103,31 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
     totals[targetSeat] = roundVoteScore((totals[targetSeat] ?? 0) + bonus);
     if (!votersByTarget[targetSeat]) {
       votersByTarget[targetSeat] = [];
+    }
+  }
+
+  // 詭術師隔天白天票數對調（僅當兩位玩家皆存活且在投票候選內時對調其總票數與得票來源）
+  if (tricksterVoteSwap) {
+    const [seatA, seatB] = tricksterVoteSwap;
+    const scoreA = totals[seatA] ?? 0;
+    const scoreB = totals[seatB] ?? 0;
+    const votersA = votersByTarget[seatA] ?? [];
+    const votersB = votersByTarget[seatB] ?? [];
+    if (scoreA > 0 || scoreB > 0) {
+      if (scoreB > 0) {
+        totals[seatA] = scoreB;
+        votersByTarget[seatA] = votersB;
+      } else {
+        delete totals[seatA];
+        delete votersByTarget[seatA];
+      }
+      if (scoreA > 0) {
+        totals[seatB] = scoreA;
+        votersByTarget[seatB] = votersA;
+      } else {
+        delete totals[seatB];
+        delete votersByTarget[seatB];
+      }
     }
   }
 

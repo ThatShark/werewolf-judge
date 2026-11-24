@@ -76,6 +76,26 @@ export type NightActionType =
   | 'nine_tailed_fox_check'
   | 'awakened_dream_catcher_dream'
   | 'awakened_dream_catcher_judge'
+  | 'magician_swap'
+  | 'wolf_warlock_swap'
+  | 'trickster_wolf_swap'
+  | 'troublemaker_prank'
+  | 'time_eclipse_lock'
+  | 'penguin_freeze'
+  | 'fox_cub_charm'
+  | 'mute_elder_mute'
+  | 'medusa_petrify'
+  | 'silent_night_mentor_action'
+  | 'daylight_scholar_action'
+  | 'fortune_teller_mark'
+  | 'radiant_earl_shield'
+  | 'socialite_favor'
+  | 'enchanter_bewitch'
+  | 'black_bat_shield'
+  | 'dark_night_envoy_shield'
+  | 'alchemy_witch_fog'
+  | 'alchemy_witch_snake'
+  | 'awakened_witch_action'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -268,6 +288,17 @@ export type DeathReason =
   | 'nine_tailed_fox_no_tails'
   | 'awakened_dream_catcher_kill'
   | 'good_self_explode'
+  | 'enchanter_consecutive'
+  | 'enchanter_substitute'
+  | 'socialite_link'
+  | 'medusa_petrify_link'
+  | 'medusa_poison_reflect'
+  | 'black_bat_reflect'
+  | 'dark_night_envoy_counter'
+  | 'mentor_scholar_clash'
+  | 'troublemaker_self_guard'
+  | 'white_cat_delayed_death'
+  | 'awakened_witch_poison'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -287,6 +318,12 @@ export interface PlayerSeat {
   treasureMasterMaskedExileSurvived?: boolean;
   /** 特殊狀態：被種狼感染轉化為狼人陣營並失去原有技能 */
   infectedBySeedWolf?: boolean;
+  /** 特殊狀態：白貓已翻牌免疫一次死亡，延遲至下一次白天放逐階段結束後才正式出局 */
+  whiteCatRevealed?: boolean;
+  /** 特殊狀態：當晚被梅杜莎石化（當晚無法用技、隔天無法投票、白痴無法翻牌） */
+  petrified?: boolean;
+  /** 特殊狀態：當晚被禁言長老禁言（隔天白天不可發言） */
+  muted?: boolean;
 }
 
 export interface MechWolfRuntimeState {
@@ -429,6 +466,41 @@ export interface AwakenedDreamCheckOutcome {
   reason: string;
 }
 
+/** 第 2 批：干擾、封鎖、目標交換與特殊守護類角色持久化執行期狀態 */
+export interface InterferenceRuntimeState {
+  magicianSwappedSeats: number[];
+  wolfWarlockSwappedSeats: number[];
+  lastTricksterPair: [number, number] | null;
+  activeTricksterVoteSwap: [number, number] | null;
+  lastTroublemakerTarget: number | null;
+  troublemakerJoinedWolfTeam: boolean;
+  lastTimeEclipseTarget: number | null;
+  timeEclipseUsed: boolean;
+  lastPenguinTarget: number | null;
+  foxCubUsed: boolean;
+  activeMutedSeat: number | null;
+  lastMedusaTarget: number | null;
+  activePetrifiedSeat: number | null;
+  silentNightMentorAmplifyUsed: boolean;
+  silentNightMentorWeakenUsed: boolean;
+  silentNightMentorJoinedWolfTeam: boolean;
+  daylightScholarAmplifyUsed: boolean;
+  daylightScholarWeakenUsed: boolean;
+  fortuneTellerUsed: boolean;
+  lastRadiantEarlTarget: number | null;
+  lastSocialiteTarget: number | null;
+  lastEnchanterTarget: number | null;
+  lastBlackBatTarget: number | null;
+  blackBatReflectUsed: boolean;
+  lastDarkNightEnvoyTarget: number | null;
+  alchemyFogUsed: boolean;
+  alchemySnakeUsed: boolean;
+  alchemySnakePendingVictimSeat: number | null;
+  awakenedWitchAntidoteUsed: boolean;
+  awakenedWitchPoisonsUsed: number;
+  awakenedWitchUsedHelpers: number[];
+}
+
 export interface NightActionDraft {
   round: number;
   guardTarget: number | null;
@@ -462,6 +534,31 @@ export interface NightActionDraft {
   superGravekeeperHeirTarget?: number | null;
   awakenedDreamTarget?: number | null;
   awakenedDreamKillTarget?: boolean;
+  /** 第 2 批：干擾、封鎖、目標交換與特殊守護類角色夜間草稿 */
+  magicianSwapPair?: [number | null, number | null];
+  wolfWarlockSwapPair?: [number | null, number | null];
+  tricksterSwapPair?: [number | null, number | null];
+  troublemakerTarget?: number | null;
+  timeEclipseTarget?: number | null;
+  penguinFreezeTarget?: number | null;
+  foxCubCharmTarget?: number | null;
+  muteElderTarget?: number | null;
+  medusaPetrifyTarget?: number | null;
+  silentNightMentorMode?: 'amplify' | 'weaken' | null;
+  silentNightMentorTarget?: number | null;
+  daylightScholarMode?: 'amplify' | 'weaken' | null;
+  daylightScholarTarget?: number | null;
+  fortuneTellerMarkTarget?: number | null;
+  radiantEarlTarget?: number | null;
+  socialiteTarget?: number | null;
+  enchanterTarget?: number | null;
+  blackBatTarget?: number | null;
+  darkNightEnvoyTarget?: number | null;
+  alchemyFogTargets?: number[];
+  awakenedWitchUseAntidote?: boolean;
+  awakenedWitchPoisonTarget?: number | null;
+  awakenedWitchHelpers?: number[];
+  awakenedWitchHelpersApproved?: boolean;
 }
 
 export interface BearRoarResult {
@@ -649,6 +746,8 @@ export interface GameState {
   lastMoonSpiritHowl?: MoonSpiritHowlResult | null;
   lastNineTailedFoxResult?: NineTailedFoxResult | null;
   lastSeniorVillagerReveal?: SeniorVillagerRevealResult | null;
+  /** 第 2 批：干擾／交換／特殊守護持久化狀態 */
+  interferenceState?: InterferenceRuntimeState;
 
   /** 自動發言順序與單人倒數計時引擎 */
   speakingQueue: number[];
@@ -745,6 +844,7 @@ export interface NightResolutionInput {
   foxLostAbility?: boolean;
   exiledHistory?: ExiledRecord[];
   lastAwakenedDreamTarget?: number | null;
+  interferenceState?: InterferenceRuntimeState;
   /** 測試可注入之亂數產生器（酒鬼預言家預設隨機用） */
   rng?: () => number;
 }
@@ -773,6 +873,9 @@ export interface NightResolutionResult {
   superGravekeeperState: SuperGravekeeperRuntimeState;
   foxLostAbility: boolean;
   lastAwakenedDreamTarget: number | null;
+  interferenceState: InterferenceRuntimeState;
+  /** 今晚白貓觸發翻牌免死的座號 */
+  whiteCatRevealedSeats: number[];
   /** 今晚因蒙面人被動而進入負傷／中毒延遲死亡的座號 */
   maskedDelayedSeats: number[];
   bearRoar: BearRoarResult | null;

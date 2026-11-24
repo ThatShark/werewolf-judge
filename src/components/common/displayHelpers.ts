@@ -41,6 +41,17 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   nine_tailed_fox_no_tails: '九尾狐失尾歸零出局',
   awakened_dream_catcher_kill: '覺醒攝夢人夢語出局',
   good_self_explode: '好人翻牌自曝出局',
+  enchanter_consecutive: '蠱惑師連蠱心智混亂出局',
+  enchanter_substitute: '蠱惑師替死出局',
+  socialite_link: '名媛出局寵幸者殉情',
+  medusa_petrify_link: '梅杜莎出局石化者共死',
+  medusa_poison_reflect: '梅杜莎石化反彈女巫毒藥',
+  black_bat_reflect: '黑蝙蝠技能反彈出局',
+  dark_night_envoy_counter: '黑夜使者庇護反殺出局',
+  mentor_scholar_clash: '白晝學者與寂夜導師技能衝突出局',
+  troublemaker_self_guard: '搗蛋鬼耍寶守衛連兩晚自守出局',
+  white_cat_delayed_death: '白貓翻牌免死延遲出局',
+  awakened_witch_poison: '覺醒女巫毒殺',
   manual_judge: '法官手動標記出局',
 };
 

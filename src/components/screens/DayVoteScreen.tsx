@@ -37,7 +37,8 @@ export function DayVoteScreen() {
   const board = getBoardById(selectedBoardId);
   const electionActive = isSheriffElectionActive(sheriffState);
   const needsSheriffTab =
-    electionActive || (round === 1 && ruleOverrides.enableSheriff && sheriffState.status === 'not_started');
+    electionActive ||
+    (round === 1 && ruleOverrides.enableSheriff && sheriffState.status === 'not_started');
 
   const [activeTab, setActiveTab] = useState<DayTaskTab>(() =>
     needsSheriffTab ? 'sheriff' : 'speaking',
@@ -46,7 +47,6 @@ export function DayVoteScreen() {
   const [victoryModalOpen, setVictoryModalOpen] = useState(false);
   const [confirmNextNightOpen, setConfirmNextNightOpen] = useState(false);
 
-  // 當雙爆首爆延續隔天進入 voting 時，自動聚焦警長分頁
   useEffect(() => {
     if (sheriffState.status === 'voting' && sheriffState.explodeCountDuringElection === 1) {
       setActiveTab('sheriff');
@@ -63,15 +63,15 @@ export function DayVoteScreen() {
   const hasBlockingPendingAction = hasPendingShooters || hasPendingBadgeTransfer;
 
   const tabs: Array<{ id: DayTaskTab; label: string; highlight?: boolean }> = [
-    { id: 'sheriff', label: '👮 警長', highlight: needsSheriffTab },
-    { id: 'speaking', label: '🎤 發言', highlight: currentSpeakerSeat !== null },
-    { id: 'vote', label: '🗳️ 投票', highlight: exilePkCandidates.length > 0 },
-    { id: 'skills', label: '⚡ 技能/爆' },
+    { id: 'sheriff', label: '警長', highlight: needsSheriffTab },
+    { id: 'speaking', label: '發言', highlight: currentSpeakerSeat !== null },
+    { id: 'vote', label: '投票', highlight: exilePkCandidates.length > 0 },
+    { id: 'skills', label: '技能/爆' },
   ];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      {/* 1. 緊湊座位狀態網格 */}
+      {/* 1. 左右對稱雙欄緊湊座位條 */}
       <CompactSeatStatusGrid
         seats={seats}
         sheriffState={sheriffState}
@@ -80,15 +80,15 @@ export function DayVoteScreen() {
       />
 
       {forceContinueAfterVictory && (
-        <div className="shrink-0 rounded-xl border border-amber-400/45 bg-amber-950/35 px-3 py-1.5 text-[11px] font-bold text-amber-200">
-          ⚖️ 法官強制繼續中（已解除自動勝負鎖定）
+        <div className="shrink-0 border-l-2 border-sheriff bg-sheriff-tint px-3 py-1 text-[12px] font-semibold text-sheriff">
+          法官強制繼續中
         </div>
       )}
 
-      {/* 2. 中央任務切換 Tab 列 */}
+      {/* 2. 中央分頁列（去 Emoji，純文字 ＋ 6px 琥珀點） */}
       <nav
-        aria-label="白天任務工作台分頁"
-        className="grid shrink-0 grid-cols-4 gap-1.5 rounded-2xl border border-slate-800 bg-slate-900/90 p-1"
+        aria-label="白天任務分頁"
+        className="grid shrink-0 grid-cols-4 gap-1 rounded-md border border-subtle bg-surface p-1"
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -97,22 +97,20 @@ export function DayVoteScreen() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`relative min-h-11 rounded-xl px-1.5 text-xs font-extrabold transition active:scale-[0.98] ${
-                isActive
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'text-slate-300 hover:bg-slate-800'
+              className={`relative min-h-10 rounded-md px-1 text-[12px] font-semibold transition ${
+                isActive ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
               }`}
             >
               {tab.label}
               {tab.highlight && !isActive && (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-400" />
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-sheriff" />
               )}
             </button>
           );
         })}
       </nav>
 
-      {/* 3. 中央單一任務工作區（嚴格鎖在 100dvh 內，不產生主畫面滾輪） */}
+      {/* 3. 中央單一任務工作區 */}
       <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
         {activeTab === 'sheriff' && (
           <SheriffElectionPanel
@@ -125,37 +123,39 @@ export function DayVoteScreen() {
         {activeTab === 'skills' && <DayBurstSkillsPanel disabled={hasBlockingPendingAction} />}
       </div>
 
-      {/* 4. 底部固定操作列：勝負覆蓋 ＋ 結束白天入夜 */}
-      <div className="flex shrink-0 items-center gap-2 border-t border-slate-800 pt-2">
+      {/* 4. 底部固定操作列（投票分頁由 ExileVotePanel 掌握唯一主按鈕；其餘分頁顯示入夜主按鈕） */}
+      <footer className="flex shrink-0 items-center gap-2 border-t border-subtle pt-2">
         <button
           type="button"
           onClick={() => setVictoryModalOpen(true)}
-          className="min-h-12 shrink-0 rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800 active:scale-[0.98]"
+          className="min-h-12 shrink-0 rounded-md border border-subtle bg-surface px-3 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
         >
-          ⚖️ 勝負覆蓋
+          勝負
         </button>
         <button
           type="button"
           disabled={hasBlockingPendingAction}
           onClick={() => setConfirmNextNightOpen(true)}
-          className={`min-h-12 flex-1 rounded-xl px-4 text-sm font-extrabold transition ${
+          className={`min-h-12 flex-1 rounded-md px-4 text-[14px] font-semibold transition ${
             hasBlockingPendingAction
-              ? 'cursor-not-allowed bg-slate-800 text-slate-500'
-              : 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 active:scale-[0.99]'
+              ? 'cursor-not-allowed bg-elevated text-muted'
+              : activeTab === 'vote'
+                ? 'border border-subtle bg-surface text-primary hover:border-strong'
+                : 'bg-sheriff text-inverse hover:opacity-90'
           }`}
         >
           {hasPendingShooters
-            ? '請先結算開槍 / 壓槍'
+            ? '請先結算開槍'
             : hasPendingBadgeTransfer
-              ? '請先移交 / 撕毀警徽'
-              : `🌙 結束第 ${round} 天 ➜ 第 ${round + 1} 晚`}
+              ? '請先交接警徽'
+              : `進入第 ${round + 1} 晚`}
         </button>
-      </div>
+      </footer>
 
-      {/* 高優先級自動彈窗：待結算開槍與警徽移交／撕毀 */}
+      {/* 高優先級阻塞彈窗：開槍與警徽交接 */}
       {hasBlockingPendingAction && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/78 p-4"
           role="dialog"
           aria-modal="true"
         >
@@ -181,11 +181,10 @@ export function DayVoteScreen() {
         </div>
       )}
 
-      {/* 二次確認：入夜 */}
       <ConfirmModal
         open={confirmNextNightOpen}
-        title={`進入第 ${round + 1} 晚？`}
-        description="確定結束白天討論與投票並進入下一個夜晚？"
+        title={`進入第 ${round + 1} 晚`}
+        description="確定結束白天並進入下一個夜晚？"
         confirmLabel={`進入第 ${round + 1} 晚`}
         tone="primary"
         onConfirm={() => {

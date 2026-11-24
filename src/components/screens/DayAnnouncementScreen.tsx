@@ -6,9 +6,10 @@ import { useGameStore } from '../../store/gameStore';
 import { PendingShooterCard } from '../common/PendingShooterCard';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SheriffBadgeTransferCard } from '../common/SheriffBadgeTransferCard';
+import { SlideDrawer } from '../common/SlideDrawer';
 import {
   formatDeathReason,
-  formatSeatDisplay,
+  formatSeatNum,
   getRoleBadgeClasses,
 } from '../common/displayHelpers';
 import { CompactSeatStatusGrid } from '../day/CompactSeatStatusGrid';
@@ -44,6 +45,10 @@ export function DayAnnouncementScreen() {
 
   const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
   const [victoryModalOpen, setVictoryModalOpen] = useState(false);
+  const [skillsDrawerOpen, setSkillsDrawerOpen] = useState(false);
+  // 防法官唸錯鐵律：預設隱藏真實死因，點擊該列或圖示才顯示
+  const [revealedDeathKeys, setRevealedDeathKeys] = useState<Record<string, boolean>>({});
+
   const board = getBoardById(selectedBoardId);
   const isOnlineJudge = hostMode.judgeMode === 'online_judge';
 
@@ -67,15 +72,34 @@ export function DayAnnouncementScreen() {
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
   }, [deaths, seats, isOnlineJudge]);
 
+  const canAlchemySnakeRevive =
+    !isOnlineJudge &&
+    Boolean(interferenceState) &&
+    !interferenceState?.alchemySnakeUsed &&
+    interferenceState?.alchemySnakePendingVictimSeat !== null;
+  const hasWhiteCatPending = seats.some(
+    (s) => s.isAlive && s.roleId === 'white_cat' && s.whiteCatRevealed,
+  );
+  const hasOldRascalPending = seats.some((s) => s.isAlive && s.oldRascalDelayedDeath);
+  const availableSkillCount =
+    (canAlchemySnakeRevive ? 1 : 0) +
+    (hasWhiteCatPending ? 1 : 0) +
+    (hasOldRascalPending ? 1 : 0);
+
   const hasPendingShooters = pendingShooters.length > 0;
   const hasPendingBadgeTransfer = sheriffState.pendingBadgeTransferFrom !== null;
   const isProceedBlocked = hasPendingShooters || hasPendingBadgeTransfer;
   const isDeferredElectionNext =
     sheriffState.status === 'voting' && sheriffState.explodeCountDuringElection === 1;
 
+  const toggleRevealDeath = (key: string) => {
+    if (isOnlineJudge) return;
+    setRevealedDeathKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      {/* 1. 頂部緊湊座位狀態網格 */}
+      {/* 1. 頂部緊湊雙欄座位網格 */}
       <CompactSeatStatusGrid
         seats={seats}
         sheriffState={sheriffState}
@@ -83,252 +107,142 @@ export function DayAnnouncementScreen() {
         onOpenSeatDrawer={() => setSeatDrawerOpen(true)}
       />
 
-      {/* 2. 中央任務操作區（內部局部可微滾，外框嚴格鎖死 100dvh） */}
-      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-0.5">
+      {/* 2. 單行狀態膠囊列 */}
+      <NightStatusBanners
+        isOnlineJudge={isOnlineJudge}
+        interferenceState={interferenceState}
+        thirdPartySpecialState={thirdPartySpecialState}
+        finalBatchState={finalBatchState}
+      />
+
+      {/* 3. 中央主公告與待處理事件 */}
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
         {forceContinueAfterVictory && (
-          <div className="rounded-xl border border-amber-400/45 bg-amber-950/35 px-3 py-2 text-xs font-bold text-amber-200">
-            ⚖️ 已解除自動勝負鎖定（法官強制繼續模式）：如需結束請點下方「勝負覆蓋」。
+          <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff">
+            已解除自動勝負鎖定（法官強制繼續中）
           </div>
         )}
 
-        {/* 昨夜死訊公告卡 */}
-        <section className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                第 {round} 天 · 天亮結算
-              </span>
-              <h1 className="text-lg font-extrabold text-slate-50">昨夜結果公告</h1>
-            </div>
-            <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-bold text-slate-300">
-              {deaths.length === 0 ? '平安夜' : `出局 ${deaths.length} 人`}
-            </span>
-          </div>
-
+        {/* 防法官唸錯鐵律：主公告大字只顯示「昨晚死亡：X 號、Y 號」或「昨晚平安夜」，預設隱藏死因 */}
+        <section className="rounded-lg border border-subtle bg-surface p-3.5">
           {deaths.length === 0 ? (
-            <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/35 p-4 text-center">
-              <div className="text-xl font-extrabold text-emerald-200">☀️ 昨晚平安夜</div>
-              <p className="mt-1 text-xs text-emerald-100/80">
-                昨夜無人出局，請宣告昨晚是平安夜。
-              </p>
+            <div className="border-l-2 border-good pl-3">
+              <div className="text-[12px] font-semibold text-good">D{round} 天亮公告</div>
+              <h1 className="mt-0.5 text-[18px] font-semibold leading-6 text-primary">
+                昨晚平安夜
+              </h1>
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="rounded-xl border border-rose-500/35 bg-rose-950/30 px-3 py-2 text-xs font-bold text-rose-200">
-                昨晚出局玩家（共 {deaths.length} 名，請只公佈出局座號，勿唸死因）：
+            <div className="space-y-2.5">
+              <div className="border-l-2 border-wolf pl-3">
+                <div className="text-[12px] font-semibold text-wolf">D{round} 天亮公告</div>
+                <h1 className="mt-0.5 text-[18px] font-semibold leading-6 tabular-nums text-primary">
+                  昨晚死亡：{deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')}
+                </h1>
               </div>
 
-              {deaths.map((death) => {
-                const seat = seats.find((s) => s.seatNumber === death.seat);
-                const role = !isOnlineJudge ? getRoleById(seat?.roleId ?? null) : undefined;
-                return (
-                  <div
-                    key={`${death.seat}-${death.reason}`}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3"
-                  >
-                    <div>
-                      <div className="text-sm font-extrabold text-slate-50">
-                        {seat ? formatSeatDisplay(seat) : `${death.seat} 號玩家`}
-                      </div>
-                      {!isOnlineJudge && (
-                        <div className="mt-0.5 text-xs text-rose-300">
-                          法官視角死因：{formatDeathReason(death.reason)}
-                        </div>
-                      )}
-                      {!isOnlineJudge && death.reason === 'wolf_beauty_charm' && (
-                        <div className="mt-1 inline-block rounded-md border border-rose-500/40 bg-rose-950/50 px-2 py-0.5 text-[10px] font-bold text-rose-200">
-                          💘 狼美人殉情帶走（無死亡技能）
-                        </div>
-                      )}
-                      {!isOnlineJudge &&
-                        (death.reason === 'dream_catcher_consecutive' ||
-                          death.reason === 'dream_catcher_link') && (
-                          <div className="mt-1 inline-block rounded-md border border-indigo-500/40 bg-indigo-950/50 px-2 py-0.5 text-[10px] font-bold text-indigo-200">
-                            💤 攝夢人夢死／共死（無死亡技能）
-                          </div>
-                        )}
-                    </div>
-                    {role && (
-                      <span
-                        className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-bold ${getRoleBadgeClasses(role.id)}`}
+              {!isOnlineJudge && (
+                <div className="divide-y divide-subtle border-t border-subtle pt-1">
+                  {deaths.map((death) => {
+                    const key = `${death.seat}-${death.reason}`;
+                    const seat = seats.find((s) => s.seatNumber === death.seat);
+                    const role = getRoleById(seat?.roleId ?? null);
+                    const isRevealed = Boolean(revealedDeathKeys[key]);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleRevealDeath(key)}
+                        className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left"
                       >
-                        {role.name}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="w-6 shrink-0 text-[14px] font-semibold tabular-nums text-wolf">
+                            {formatSeatNum(death.seat)}
+                          </span>
+                          <span className="truncate text-[14px] text-primary">
+                            {seat?.nickname.trim() || `${death.seat}號`}
+                          </span>
+                          {isRevealed && role && (
+                            <span
+                              className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[12px] font-medium ${getRoleBadgeClasses(role.id)}`}
+                            >
+                              {role.name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-[12px] text-muted">
+                          {isRevealed ? (
+                            <span className="text-wolf">{formatDeathReason(death.reason)}</span>
+                          ) : (
+                            <span title="點擊檢視法官視角死因">ⓘ</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </section>
 
-        {/* 雙爆吞警徽隔日續選提示 */}
+        {/* 公共宣告資訊（熊咆哮／月靈狼／高級平民／雙爆續選／猩紅／河豚） */}
         {isDeferredElectionNext && (
-          <section className="rounded-2xl border border-amber-400/50 bg-amber-950/35 p-3 text-xs font-bold text-amber-100">
-            👮 雙爆吞警徽續選：進入白天後將自動跳過「上警報名與警上發言」，直接由候選人（
-            {sheriffState.candidates.join('、')} 號）進入退水與警下投票。
-          </section>
+          <div className="border-l-2 border-sheriff bg-surface px-3 py-2 text-[12px] text-sheriff tabular-nums">
+            首爆續選：跳過警上發言，候選人 {sheriffState.candidates.map(formatSeatNum).join('、')}{' '}
+            直進退水投票。
+          </div>
         )}
 
-        {/* 禁言長老／梅杜莎／詭術師／煉金魔女／白貓日間狀態卡 */}
-        <NightStatusBanners
-          isOnlineJudge={isOnlineJudge}
-          interferenceState={interferenceState}
-          thirdPartySpecialState={thirdPartySpecialState}
-          finalBatchState={finalBatchState}
-        />
+        {bearRoar && (
+          <div
+            className={`border-l-2 bg-surface px-3 py-2 text-[14px] font-semibold ${
+              bearRoar.roared ? 'border-sheriff text-sheriff' : 'border-good text-good'
+            }`}
+          >
+            {bearRoar.roared ? '昨晚熊咆哮了' : '昨晚熊沒有咆哮'}
+          </div>
+        )}
 
-        {!isOnlineJudge &&
-          interferenceState &&
-          !interferenceState.alchemySnakeUsed &&
-          interferenceState.alchemySnakePendingVictimSeat !== null && (
-            <section className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/50 bg-emerald-950/35 p-3.5">
-              <div className="text-xs font-bold text-emerald-100">
-                🐍 煉金魔女「法老之蛇」可用：發言結束後可救活 {interferenceState.alchemySnakePendingVictimSeat} 號
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  reviveWithAlchemySnake(interferenceState.alchemySnakePendingVictimSeat!)
-                }
-                className="min-h-11 shrink-0 rounded-xl bg-emerald-600 px-3 text-xs font-extrabold text-white hover:bg-emerald-500"
-              >
-                發動救活
-              </button>
-            </section>
-          )}
+        {lastMoonSpiritHowl && lastMoonSpiritHowl.moonSpiritSeat !== null && (
+          <div className="border-l-2 border-third bg-surface px-3 py-2 text-[14px] font-semibold text-third">
+            {lastMoonSpiritHowl.howled ? '昨夜月靈狼嗥叫了' : '昨夜月靈狼沒有嗥叫'}
+          </div>
+        )}
 
-        {seats.some((s) => s.isAlive && s.roleId === 'white_cat' && s.whiteCatRevealed) && (
-          <section className="flex items-center justify-between gap-3 rounded-2xl border border-sky-400/50 bg-sky-950/35 p-3.5">
-            <div className="text-xs font-bold text-sky-100">
-              🐱 白貓已翻牌免死（免疫本輪死亡，於本次放逐階段結束後正式出局）
-            </div>
-            <button
-              type="button"
-              onClick={() => triggerWhiteCatDelayedDeath()}
-              className="min-h-11 shrink-0 rounded-xl bg-sky-600 px-3 text-xs font-extrabold text-white hover:bg-sky-500"
-            >
-              結算白貓出局
-            </button>
-          </section>
+        {lastSeniorVillagerReveal && lastSeniorVillagerReveal.seatNumber !== null && round === 1 && (
+          <div className="border-l-2 border-good bg-surface px-3 py-2 text-[14px] font-semibold text-primary tabular-nums">
+            {lastSeniorVillagerReveal.revealed
+              ? `公開宣布：${formatSeatNum(lastSeniorVillagerReveal.seatNumber)} 號為高級平民`
+              : '本日不公布高級平民'}
+          </div>
         )}
 
         {combatState && combatState.scarletAttachedSeats.length > 0 && (
-          <section className="rounded-2xl border border-rose-500/50 bg-rose-950/35 p-3.5 text-xs font-bold text-rose-100">
-            🩸 猩紅之子附著公告：{combatState.scarletAttachedSeats.join('、')} 號已被附著（成為神職技能目標時將於夜間出局）。
-          </section>
+          <div className="border-l-2 border-wolf bg-surface px-3 py-2 text-[12px] text-wolf tabular-nums">
+            猩紅附著：{combatState.scarletAttachedSeats.map(formatSeatNum).join('、')} 號
+          </div>
         )}
 
         {combatState?.pufferfishWolfKilledToday && (
-          <section className="rounded-2xl border border-amber-400/50 bg-amber-950/35 p-3.5 text-xs font-bold text-amber-100">
-            🐡 河豚吃狼刀翻牌：今日狼美人的魅惑技能失效！
-          </section>
+          <div className="border-l-2 border-sheriff bg-surface px-3 py-2 text-[12px] text-sheriff">
+            河豚翻牌：今日狼美人魅惑失效
+          </div>
         )}
 
-        {seats.some((s) => s.isAlive && s.oldRascalDelayedDeath) && (
-          <section className="flex items-center justify-between gap-3 rounded-2xl border border-orange-400/50 bg-orange-950/35 p-3.5">
-            <div className="text-xs font-bold text-orange-100">
-              🍺 老流氓中毒／負傷延遲死亡（於本日發言階段結束後正式出局）
-            </div>
-            <button
-              type="button"
-              onClick={() => triggerOldRascalDelayedDeath()}
-              className="min-h-11 shrink-0 rounded-xl bg-orange-600 px-3 text-xs font-extrabold text-white hover:bg-orange-500"
-            >
-              結算老流氓出局
-            </button>
-          </section>
-        )}
-
-        {/* 高級平民首日死訊後自動公布卡 */}
-        {lastSeniorVillagerReveal && lastSeniorVillagerReveal.seatNumber !== null && round === 1 && (
-          <section
-            className={`rounded-2xl border p-3.5 ${
-              lastSeniorVillagerReveal.revealed
-                ? 'border-sky-400/60 bg-sky-950/35'
-                : 'border-slate-700 bg-slate-900/70'
-            }`}
+        {/* 延遲技能整合入口 */}
+        {availableSkillCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setSkillsDrawerOpen(true)}
+            className="flex min-h-12 w-full items-center justify-between rounded-md border border-sheriff-border bg-sheriff-tint px-3.5 text-[14px] font-semibold text-sheriff"
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="rounded-lg bg-sky-500/20 px-2 py-0.5 text-[11px] font-extrabold text-sky-200">
-                高級平民首日公布
-              </span>
-            </div>
-            <div className="mt-1.5 text-sm font-extrabold text-slate-50">
-              {lastSeniorVillagerReveal.revealed
-                ? `🪪 請公開宣布：${lastSeniorVillagerReveal.seatNumber} 號為高級平民`
-                : '🔇 本日不公布高級平民身分'}
-            </div>
-            {!isOnlineJudge && (
-              <p className="mt-1 text-xs text-slate-300">{lastSeniorVillagerReveal.reason}</p>
-            )}
-          </section>
+            <span>⚡ 觸發技能（{availableSkillCount} 項可用）</span>
+            <span className="text-[12px]">展開 →</span>
+          </button>
         )}
 
-        {/* 月靈狼嗥叫提示卡 */}
-        {lastMoonSpiritHowl && lastMoonSpiritHowl.moonSpiritSeat !== null && (
-          <section
-            className={`rounded-2xl border p-3.5 ${
-              lastMoonSpiritHowl.howled
-                ? 'border-purple-400/60 bg-purple-950/35'
-                : 'border-slate-700 bg-slate-900/70'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="rounded-lg bg-purple-500/20 px-2 py-0.5 text-[11px] font-extrabold text-purple-200">
-                月靈狼嗥叫狀態
-              </span>
-            </div>
-            <div className="mt-1.5 text-sm font-extrabold text-slate-50">
-              {lastMoonSpiritHowl.howled ? '🌕 昨夜月靈狼嗥叫了！' : '🌑 昨夜月靈狼沒有嗥叫'}
-            </div>
-            {!isOnlineJudge && (
-              <p className="mt-1 text-xs text-slate-300">{lastMoonSpiritHowl.reason}</p>
-            )}
-          </section>
-        )}
-
-        {/* 熊咆哮天亮公告卡 */}
-        {bearRoar && (
-          <section
-            className={`rounded-2xl border p-3.5 ${
-              bearRoar.roared
-                ? 'border-amber-400/60 bg-amber-950/35'
-                : 'border-emerald-500/40 bg-emerald-950/25'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span
-                className={`rounded-lg px-2 py-0.5 text-[11px] font-extrabold ${
-                  bearRoar.roared
-                    ? 'bg-amber-500/25 text-amber-200'
-                    : 'bg-emerald-500/20 text-emerald-200'
-                }`}
-              >
-                天亮熊咆哮公告
-              </span>
-              {!isOnlineJudge && bearRoar.bearSeat !== null && (
-                <span className="text-xs font-semibold text-slate-400">
-                  熊：{bearRoar.bearSeat} 號
-                </span>
-              )}
-            </div>
-            <div
-              className={`mt-1.5 text-base font-extrabold ${
-                bearRoar.roared ? 'text-amber-100' : 'text-emerald-100'
-              }`}
-            >
-              {bearRoar.roared
-                ? '🐻 昨晚熊咆哮了（身邊有狼）'
-                : '🐻 昨晚熊沒有咆哮（身邊無狼）'}
-            </div>
-            {!isOnlineJudge && (
-              <p className="mt-1 text-xs text-slate-300">判定依據：{bearRoar.reason}</p>
-            )}
-          </section>
-        )}
-
-        {/* 警長昨夜出局之警徽交接／撕毀面板 */}
+        {/* 警長昨夜出局之警徽交接／撕毀 */}
         {sheriffState.pendingBadgeTransferFrom !== null && (
           <SheriffBadgeTransferCard
             fromSeat={sheriffState.pendingBadgeTransferFrom}
@@ -338,31 +252,27 @@ export function DayAnnouncementScreen() {
           />
         )}
 
-        {/* 禁開槍狀態提示（僅實體法官） */}
+        {/* 禁開槍提示（法官視角） */}
         {disabledShootInfos.length > 0 && (
-          <section className="space-y-2">
+          <div className="space-y-1.5">
             {disabledShootInfos.map((info) => {
-              const seat = seats.find((s) => s.seatNumber === info.seatNumber);
               const roleLabel = info.roleId === 'hunter' ? '獵人' : '狼王';
               return (
                 <div
                   key={info.seatNumber}
-                  className="rounded-2xl border border-slate-700 bg-slate-900/90 p-3"
+                  className="border-l-2 border-wolf bg-surface px-3 py-2 text-[12px] text-secondary tabular-nums"
                 >
-                  <span className="inline-block rounded-lg bg-rose-500/20 px-2 py-0.5 text-[11px] font-bold text-rose-300">
-                    ❌ 不可開槍
+                  <span className="font-semibold text-wolf">
+                    {formatSeatNum(info.seatNumber)} 號（{roleLabel}）不可開槍
                   </span>
-                  <div className="mt-1 text-sm font-bold text-slate-100">
-                    {seat ? formatSeatDisplay(seat) : `${info.seatNumber} 號`}（{roleLabel}）
-                  </div>
-                  <p className="mt-0.5 text-xs text-slate-300">原因：{info.reason}</p>
+                  <span> · {info.reason}</span>
                 </div>
               );
             })}
-          </section>
+          </div>
         )}
 
-        {/* 可開槍結算卡片 */}
+        {/* 可開槍結算 */}
         {pendingShooters.map((shooter) => (
           <PendingShooterCard
             key={shooter.seatNumber}
@@ -374,32 +284,92 @@ export function DayAnnouncementScreen() {
         ))}
       </div>
 
-      {/* 3. 底部固定操作列 */}
-      <div className="flex shrink-0 items-center gap-2 border-t border-slate-800 pt-2">
+      {/* 4. 底部操作列：勝負覆蓋線框 ＋ 單一實心主按鈕 */}
+      <footer className="flex shrink-0 items-center gap-2 border-t border-subtle pt-2">
         <button
           type="button"
           onClick={() => setVictoryModalOpen(true)}
-          className="min-h-12 shrink-0 rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800 active:scale-[0.98]"
+          className="min-h-12 shrink-0 rounded-md border border-subtle bg-surface px-3 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
         >
-          ⚖️ 勝負覆蓋
+          勝負
         </button>
         <button
           type="button"
           disabled={isProceedBlocked}
           onClick={proceedToDayVote}
-          className={`min-h-12 flex-1 rounded-xl px-4 text-sm font-extrabold transition ${
+          className={`min-h-12 flex-1 rounded-md px-4 text-[14px] font-semibold transition ${
             isProceedBlocked
-              ? 'cursor-not-allowed bg-slate-800 text-slate-500'
-              : 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 hover:bg-amber-400 active:scale-[0.99]'
+              ? 'cursor-not-allowed bg-elevated text-muted'
+              : 'bg-sheriff text-inverse hover:opacity-90'
           }`}
         >
           {hasPendingShooters
-            ? '請先結算開槍 / 壓槍'
+            ? '請先結算開槍'
             : hasPendingBadgeTransfer
-              ? '請先移交 / 撕毀警徽'
-              : '進入白天發言與投票 ➜'}
+              ? '請先交接警徽'
+              : '進入白天討論'}
         </button>
-      </div>
+      </footer>
+
+      {/* 延遲技能整合抽屜 */}
+      <SlideDrawer
+        open={skillsDrawerOpen}
+        onClose={() => setSkillsDrawerOpen(false)}
+        title="觸發技能"
+        placement="bottom"
+      >
+        <div className="divide-y divide-subtle">
+          {canAlchemySnakeRevive && interferenceState && (
+            <div className="flex items-center justify-between gap-3 py-3">
+              <div className="text-[14px] font-medium text-primary tabular-nums">
+                法老之蛇救活 {formatSeatNum(interferenceState.alchemySnakePendingVictimSeat!)} 號
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  reviveWithAlchemySnake(interferenceState.alchemySnakePendingVictimSeat!);
+                  setSkillsDrawerOpen(false);
+                }}
+                className="min-h-11 shrink-0 rounded-md bg-good px-3.5 text-[12px] font-semibold text-inverse"
+              >
+                發動救活
+              </button>
+            </div>
+          )}
+
+          {hasWhiteCatPending && (
+            <div className="flex items-center justify-between gap-3 py-3">
+              <div className="text-[14px] font-medium text-primary">白貓翻牌延遲出局</div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerWhiteCatDelayedDeath();
+                  setSkillsDrawerOpen(false);
+                }}
+                className="min-h-11 shrink-0 rounded-md bg-wolf px-3.5 text-[12px] font-semibold text-primary"
+              >
+                結算出局
+              </button>
+            </div>
+          )}
+
+          {hasOldRascalPending && (
+            <div className="flex items-center justify-between gap-3 py-3">
+              <div className="text-[14px] font-medium text-primary">老流氓負傷延遲出局</div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerOldRascalDelayedDeath();
+                  setSkillsDrawerOpen(false);
+                }}
+                className="min-h-11 shrink-0 rounded-md bg-wolf px-3.5 text-[12px] font-semibold text-primary"
+              >
+                結算出局
+              </button>
+            </div>
+          )}
+        </div>
+      </SlideDrawer>
 
       <SeatStatusDrawer
         open={seatDrawerOpen}

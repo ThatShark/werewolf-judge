@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
 import { getRoleById } from '../../data/roles';
-import { isSheriffElectionActive, resolveSelfExplode } from '../../logic';
+import {
+  hasPandoraDayGun,
+  isJackSecondIdentityBoard,
+  isSheriffElectionActive,
+  resolveSelfExplode,
+} from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
-import { formatSeatDisplay } from '../common/displayHelpers';
+import { SlideDrawer } from '../common/SlideDrawer';
+import { formatSeatDisplay, formatSeatNum } from '../common/displayHelpers';
 import { ExtraDaySkillsSection } from './ExtraDaySkillsSection';
 
 interface DayBurstSkillsPanelProps {
@@ -11,17 +17,21 @@ interface DayBurstSkillsPanelProps {
 }
 
 export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelProps) {
+  const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
   const hostMode = useGameStore((s) => s.hostMode);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const knightDuelUsed = useGameStore((s) => s.knightDuelUsed);
+  const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
 
   const selfExplode = useGameStore((s) => s.selfExplode);
   const goodSelfExplode = useGameStore((s) => s.goodSelfExplode);
   const whiteWolfKingExplode = useGameStore((s) => s.whiteWolfKingExplode);
   const knightDuel = useGameStore((s) => s.knightDuel);
+
+  const [skillsDrawerOpen, setSkillsDrawerOpen] = useState(false);
 
   // 普通狼人自爆
   const [selectedExplodeSeat, setSelectedExplodeSeat] = useState<number | null>(null);
@@ -54,7 +64,6 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
     () => seats.find((s) => s.isAlive && s.roleId === 'white_wolf_king') ?? null,
     [seats],
   );
-  const hasKnightInBoard = useMemo(() => seats.some((s) => s.roleId === 'knight'), [seats]);
   const aliveKnight = useMemo(
     () => seats.find((s) => s.isAlive && s.roleId === 'knight') ?? null,
     [seats],
@@ -70,6 +79,34 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
     [seats],
   );
 
+  // 計算整合抽屜內可用技能總數
+  const availableSkillCount = useMemo(() => {
+    let count = 0;
+    if (!isOnlineJudge && aliveKnight && !knightDuelUsed) count += 1;
+    if (!isOnlineJudge && aliveWhiteWolfKing) count += 1;
+    if (!isOnlineJudge && aliveGoodExploders.length > 0) count += 1;
+    if (isJackSecondIdentityBoard(seats, selectedBoardId ?? undefined)) count += 1;
+    if (
+      thirdPartySpecialState &&
+      aliveSeats.some((s) => hasPandoraDayGun(thirdPartySpecialState, s.seatNumber))
+    ) {
+      count += 1;
+    }
+    if (seats.some((s) => s.isAlive && s.roleId === 'wolf_girl')) count += 1;
+    if (seats.some((s) => s.isAlive && s.maskedDelayedDeath)) count += 1;
+    return count;
+  }, [
+    isOnlineJudge,
+    aliveKnight,
+    knightDuelUsed,
+    aliveWhiteWolfKing,
+    aliveGoodExploders.length,
+    seats,
+    selectedBoardId,
+    thirdPartySpecialState,
+    aliveSeats,
+  ]);
+
   const selectedExplodeObj = seats.find((s) => s.seatNumber === selectedExplodeSeat);
   const selectedGoodExplodeObj = seats.find((s) => s.seatNumber === selectedGoodExplodeSeat);
   const selectedWwkTargetObj = seats.find((s) => s.seatNumber === selectedWwkTarget);
@@ -77,165 +114,42 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
 
   const explodeBadgeNotice = electionActive
     ? willSwallowNow
-      ? '（警上自爆將正式吞警徽，本局無警長）'
-      : '（雙爆吞警徽首爆：入夜後隔天天亮將直接進入退水與警下投票）'
+      ? '（將正式吞警徽）'
+      : '（雙爆首爆：隔日直進退水投票）'
     : '';
 
   return (
-    <section className="space-y-3.5 rounded-2xl border border-rose-500/35 bg-rose-950/20 p-3.5">
-      <div>
-        <span className="text-xs font-bold uppercase tracking-wider text-rose-300">
-          高風險突發操作區
-        </span>
-        <h2 className="text-base font-bold text-rose-100">
-          ⚡ {isOnlineJudge ? '狼人自爆入夜' : '白天突發技能與狼人自爆'}
-        </h2>
-        {electionActive && (
-          <div className="mt-2 rounded-xl border border-amber-400/50 bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-200">
-            {willSwallowNow
-              ? '⚠️ 目前正處警上競選階段：此時自爆將正式判定「吞警徽（本局無警長）」並強制入夜！'
-              : '⚠️ 雙爆吞警徽規則（首爆）：此時自爆將強制入夜，隔天天亮跳過發言直進退水與警下投票。'}
-          </div>
-        )}
-        {isOnlineJudge && (
-          <div className="mt-2 rounded-xl border border-indigo-400/40 bg-indigo-950/35 px-3 py-2 text-xs text-indigo-200">
-            🔒 線上法官視野防護：中央螢幕已自動隱藏「騎士決鬥、白狼王自爆帶人」等個人白天技能按鈕，避免暴露身分。
-          </div>
-        )}
-      </div>
-
-      {/* 1. 騎士翻牌決鬥（僅實體法官顯示） */}
-      {!isOnlineJudge && hasKnightInBoard && (
-        <div className="space-y-2.5 rounded-xl border border-indigo-400/35 bg-slate-950/75 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-extrabold text-indigo-200">⚔️ 騎士翻牌決鬥</h3>
-            <span className="text-[11px] font-bold text-slate-400">
-              {knightDuelUsed
-                ? '本局已使用過決鬥'
-                : aliveKnight
-                  ? `${aliveKnight.seatNumber} 號存活可用`
-                  : '騎士已出局'}
-            </span>
-          </div>
-
-          {knightNotice && (
-            <div className="rounded-lg border border-amber-400/40 bg-amber-950/35 px-3 py-2 text-xs font-bold text-amber-200">
-              {knightNotice}
-            </div>
-          )}
-
-          {aliveKnight && !knightDuelUsed && (
-            <>
-              <p className="text-xs text-slate-400">
-                撞狼則目標立即出局（不觸發亡語技能）並強制入夜；撞好人則騎士以死謝罪並繼續白天。
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                {aliveSeats
-                  .filter((s) => s.seatNumber !== aliveKnight.seatNumber)
-                  .map((seat) => {
-                    const active = selectedKnightTarget === seat.seatNumber;
-                    return (
-                      <button
-                        key={seat.seatNumber}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() =>
-                          setSelectedKnightTarget((prev) =>
-                            prev === seat.seatNumber ? null : seat.seatNumber,
-                          )
-                        }
-                        className={`min-h-11 rounded-lg border p-2 text-left text-xs font-bold transition ${
-                          active
-                            ? 'border-indigo-400 bg-indigo-500/30 text-indigo-100 ring-1 ring-indigo-400/50'
-                            : 'border-slate-800 bg-slate-900 text-slate-200 hover:border-slate-600'
-                        }`}
-                      >
-                        <div>{seat.seatNumber} 號</div>
-                        <div className="truncate text-[10px] font-normal text-slate-400">
-                          {seat.nickname.trim() || `${seat.seatNumber}號`}
-                        </div>
-                      </button>
-                    );
-                  })}
-              </div>
-              <button
-                type="button"
-                disabled={disabled || selectedKnightTarget === null}
-                onClick={() => setConfirmKnightOpen(true)}
-                className="min-h-12 w-full rounded-xl bg-indigo-600 px-4 text-sm font-extrabold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
-              >
-                {selectedKnightTargetObj
-                  ? `⚔️ 騎士決鬥 ${formatSeatDisplay(selectedKnightTargetObj)}`
-                  : '請先點選騎士決鬥目標'}
-              </button>
-            </>
-          )}
+    <section className="space-y-3">
+      {/* 警上自爆規則提示 */}
+      {electionActive && (
+        <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff">
+          {willSwallowNow ? '警上自爆將正式吞警徽並入夜' : '雙爆規則首爆：隔日跳過發言直進投票'}
         </div>
       )}
 
-      {/* 2. 白狼王自爆帶走目標（僅實體法官顯示） */}
-      {!isOnlineJudge && aliveWhiteWolfKing && (
-        <div className="space-y-2.5 rounded-xl border border-rose-400/45 bg-slate-950/75 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-extrabold text-rose-200">
-              🐺 白狼王自爆帶人（{aliveWhiteWolfKing.seatNumber} 號）
-            </h3>
-          </div>
-          <p className="text-xs text-slate-400">
-            可選擇帶走一名存活玩家（被帶走者無任何死亡技能）或不帶人空爆，強制進入第 {round + 1} 晚。
-          </p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-            {aliveSeats
-              .filter((s) => s.seatNumber !== aliveWhiteWolfKing.seatNumber)
-              .map((seat) => {
-                const active = selectedWwkTarget === seat.seatNumber;
-                return (
-                  <button
-                    key={seat.seatNumber}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() =>
-                      setSelectedWwkTarget((prev) =>
-                        prev === seat.seatNumber ? null : seat.seatNumber,
-                      )
-                    }
-                    className={`min-h-11 rounded-lg border p-2 text-left text-xs font-bold transition ${
-                      active
-                        ? 'border-rose-400 bg-rose-500/30 text-rose-100 ring-1 ring-rose-400/50'
-                        : 'border-slate-800 bg-slate-900 text-slate-200 hover:border-slate-600'
-                    }`}
-                  >
-                    <div>{seat.seatNumber} 號</div>
-                    <div className="truncate text-[10px] font-normal text-slate-400">
-                      {seat.nickname.trim() || `${seat.seatNumber}號`}
-                    </div>
-                  </button>
-                );
-              })}
-          </div>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => setConfirmWwkOpen(true)}
-            className="min-h-12 w-full rounded-xl bg-rose-600 px-4 text-sm font-extrabold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
-          >
-            {selectedWwkTargetObj
-              ? `💥 白狼王自爆並帶走 ${formatSeatDisplay(selectedWwkTargetObj)}`
-              : '💥 白狼王空爆（不帶走任何人）'}
-          </button>
+      {/* 外層僅保留：整合技能抽屜入口（若有可用技能）＋ 狼人自爆 */}
+      {availableSkillCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setSkillsDrawerOpen(true)}
+          className="flex min-h-12 w-full items-center justify-between rounded-md border border-sheriff-border bg-sheriff-tint px-3.5 text-[14px] font-semibold text-sheriff transition hover:opacity-90"
+        >
+          <span>⚡ 觸發技能（{availableSkillCount} 項可用）</span>
+          <span className="text-[12px]">展開 →</span>
+        </button>
+      )}
+
+      {knightNotice && (
+        <div className="border-l-2 border-sheriff bg-surface px-3 py-2 text-[12px] text-sheriff">
+          {knightNotice}
         </div>
       )}
 
-      {/* 3. 普通狼人自爆 */}
-      <div className="space-y-2.5">
-        <div>
-          <h3 className="text-sm font-bold text-rose-200">💥 狼人自爆強制入夜</h3>
-          <p className="mt-0.5 text-xs text-rose-200/75">
-            自爆將立即終止白天並跳至下一晚，該狼人將於當晚點刀後正式出局。
-          </p>
-        </div>
+      {/* 狼人自爆 */}
+      <div className="space-y-2">
+        <div className="text-[14px] font-semibold text-wolf">狼人自爆</div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
           {aliveSeats.map((seat) => {
             const explodeCheck = resolveSelfExplode(seats, seat.seatNumber);
             const active = selectedExplodeSeat === seat.seatNumber;
@@ -253,33 +167,27 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
                     prev === seat.seatNumber ? null : seat.seatNumber,
                   );
                 }}
-                className={`min-h-12 rounded-xl border p-2 text-left transition ${
+                className={`min-h-12 rounded-md px-2.5 py-1.5 text-left transition ${
                   active
-                    ? 'border-rose-400 bg-rose-500/30 ring-2 ring-rose-400/50'
+                    ? 'border-selected-wolf bg-wolf-tint text-primary'
                     : seatDisabled
-                      ? 'cursor-not-allowed border-slate-800/70 bg-slate-950/50 opacity-45'
-                      : 'border-rose-500/30 bg-slate-950/80 hover:border-rose-400/60 active:scale-[0.98]'
+                      ? 'cursor-not-allowed border border-subtle bg-canvas opacity-45'
+                      : 'border border-subtle bg-surface hover:border-strong'
                 }`}
               >
-                <div className="text-xs font-extrabold text-slate-100">{seat.seatNumber} 號</div>
-                <div className="truncate text-[10px] text-slate-400">
-                  {seat.nickname.trim() || `${seat.seatNumber}號`}
+                <div className="text-[14px] font-semibold tabular-nums text-primary">
+                  {formatSeatNum(seat.seatNumber)}
                 </div>
-                {role && (
-                  <div className="mt-0.5 text-[10px] font-bold text-slate-300">{role.name}</div>
-                )}
-                {!isOnlineJudge && !explodeCheck.allowed && explodeCheck.reason && (
-                  <div className="mt-0.5 truncate text-[9px] text-slate-400">
-                    {explodeCheck.reason}
-                  </div>
-                )}
+                <div className="truncate text-[12px] text-secondary">
+                  {role ? role.name : seat.nickname.trim() || `${seat.seatNumber}號`}
+                </div>
               </button>
             );
           })}
         </div>
 
         {explodeError && (
-          <div className="rounded-xl border border-rose-500/40 bg-rose-950/50 p-2.5 text-xs text-rose-200">
+          <div className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] text-wolf">
             {explodeError}
           </div>
         )}
@@ -288,102 +196,175 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
           type="button"
           disabled={selectedExplodeSeat === null || disabled}
           onClick={() => setConfirmExplodeOpen(true)}
-          className={`min-h-12 w-full rounded-xl px-4 py-3 text-sm font-extrabold transition ${
+          className={`min-h-12 w-full rounded-md px-4 text-[14px] font-semibold transition ${
             selectedExplodeSeat !== null && !disabled
-              ? 'bg-rose-600 text-white hover:bg-rose-500 active:scale-[0.99]'
-              : 'cursor-not-allowed bg-slate-800 text-slate-500'
+              ? 'bg-wolf text-primary hover:opacity-90'
+              : 'cursor-not-allowed bg-elevated text-muted'
           }`}
         >
           {selectedExplodeObj
-            ? `💥 宣告 ${formatSeatDisplay(selectedExplodeObj)} 自爆並入夜`
-            : '請選擇自爆狼人座位'}
+            ? `宣告 ${formatSeatNum(selectedExplodeObj.seatNumber)} 號自爆入夜`
+            : '選擇自爆狼人'}
         </button>
       </div>
 
-      {/* 愚言家／鐵好人翻牌自曝（僅實體法官且場上有存活者時顯示） */}
-      {!isOnlineJudge && aliveGoodExploders.length > 0 && (
-        <div className="space-y-2.5 rounded-xl border border-sky-400/35 bg-slate-950/75 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-extrabold text-sky-200">🪪 愚言家／鐵好人翻牌自曝</h3>
-            <span className="text-[11px] font-bold text-slate-400">立即出局並強制入夜</span>
-          </div>
-          <p className="text-xs text-slate-400">
-            愚言家或鐵好人於白天發言階段翻牌自曝，立即淘汰自己並強制進入夜晚（上警期間會吞警徽）。
-          </p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-            {aliveGoodExploders.map((seat) => {
-              const active = selectedGoodExplodeSeat === seat.seatNumber;
-              const role = getRoleById(seat.roleId);
-              return (
-                <button
-                  key={seat.seatNumber}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    setSelectedGoodExplodeSeat((prev) =>
-                      prev === seat.seatNumber ? null : seat.seatNumber,
-                    )
-                  }
-                  className={`min-h-12 rounded-lg border p-2 text-left text-xs font-bold transition ${
-                    active
-                      ? 'border-sky-400 bg-sky-500/30 text-sky-100 ring-1 ring-sky-400/50'
-                      : 'border-slate-800 bg-slate-900 text-slate-200 hover:border-slate-600'
-                  }`}
-                >
-                  <div>{seat.seatNumber} 號</div>
-                  {role && (
-                    <div className="mt-0.5 text-[10px] font-bold text-sky-300">{role.name}</div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            disabled={selectedGoodExplodeSeat === null || disabled}
-            onClick={() => setConfirmGoodExplodeOpen(true)}
-            className="min-h-12 w-full rounded-xl bg-sky-600 px-4 text-sm font-extrabold text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
-          >
-            {selectedGoodExplodeObj
-              ? `🪪 宣告 ${formatSeatDisplay(selectedGoodExplodeObj)} 翻牌自曝並入夜`
-              : '請選擇翻牌自曝玩家'}
-          </button>
+      {/* 整合技能抽屜 */}
+      <SlideDrawer
+        open={skillsDrawerOpen}
+        onClose={() => setSkillsDrawerOpen(false)}
+        title="觸發白天技能"
+        placement="bottom"
+      >
+        <div className="divide-y divide-subtle">
+          {/* 騎士翻牌決鬥 */}
+          {!isOnlineJudge && aliveKnight && !knightDuelUsed && (
+            <div className="space-y-2 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[14px] font-semibold text-good">騎士翻牌決鬥</span>
+                <span className="text-[12px] tabular-nums text-secondary">
+                  騎士 {formatSeatNum(aliveKnight.seatNumber)} 號
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {aliveSeats
+                  .filter((s) => s.seatNumber !== aliveKnight.seatNumber)
+                  .map((seat) => {
+                    const active = selectedKnightTarget === seat.seatNumber;
+                    return (
+                      <button
+                        key={seat.seatNumber}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          setSelectedKnightTarget((prev) =>
+                            prev === seat.seatNumber ? null : seat.seatNumber,
+                          )
+                        }
+                        className={`min-h-11 rounded-md text-[14px] font-semibold tabular-nums transition ${
+                          active
+                            ? 'border-selected-good bg-good-tint text-good'
+                            : 'border border-subtle bg-canvas text-secondary'
+                        }`}
+                      >
+                        {formatSeatNum(seat.seatNumber)}
+                      </button>
+                    );
+                  })}
+              </div>
+              <button
+                type="button"
+                disabled={disabled || selectedKnightTarget === null}
+                onClick={() => setConfirmKnightOpen(true)}
+                className="min-h-12 w-full rounded-md bg-good px-4 text-[14px] font-semibold text-inverse disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
+              >
+                {selectedKnightTargetObj
+                  ? `決鬥 ${formatSeatNum(selectedKnightTargetObj.seatNumber)} 號`
+                  : '選擇決鬥目標'}
+              </button>
+            </div>
+          )}
+
+          {/* 白狼王自爆帶人 */}
+          {!isOnlineJudge && aliveWhiteWolfKing && (
+            <div className="space-y-2 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[14px] font-semibold text-wolf">白狼王自爆帶人</span>
+                <span className="text-[12px] tabular-nums text-secondary">
+                  {formatSeatNum(aliveWhiteWolfKing.seatNumber)} 號
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {aliveSeats
+                  .filter((s) => s.seatNumber !== aliveWhiteWolfKing.seatNumber)
+                  .map((seat) => {
+                    const active = selectedWwkTarget === seat.seatNumber;
+                    return (
+                      <button
+                        key={seat.seatNumber}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          setSelectedWwkTarget((prev) =>
+                            prev === seat.seatNumber ? null : seat.seatNumber,
+                          )
+                        }
+                        className={`min-h-11 rounded-md text-[14px] font-semibold tabular-nums transition ${
+                          active
+                            ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                            : 'border border-subtle bg-canvas text-secondary'
+                        }`}
+                      >
+                        {formatSeatNum(seat.seatNumber)}
+                      </button>
+                    );
+                  })}
+              </div>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setConfirmWwkOpen(true)}
+                className="min-h-12 w-full rounded-md bg-wolf px-4 text-[14px] font-semibold text-primary disabled:opacity-40"
+              >
+                {selectedWwkTargetObj
+                  ? `自爆並帶走 ${formatSeatNum(selectedWwkTargetObj.seatNumber)} 號`
+                  : '白狼王空爆入夜'}
+              </button>
+            </div>
+          )}
+
+          {/* 愚言家／鐵好人翻牌自曝 */}
+          {!isOnlineJudge && aliveGoodExploders.length > 0 && (
+            <div className="space-y-2 py-3">
+              <span className="text-[14px] font-semibold text-good">愚言家／鐵好人翻牌自曝</span>
+              <div className="flex flex-wrap gap-1.5">
+                {aliveGoodExploders.map((seat) => {
+                  const active = selectedGoodExplodeSeat === seat.seatNumber;
+                  return (
+                    <button
+                      key={seat.seatNumber}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() =>
+                        setSelectedGoodExplodeSeat((prev) =>
+                          prev === seat.seatNumber ? null : seat.seatNumber,
+                        )
+                      }
+                      className={`min-h-11 rounded-md px-3 text-[14px] font-semibold tabular-nums ${
+                        active
+                          ? 'border-selected-good bg-good-tint text-good'
+                          : 'border border-subtle bg-canvas text-secondary'
+                      }`}
+                    >
+                      {formatSeatNum(seat.seatNumber)}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                disabled={selectedGoodExplodeSeat === null || disabled}
+                onClick={() => setConfirmGoodExplodeOpen(true)}
+                className="min-h-12 w-full rounded-md bg-good px-4 text-[14px] font-semibold text-inverse disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
+              >
+                確認翻牌自曝
+              </button>
+            </div>
+          )}
+
+          {/* 其餘擴充日間技能 */}
+          <ExtraDaySkillsSection disabled={disabled} />
         </div>
-      )}
+      </SlideDrawer>
 
-      {/* 確認好人自曝 */}
-      <ConfirmModal
-        open={!isOnlineJudge && confirmGoodExplodeOpen && selectedGoodExplodeObj !== undefined}
-        title="確認好人翻牌自曝並強制入夜？"
-        description={
-          selectedGoodExplodeObj
-            ? `${formatSeatDisplay(selectedGoodExplodeObj)} 將立即淘汰出局並強制進入第 ${round + 1} 晚${explodeBadgeNotice}。`
-            : undefined
-        }
-        confirmLabel="確認翻牌自曝"
-        tone="primary"
-        onConfirm={() => {
-          if (selectedGoodExplodeSeat !== null) {
-            goodSelfExplode(selectedGoodExplodeSeat);
-            setSelectedGoodExplodeSeat(null);
-          }
-          setConfirmGoodExplodeOpen(false);
-        }}
-        onCancel={() => setConfirmGoodExplodeOpen(false)}
-      />
-
-      <ExtraDaySkillsSection disabled={disabled} />
-
-      {/* 確認普通狼人自爆 */}
       <ConfirmModal
         open={confirmExplodeOpen && selectedExplodeObj !== undefined}
-        title="確認狼人自爆並強制入夜？"
+        title="確認狼人自爆"
         description={
           selectedExplodeObj
-            ? `${formatSeatDisplay(selectedExplodeObj)} 自爆後將立刻進入第 ${round + 1} 晚${explodeBadgeNotice}，該玩家將於當晚點刀後正式死亡。`
+            ? `${formatSeatDisplay(selectedExplodeObj)} 自爆並進入第 ${round + 1} 晚${explodeBadgeNotice}。`
             : undefined
         }
-        confirmLabel="確認自爆入夜"
+        confirmLabel="確認自爆"
         tone="danger"
         onConfirm={() => {
           if (selectedExplodeSeat !== null) {
@@ -399,32 +380,50 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
         onCancel={() => setConfirmExplodeOpen(false)}
       />
 
-      {/* 確認白狼王自爆帶人 */}
       <ConfirmModal
         open={!isOnlineJudge && confirmWwkOpen && aliveWhiteWolfKing !== null}
-        title="確認白狼王自爆並強制入夜？"
+        title="確認白狼王自爆"
         description={
           aliveWhiteWolfKing
             ? selectedWwkTargetObj
-              ? `${aliveWhiteWolfKing.seatNumber} 號白狼王將自爆並立即帶走 ${formatSeatDisplay(
-                  selectedWwkTargetObj,
-                )}（無死亡技能）${explodeBadgeNotice}。`
-              : `${aliveWhiteWolfKing.seatNumber} 號白狼王將空爆並強制入夜${explodeBadgeNotice}。`
+              ? `${aliveWhiteWolfKing.seatNumber} 號白狼王自爆帶走 ${formatSeatDisplay(selectedWwkTargetObj)}${explodeBadgeNotice}。`
+              : `${aliveWhiteWolfKing.seatNumber} 號白狼王空爆入夜${explodeBadgeNotice}。`
             : undefined
         }
-        confirmLabel="確認白狼王自爆"
+        confirmLabel="確認自爆"
         tone="danger"
         onConfirm={() => {
           if (aliveWhiteWolfKing) {
             whiteWolfKingExplode(aliveWhiteWolfKing.seatNumber, selectedWwkTarget);
             setSelectedWwkTarget(null);
+            setSkillsDrawerOpen(false);
           }
           setConfirmWwkOpen(false);
         }}
         onCancel={() => setConfirmWwkOpen(false)}
       />
 
-      {/* 確認騎士翻牌決鬥 */}
+      <ConfirmModal
+        open={!isOnlineJudge && confirmGoodExplodeOpen && selectedGoodExplodeObj !== undefined}
+        title="確認翻牌自曝"
+        description={
+          selectedGoodExplodeObj
+            ? `${formatSeatDisplay(selectedGoodExplodeObj)} 淘汰並進入第 ${round + 1} 晚${explodeBadgeNotice}。`
+            : undefined
+        }
+        confirmLabel="確認自曝"
+        tone="primary"
+        onConfirm={() => {
+          if (selectedGoodExplodeSeat !== null) {
+            goodSelfExplode(selectedGoodExplodeSeat);
+            setSelectedGoodExplodeSeat(null);
+            setSkillsDrawerOpen(false);
+          }
+          setConfirmGoodExplodeOpen(false);
+        }}
+        onCancel={() => setConfirmGoodExplodeOpen(false)}
+      />
+
       <ConfirmModal
         open={
           !isOnlineJudge &&
@@ -432,12 +431,10 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
           aliveKnight !== null &&
           selectedKnightTargetObj !== undefined
         }
-        title="確認騎士翻牌決鬥？"
+        title="確認騎士決鬥"
         description={
           aliveKnight && selectedKnightTargetObj
-            ? `${aliveKnight.seatNumber} 號（騎士）將翻牌決鬥 ${formatSeatDisplay(
-                selectedKnightTargetObj,
-              )}，整局僅能發動一次。`
+            ? `${aliveKnight.seatNumber} 號決鬥 ${formatSeatDisplay(selectedKnightTargetObj)}。`
             : undefined
         }
         confirmLabel="確認決鬥"
@@ -449,10 +446,11 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
               setKnightNotice(res.reason ?? '決鬥失敗');
             } else if (!res.targetWasWolf) {
               setKnightNotice(
-                `🛡️ ${selectedKnightTarget} 號為好人陣營，騎士（${aliveKnight.seatNumber} 號）以死謝罪，繼續白天流程！`,
+                `${formatSeatNum(selectedKnightTarget)} 號為好人，騎士以死謝罪，繼續白天。`,
               );
             }
             setSelectedKnightTarget(null);
+            setSkillsDrawerOpen(false);
           }
           setConfirmKnightOpen(false);
         }}

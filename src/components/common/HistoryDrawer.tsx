@@ -4,14 +4,13 @@ import type {
   NightHistoryEntry,
 } from '../../logic/types';
 import { SlideDrawer } from './SlideDrawer';
-import { DEATH_REASON_LABELS } from './displayHelpers';
+import { DEATH_REASON_LABELS, formatSeatNum } from './displayHelpers';
 
 interface HistoryDrawerProps {
   open: boolean;
   onClose: () => void;
   nightHistory: NightHistoryEntry[];
   dayHistory: DayHistoryEntry[];
-  /** 實體法官模式在夜晚進行中時傳入，用於於抽屜檢視「目前為止今晚操作紀錄」 */
   inProgressNight?: {
     round: number;
     draft: NightActionDraft;
@@ -25,36 +24,36 @@ function formatInProgressNightLines(
 ): string[] {
   const lines: string[] = [];
   if (draft.mechWolfLearnTarget !== null) {
-    lines.push(`機械狼首夜學習：${draft.mechWolfLearnTarget} 號`);
+    lines.push(`機械狼學習：${formatSeatNum(draft.mechWolfLearnTarget)} 號`);
   }
   if (draft.guardTarget !== null) {
-    lines.push(`守衛守護：${draft.guardTarget} 號`);
+    lines.push(`守衛守護：${formatSeatNum(draft.guardTarget)} 號`);
   }
   if (draft.dreamCatcherTarget != null) {
-    lines.push(`攝夢人夢遊：${draft.dreamCatcherTarget} 號`);
+    lines.push(`攝夢人夢遊：${formatSeatNum(draft.dreamCatcherTarget)} 號`);
   }
   if (draft.mechWolfSkillTarget !== null) {
-    lines.push(`機械狼技能目標：${draft.mechWolfSkillTarget} 號`);
+    lines.push(`機械狼技能：${formatSeatNum(draft.mechWolfSkillTarget)} 號`);
   }
   if (draft.wolfTarget !== null) {
-    lines.push(`狼人點刀：${draft.wolfTarget} 號`);
+    lines.push(`狼人點刀：${formatSeatNum(draft.wolfTarget)} 號`);
   }
   if (draft.wolfBeautyCharmTarget != null) {
-    lines.push(`狼美人魅惑：${draft.wolfBeautyCharmTarget} 號`);
+    lines.push(`狼美人魅惑：${formatSeatNum(draft.wolfBeautyCharmTarget)} 號`);
   }
   if (draft.witchUseAntidote) {
     lines.push('女巫用藥：使用解藥');
   } else if (draft.witchPoisonTarget !== null) {
-    lines.push(`女巫用藥：毒殺 ${draft.witchPoisonTarget} 號`);
+    lines.push(`女巫用藥：毒殺 ${formatSeatNum(draft.witchPoisonTarget)} 號`);
   }
   if (draft.seerCheckTarget !== null) {
-    lines.push(`預言家查驗：${draft.seerCheckTarget} 號`);
+    lines.push(`預言家查驗：${formatSeatNum(draft.seerCheckTarget)} 號`);
   }
   if (draft.psychicCheckTarget !== null) {
-    lines.push(`通靈師查驗：${draft.psychicCheckTarget} 號`);
+    lines.push(`通靈師查驗：${formatSeatNum(draft.psychicCheckTarget)} 號`);
   }
   if (pendingSelfExplodeSeat !== null) {
-    lines.push(`自爆待出局：${pendingSelfExplodeSeat} 號`);
+    lines.push(`自爆待出局：${formatSeatNum(pendingSelfExplodeSeat)} 號`);
   }
   return lines;
 }
@@ -80,27 +79,19 @@ export function HistoryDrawer({
     : [];
 
   return (
-    <SlideDrawer
-      open={open}
-      onClose={onClose}
-      title="歷史操作紀錄"
-      subtitle="Action Timeline"
-      placement="bottom"
-    >
-      <div className="space-y-4 pb-4">
+    <SlideDrawer open={open} onClose={onClose} title="歷史紀錄" placement="bottom">
+      <div className="divide-y divide-subtle">
         {inProgressNight && (
-          <section className="space-y-2 rounded-2xl border border-amber-500/35 bg-amber-950/20 p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">
-              第 {inProgressNight.round} 晚（進行中 · 目前操作紀錄）
+          <section className="border-l-2 border-sheriff py-3 pl-3">
+            <h3 className="text-[12px] font-semibold tabular-nums text-sheriff">
+              N{inProgressNight.round}（進行中）
             </h3>
             {liveLines.length === 0 ? (
-              <p className="text-xs text-slate-400">今晚尚未確認任何角色行動目標。</p>
+              <p className="mt-1 text-[12px] text-muted">尚未確認行動目標。</p>
             ) : (
-              <ul className="space-y-1 text-sm text-amber-50">
+              <ul className="mt-1.5 space-y-1 text-[14px] text-primary tabular-nums">
                 {liveLines.map((line, idx) => (
-                  <li key={idx} className="leading-relaxed">
-                    • {line}
-                  </li>
+                  <li key={idx}>• {line}</li>
                 ))}
               </ul>
             )}
@@ -108,31 +99,26 @@ export function HistoryDrawer({
         )}
 
         {maxRound === 0 && !inProgressNight ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5 text-center">
-            <p className="text-sm text-slate-400">目前尚無任何夜間或白天操作紀錄。</p>
-          </div>
+          <p className="py-6 text-center text-[14px] text-muted">尚無對局操作紀錄。</p>
         ) : (
           Array.from({ length: maxRound }, (_, idx) => idx + 1).map((round) => {
             const night = nightHistory.find((n) => n.round === round);
             const day = dayHistory.find((d) => d.round === round);
             return (
-              <section
-                key={round}
-                className="space-y-2.5 rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
-              >
-                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+              <section key={round} className="space-y-2 py-3">
+                <h3 className="text-[12px] font-semibold tabular-nums text-sheriff">
                   第 {round} 回合
                 </h3>
                 {night && (
                   <div className="space-y-1">
-                    <p className="text-xs font-semibold text-indigo-300">夜間紀錄</p>
+                    <div className="text-[12px] font-medium text-secondary">夜間</div>
                     {night.deaths.length === 0 ? (
-                      <p className="text-sm leading-relaxed text-slate-200">平安夜（無人死亡）</p>
+                      <p className="text-[14px] text-good">平安夜</p>
                     ) : (
-                      <ul className="space-y-1 text-sm text-slate-200">
+                      <ul className="space-y-1 text-[14px] text-primary tabular-nums">
                         {night.deaths.map((d, i) => (
-                          <li key={i} className="leading-relaxed">
-                            • {d.seat} 號出局（{DEATH_REASON_LABELS[d.reason]}）
+                          <li key={i}>
+                            • {formatSeatNum(d.seat)} 號（{DEATH_REASON_LABELS[d.reason]}）
                           </li>
                         ))}
                       </ul>
@@ -140,13 +126,11 @@ export function HistoryDrawer({
                   </div>
                 )}
                 {day && day.events.length > 0 && (
-                  <div className="space-y-1 border-t border-slate-800/80 pt-2">
-                    <p className="text-xs font-semibold text-amber-200">白天事件</p>
-                    <ul className="space-y-1 text-sm text-slate-300">
+                  <div className="space-y-1 pt-1">
+                    <div className="text-[12px] font-medium text-secondary">白天</div>
+                    <ul className="space-y-1 text-[14px] text-secondary tabular-nums">
                       {day.events.map((evt, i) => (
-                        <li key={i} className="leading-relaxed">
-                          • {evt}
-                        </li>
+                        <li key={i}>• {evt}</li>
                       ))}
                     </ul>
                   </div>

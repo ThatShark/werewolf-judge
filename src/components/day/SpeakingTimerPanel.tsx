@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { isSheriffElectionActive, resolveDaySpeakingRule } from '../../logic';
 import type { SpeakingOrderMode } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
-import { formatSeatDisplay } from '../common/displayHelpers';
+import { formatSeatNum } from '../common/displayHelpers';
 
 const TIMER_PRESETS = [60, 90, 120] as const;
 
 const MODE_LABELS: Record<SpeakingOrderMode, string> = {
-  random: '隨機抽取',
+  random: '隨機',
   sheriff_left: '警左',
   sheriff_right: '警右',
   dead_left: '死左',
@@ -139,74 +139,72 @@ export function SpeakingTimerPanel() {
     !electionActive && ruleRecommendation.recommendedModes.includes(mode);
 
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5">
-      {/* 醒目當前發言座號 ＋ 倒數計時 ＋ 加減秒數與下一位 */}
-      <div className="rounded-2xl border border-amber-500/35 bg-slate-950/90 p-3">
+    <section className="space-y-3">
+      {/* 專業計時器主面盤 */}
+      <div className="rounded-lg border border-subtle bg-surface p-3.5">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+            <div className="text-[12px] font-semibold tabular-nums text-secondary">
               {currentSpeakerSeat !== null
-                ? `當前發言（${currentSpeakerIndex + 1}/${speakingQueue.length}）`
+                ? `發言中 ${currentSpeakerIndex + 1} / ${speakingQueue.length}`
                 : isSpeakingFinished
-                  ? '本輪發言已結束'
-                  : `第 ${round} 天 · 單人發言計時`}
-            </span>
-            <div className="mt-0.5 truncate text-lg font-extrabold text-amber-100">
+                  ? '全員發言完畢'
+                  : `D${round} 發言計時`}
+            </div>
+            <div className="mt-0.5 truncate text-[18px] font-semibold leading-6 tabular-nums text-primary">
               {currentSpeakerSeat !== null
-                ? `🎤 ${currentSpeakerObj ? formatSeatDisplay(currentSpeakerObj) : `${currentSpeakerSeat} 號`}${
-                    speakingMeta?.sheriffLastSeat === currentSpeakerSeat ? '（歸票）' : ''
-                  }`
-                : isSpeakingFinished
-                  ? '✅ 全員發言完畢'
-                  : '尚未抽取發言順序'}
+                ? `${formatSeatNum(currentSpeakerSeat)} 號${
+                    currentSpeakerObj?.nickname.trim() ? ` ${currentSpeakerObj.nickname.trim()}` : ''
+                  }${speakingMeta?.sheriffLastSeat === currentSpeakerSeat ? '（歸票）' : ''}`
+                : '尚未抽取順序'}
             </div>
           </div>
 
           <div
-            className={`shrink-0 font-mono text-4xl font-extrabold tabular-nums ${
+            className={`shrink-0 font-mono text-[36px] font-bold leading-none tabular-nums ${
               remainingSeconds === 0
-                ? 'text-rose-400'
+                ? 'text-wolf'
                 : remainingSeconds <= 10
-                  ? 'text-amber-300'
-                  : 'text-slate-50'
+                  ? 'text-sheriff'
+                  : 'text-primary'
             }`}
           >
             {formatTimer(remainingSeconds)}
           </div>
         </div>
 
-        {/* 主控制列：開始／暫停 ＋ - 減時間 ＋ + 加時間 ＋ 下一位 */}
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        {/* 主控制列：-10s / 開始暫停 / +10s */}
+        <div className="mt-3 grid grid-cols-4 gap-1.5">
           <button
             type="button"
             onClick={() => adjustSpeakerTime(-10)}
             aria-label="減少 10 秒"
-            className="min-h-12 rounded-xl border border-slate-700 bg-slate-800 text-base font-extrabold text-slate-100 hover:bg-slate-700 active:scale-[0.98]"
+            className="min-h-12 rounded-md border border-subtle bg-canvas text-[14px] font-semibold tabular-nums text-secondary hover:border-strong hover:text-primary"
           >
             -10s
           </button>
           <button
             type="button"
             onClick={handleToggleStartPause}
-            className={`col-span-2 min-h-12 rounded-xl px-2 text-sm font-extrabold transition active:scale-[0.98] ${
+            className={`col-span-2 min-h-12 rounded-md px-2 text-[14px] font-semibold transition ${
               timerRunning
-                ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
-                : 'bg-indigo-500 text-white hover:bg-indigo-400'
+                ? 'border border-sheriff-border bg-sheriff-tint text-sheriff'
+                : 'bg-sheriff text-inverse hover:opacity-90'
             }`}
           >
-            {timerRunning ? '⏸ 暫停' : remainingSeconds === 0 ? '▶ 重計' : '▶ 開始計時'}
+            {timerRunning ? '暫停' : remainingSeconds === 0 ? '重計' : '開始計時'}
           </button>
           <button
             type="button"
             onClick={() => adjustSpeakerTime(10)}
             aria-label="增加 10 秒"
-            className="min-h-12 rounded-xl border border-emerald-500/45 bg-emerald-950/45 text-base font-extrabold text-emerald-200 hover:bg-emerald-900/50 active:scale-[0.98]"
+            className="min-h-12 rounded-md border border-subtle bg-canvas text-[14px] font-semibold tabular-nums text-good hover:border-strong"
           >
             +10s
           </button>
         </div>
 
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex items-center gap-1.5">
           {TIMER_PRESETS.map((sec) => (
             <button
               key={sec}
@@ -215,10 +213,10 @@ export function SpeakingTimerPanel() {
                 setTimerRunning(false);
                 setDefaultSpeakDuration(sec);
               }}
-              className={`min-h-10 flex-1 rounded-xl border text-xs font-bold transition ${
+              className={`min-h-10 flex-1 rounded-md text-[12px] font-semibold tabular-nums transition ${
                 defaultSpeakDurationSec === sec
-                  ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                  : 'border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800'
+                  ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                  : 'border border-subtle bg-canvas text-secondary hover:border-strong'
               }`}
             >
               {sec}s
@@ -231,121 +229,111 @@ export function SpeakingTimerPanel() {
               setTimerRunning(false);
               nextSpeaker();
             }}
-            className="min-h-10 flex-[1.6] rounded-xl bg-amber-500 px-3 text-xs font-extrabold text-slate-950 hover:bg-amber-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+            className="min-h-10 flex-[1.5] rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            下一位 ➜
+            下一位 →
           </button>
         </div>
       </div>
 
-      {/* 房規連動推薦與發言順序抽取 */}
+      {/* 發言順序抽取 */}
       <div className="space-y-2">
-        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-300">
-          <span className="font-bold text-amber-300">房規建議：</span>
-          {electionActive ? '警長競選中，請隨機抽取上警候選人發言順序' : ruleRecommendation.reason}
-        </div>
-
-        {/* 多死基準死者快選 */}
         {deadAnchorChoices.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-950/70 px-2.5 py-2 text-xs">
-            <span className="font-bold text-slate-400">基準死者：</span>
+          <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+            <span className="text-secondary">基準死者</span>
             {deadAnchorChoices.map((seatNum) => (
               <button
                 key={seatNum}
                 type="button"
                 onClick={() => setSelectedDeadAnchor(seatNum)}
-                className={`min-h-8 rounded-lg border px-2.5 text-xs font-bold ${
+                className={`min-h-9 rounded-md px-2.5 font-semibold tabular-nums ${
                   effectiveDeadAnchor === seatNum
-                    ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                    : 'border-slate-700 bg-slate-900 text-slate-300'
+                    ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                    : 'border border-subtle bg-surface text-secondary'
                 }`}
               >
-                {seatNum}號
+                {formatSeatNum(seatNum)}
               </button>
             ))}
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-5 gap-1.5">
           <button
             type="button"
             onClick={() => handleGenerate('random')}
-            className={`col-span-2 sm:col-span-1 min-h-12 rounded-xl border px-3 text-xs font-extrabold transition active:scale-[0.98] ${
+            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
               electionActive || isRecommended('random')
-                ? 'border-indigo-400 bg-indigo-500/25 text-indigo-100 ring-1 ring-indigo-400/50'
-                : 'border-indigo-400/35 bg-indigo-950/35 text-indigo-200 hover:bg-indigo-900/40'
+                ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                : 'border border-subtle bg-surface text-secondary hover:border-strong'
             }`}
           >
-            {electionActive ? '🎲 隨機抽（警上）' : '🎲 隨機抽取'}
+            {electionActive ? '抽警上' : '隨機'}
           </button>
-
           <button
             type="button"
             disabled={activeSheriffSeat === null}
             onClick={() => handleGenerate('sheriff_left')}
-            className={`min-h-12 rounded-xl border px-3 text-xs font-extrabold transition ${
+            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
               activeSheriffSeat === null
-                ? 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600'
+                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
                 : isRecommended('sheriff_left')
-                  ? 'border-amber-400 bg-amber-500/25 text-amber-100 ring-1 ring-amber-400/50'
-                  : 'border-amber-500/35 bg-amber-950/25 text-amber-200 hover:bg-amber-900/40'
+                  ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
             }`}
           >
-            👮 警左
+            警左
           </button>
-
           <button
             type="button"
             disabled={activeSheriffSeat === null}
             onClick={() => handleGenerate('sheriff_right')}
-            className={`min-h-12 rounded-xl border px-3 text-xs font-extrabold transition ${
+            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
               activeSheriffSeat === null
-                ? 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600'
+                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
                 : isRecommended('sheriff_right')
-                  ? 'border-amber-400 bg-amber-500/25 text-amber-100 ring-1 ring-amber-400/50'
-                  : 'border-amber-500/35 bg-amber-950/25 text-amber-200 hover:bg-amber-900/40'
+                  ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
             }`}
           >
-            👮 警右
+            警右
           </button>
-
           <button
             type="button"
             disabled={effectiveDeadAnchor === null}
             onClick={() => handleGenerate('dead_left')}
-            className={`min-h-12 rounded-xl border px-3 text-xs font-extrabold transition ${
+            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
               effectiveDeadAnchor === null
-                ? 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600'
+                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
                 : isRecommended('dead_left')
-                  ? 'border-rose-400 bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/50'
-                  : 'border-rose-500/35 bg-rose-950/25 text-rose-200 hover:bg-rose-900/40'
+                  ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
             }`}
           >
-            💀 死左{effectiveDeadAnchor !== null ? ` (${effectiveDeadAnchor}號)` : ''}
+            死左
           </button>
-
           <button
             type="button"
             disabled={effectiveDeadAnchor === null}
             onClick={() => handleGenerate('dead_right')}
-            className={`min-h-12 rounded-xl border px-3 text-xs font-extrabold transition ${
+            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
               effectiveDeadAnchor === null
-                ? 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600'
+                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
                 : isRecommended('dead_right')
-                  ? 'border-rose-400 bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/50'
-                  : 'border-rose-500/35 bg-rose-950/25 text-rose-200 hover:bg-rose-900/40'
+                  ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
             }`}
           >
-            💀 死右{effectiveDeadAnchor !== null ? ` (${effectiveDeadAnchor}號)` : ''}
+            死右
           </button>
         </div>
       </div>
 
-      {/* 發言佇列徽章列 */}
+      {/* 發言佇列 */}
       {speakingQueue.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/80 p-2.5">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="font-bold text-amber-300">
+        <div className="space-y-1.5 border-t border-subtle pt-2">
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="font-semibold text-secondary">
               {speakingMeta
                 ? `${MODE_LABELS[speakingMeta.mode]} · ${
                     speakingMeta.direction === 'clockwise' ? '順時針' : '逆時針'
@@ -358,12 +346,12 @@ export function SpeakingTimerPanel() {
                 setTimerRunning(false);
                 resetSpeakingOrder();
               }}
-              className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 font-bold text-slate-300 hover:bg-slate-700"
+              className="text-[12px] text-muted hover:text-primary"
             >
-              清除佇列
+              清除
             </button>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {speakingQueue.map((seatNum, idx) => {
               const isDone = idx < currentSpeakerIndex;
               const isCurrent = idx === currentSpeakerIndex;
@@ -371,15 +359,16 @@ export function SpeakingTimerPanel() {
               return (
                 <span
                   key={`${seatNum}-${idx}`}
-                  className={`inline-flex items-center gap-0.5 rounded-lg border px-2 py-1 text-xs font-extrabold ${
+                  className={`inline-flex h-7 items-center rounded-md px-2 text-[12px] font-semibold tabular-nums ${
                     isCurrent
-                      ? 'border-amber-400 bg-amber-500 text-slate-950'
+                      ? 'bg-sheriff text-inverse'
                       : isDone
-                        ? 'border-slate-800 bg-slate-900 text-slate-500 line-through'
-                        : 'border-slate-700 bg-slate-900 text-slate-200'
+                        ? 'border border-subtle bg-canvas text-muted line-through'
+                        : 'border border-subtle bg-surface text-primary'
                   }`}
                 >
-                  {seatNum}號{isSheriffLast ? '👮' : ''}
+                  {formatSeatNum(seatNum)}
+                  {isSheriffLast ? '警' : ''}
                 </span>
               );
             })}

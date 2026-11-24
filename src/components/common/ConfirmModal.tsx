@@ -27,39 +27,39 @@ export function ConfirmModal({
 
   const confirmStyle =
     tone === 'danger'
-      ? 'bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white'
+      ? 'bg-wolf text-primary hover:opacity-90'
       : tone === 'warning'
-        ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950'
-        : 'bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white';
+        ? 'bg-sheriff text-inverse hover:opacity-90'
+        : 'bg-sheriff text-inverse hover:opacity-90';
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/85 backdrop-blur-xs p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/78 p-4 sm:items-center"
       role="dialog"
       aria-modal="true"
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-lg border border-strong bg-surface p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-slate-50">{title}</h2>
+        <h2 className="text-[18px] font-semibold leading-6 text-primary">{title}</h2>
         {description && (
-          <p className="mt-2 text-sm leading-relaxed text-slate-300">{description}</p>
+          <p className="mt-2 text-[14px] leading-5 text-secondary">{description}</p>
         )}
         {children && <div className="mt-3">{children}</div>}
-        <div className="mt-5 flex flex-col-reverse sm:flex-row gap-2.5">
+        <div className="mt-4 flex gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-12 flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-base font-semibold text-slate-200 transition active:scale-[0.99] hover:bg-slate-700"
+            className="min-h-12 flex-1 rounded-md border border-subtle bg-canvas px-4 text-[14px] font-medium text-secondary transition hover:border-strong hover:text-primary"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`min-h-12 flex-1 rounded-xl px-4 py-3 text-base font-bold transition active:scale-[0.99] ${confirmStyle}`}
+            className={`min-h-12 flex-1 rounded-md px-4 text-[14px] font-semibold transition ${confirmStyle}`}
           >
             {confirmLabel}
           </button>

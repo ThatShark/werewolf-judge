@@ -180,21 +180,53 @@ export function formatFactionLabel(faction: GameWinner | null): string {
   return '未知陣營';
 }
 
+export function formatSeatNum(seatNumber: number): string {
+  return String(seatNumber).padStart(2, '0');
+}
+
+export function formatBoardCompositionShort(board: BoardDefinition): string {
+  const wolfCount = board.composition.wolf.reduce((sum, s) => sum + s.count, 0);
+  let godCount = 0;
+  let villagerCount = 0;
+  for (const slot of board.composition.good) {
+    const role = getRoleById(slot.roleId);
+    if (role?.category === 'villager') {
+      villagerCount += slot.count;
+    } else {
+      godCount += slot.count;
+    }
+  }
+  const thirdCount = (board.composition.thirdParty ?? []).reduce((sum, s) => sum + s.count, 0);
+  const parts = [`${wolfCount}狼`, `${godCount}神`, `${villagerCount}民`];
+  if (thirdCount > 0) {
+    parts.push(`${thirdCount}三方`);
+  }
+  return parts.join(' ');
+}
+
+export function getRoleShortSummary(roleId: string | null): string {
+  const role = getRoleById(roleId);
+  if (!role) return '無特殊技能';
+  const raw = role.description.replace(/[。！!\n].*$/s, '').trim();
+  if (raw.length <= 15) return raw;
+  return `${raw.slice(0, 14)}…`;
+}
+
 export function getRoleBadgeClasses(roleId: string | null): string {
   const role = getRoleById(roleId);
   if (!role) {
-    return 'border-slate-700 bg-slate-800/80 text-slate-400';
+    return 'border-subtle bg-elevated text-muted';
   }
   if (role.faction === 'wolf') {
-    return 'border-rose-500/40 bg-rose-950/70 text-rose-200';
+    return 'border-wolf-border bg-wolf-tint text-wolf';
+  }
+  if (role.faction === 'third_party') {
+    return 'border-third-border bg-third-tint text-third';
   }
   if (role.category === 'god') {
-    return 'border-indigo-400/40 bg-indigo-950/70 text-indigo-200';
+    return 'border-good-border bg-good-tint text-good';
   }
-  if (role.category === 'villager') {
-    return 'border-emerald-500/35 bg-emerald-950/60 text-emerald-200';
-  }
-  return 'border-amber-400/40 bg-amber-950/60 text-amber-200';
+  return 'border-subtle bg-elevated text-secondary';
 }
 
 export function formatSheriffStatusSummary(

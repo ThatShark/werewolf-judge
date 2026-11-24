@@ -9,6 +9,7 @@ import {
   buildReplayDownloadFilename,
   formatDeathReason,
   formatFactionLabel,
+  formatSeatNum,
   formatSheriffStatusSummary,
   formatVoteRecordLines,
   getRoleBadgeClasses,
@@ -150,56 +151,47 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
   const isThirdPartyWin = winner === 'third_party';
   const isDraw = winner === 'draw';
 
-  const bannerTheme = isWolfWin
-    ? 'border-rose-500/50 bg-gradient-to-br from-rose-950/90 via-slate-950 to-rose-950/50'
+  const accentBorder = isWolfWin
+    ? 'border-wolf'
     : isThirdPartyWin
-      ? 'border-amber-500/50 bg-gradient-to-br from-amber-950/90 via-slate-950 to-amber-950/50'
+      ? 'border-third'
       : isDraw
-        ? 'border-slate-600/70 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900'
-        : 'border-emerald-500/50 bg-gradient-to-br from-emerald-950/90 via-slate-950 to-cyan-950/50';
+        ? 'border-strong'
+        : 'border-good';
 
-  const emblemTheme = isWolfWin
-    ? 'border-rose-400/50 bg-rose-500/20 text-rose-200'
+  const titleColor = isWolfWin
+    ? 'text-wolf'
     : isThirdPartyWin
-      ? 'border-amber-400/50 bg-amber-500/20 text-amber-200'
+      ? 'text-third'
       : isDraw
-        ? 'border-slate-500/50 bg-slate-700/40 text-slate-200'
-        : 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200';
-
-  const titleTheme = isWolfWin
-    ? 'text-rose-200'
-    : isThirdPartyWin
-      ? 'text-amber-200'
-      : isDraw
-        ? 'text-slate-100'
-        : 'text-emerald-200';
+        ? 'text-primary'
+        : 'text-good';
 
   const learnedRoleName = mechWolfState.learnedRoleId
     ? (getRoleById(mechWolfState.learnedRoleId)?.name ?? mechWolfState.learnedRoleId)
     : null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2.5 overflow-hidden">
-      {/* 1. 頂部網易風格勝利橫幅（固定不捲動） */}
-      <section className={`shrink-0 rounded-2xl border px-3.5 py-3 shadow-lg ${bannerTheme}`}>
-        <div className="flex items-start justify-between gap-2.5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-2xl shadow-inner ${emblemTheme}`}
-            >
-              {isWolfWin ? '🐺' : isThirdPartyWin ? '🦊' : isDraw ? '🤝' : '🛡️'}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-amber-300/90">
-                Game Over · 戰局結算
-              </p>
-              <h1 className={`truncate text-xl font-black tracking-tight ${titleTheme}`}>
-                {isDraw ? '本局平局結束' : `${formatFactionLabel(winner)}勝利！`}
-              </h1>
-              {winReason && (
-                <p className="mt-0.5 line-clamp-2 text-xs font-medium text-slate-300">
-                  {winReason}
-                </p>
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+      {/* 1. 頂部戰局結算橫條 */}
+      <section className={`shrink-0 border-l-2 bg-surface px-3 py-2.5 ${accentBorder}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className={`truncate text-[18px] font-semibold leading-6 ${titleColor}`}>
+              {isDraw ? '本局平局' : `${formatFactionLabel(winner)}勝利`}
+            </h1>
+            {winReason && <p className="mt-0.5 text-[12px] text-secondary">{winReason}</p>}
+            <div className="mt-1 flex flex-wrap gap-2 text-[12px] tabular-nums text-muted">
+              <span>{round} 輪</span>
+              <span>·</span>
+              <span>
+                存活 {aliveCount}/{seats.length}
+              </span>
+              {sheriffSummary && (
+                <>
+                  <span>·</span>
+                  <span className="text-sheriff">{sheriffSummary}</span>
+                </>
               )}
             </div>
           </div>
@@ -207,160 +199,90 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
           <button
             type="button"
             onClick={() => setConfirmContinueOpen(true)}
-            className="min-h-11 shrink-0 rounded-xl border border-indigo-400/45 bg-indigo-950/60 px-2.5 text-xs font-bold text-indigo-200 transition hover:bg-indigo-900/60 active:scale-95"
+            className="min-h-10 shrink-0 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
           >
-            ⚖️ 強制繼續
+            強制繼續
           </button>
-        </div>
-
-        {/* 局數統計與警徽摘要列 */}
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-          <span className="rounded-lg border border-slate-700/80 bg-slate-900/80 px-2 py-0.5 text-slate-200">
-            ⏱️ 共 {round} 輪
-          </span>
-          <span className="rounded-lg border border-slate-700/80 bg-slate-900/80 px-2 py-0.5 text-slate-200">
-            👥 存活 {aliveCount} / {seats.length}
-          </span>
-          {sheriffSummary && (
-            <span className="rounded-lg border border-amber-400/35 bg-amber-500/15 px-2 py-0.5 text-amber-200">
-              👮 {sheriffSummary}
-            </span>
-          )}
         </div>
       </section>
 
-      {/* 2. 分頁切換列（固定不捲動） */}
+      {/* 2. 分頁列 */}
       <nav
         role="tablist"
-        aria-label="復盤檢視分頁"
-        className="grid shrink-0 grid-cols-3 gap-1.5 rounded-2xl border border-slate-800 bg-slate-900/90 p-1"
+        aria-label="復盤分頁"
+        className="grid shrink-0 grid-cols-3 gap-1 rounded-md border border-subtle bg-surface p-1"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'identities'}
-          onClick={() => setActiveTab('identities')}
-          className={`min-h-11 rounded-xl px-2 text-xs font-extrabold transition active:scale-[0.98] ${
-            activeTab === 'identities'
-              ? 'border border-amber-400/50 bg-amber-500/20 text-amber-200'
-              : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
-          }`}
-        >
-          🎭 身分回顧 ({seats.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'timeline'}
-          onClick={() => setActiveTab('timeline')}
-          className={`min-h-11 rounded-xl px-2 text-xs font-extrabold transition active:scale-[0.98] ${
-            activeTab === 'timeline'
-              ? 'border border-amber-400/50 bg-amber-500/20 text-amber-200'
-              : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
-          }`}
-        >
-          📜 對局回顧 ({timelineRounds.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'notes'}
-          onClick={() => setActiveTab('notes')}
-          className={`relative min-h-11 rounded-xl px-2 text-xs font-extrabold transition active:scale-[0.98] ${
-            activeTab === 'notes'
-              ? 'border border-amber-400/50 bg-amber-500/20 text-amber-200'
-              : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
-          }`}
-        >
-          📝 個人筆記
-          {noteHasContent && (
-            <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle" />
-          )}
-        </button>
+        {(
+          [
+            { id: 'identities', label: `身分 (${seats.length})` },
+            { id: 'timeline', label: '時間軸' },
+            { id: 'notes', label: '筆記' },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`min-h-10 rounded-md text-[12px] font-semibold tabular-nums transition ${
+              activeTab === t.id ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </nav>
 
-      {/* 3. 中央內部可捲動內容區 */}
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-800/90 bg-slate-900/75 p-3">
+      {/* 3. 中央復盤內容 */}
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-subtle bg-surface px-3 py-2">
         {activeTab === 'identities' && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="divide-y divide-subtle">
             {seats.map((seat) => {
               const role = getRoleById(seat.roleId);
               const isSheriff =
                 sheriffState.badgeStatus === 'active' &&
                 sheriffState.sheriffSeat === seat.seatNumber;
-              const isMechWolf = seat.roleId === 'mech_wolf';
-              const factionStripe = !role
-                ? 'bg-slate-600'
-                : role.faction === 'wolf'
-                  ? 'bg-rose-500'
-                  : role.category === 'god'
-                    ? 'bg-indigo-400'
-                    : role.category === 'villager'
-                      ? 'bg-emerald-400'
-                      : 'bg-amber-400';
-
               return (
                 <div
                   key={seat.seatNumber}
-                  className={`relative overflow-hidden rounded-xl border p-2.5 transition ${
-                    seat.isAlive
-                      ? 'border-slate-700/90 bg-slate-950/90'
-                      : 'border-slate-800/80 bg-slate-950/55 opacity-85'
-                  }`}
+                  className="flex items-center justify-between gap-2 py-2"
                 >
-                  {/* 陣營左側色條 */}
-                  <span
-                    aria-hidden="true"
-                    className={`absolute inset-y-0 left-0 w-1 ${factionStripe}`}
-                  />
-
-                  <div className="pl-1.5">
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex min-w-0 items-center gap-1">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xs font-black text-slate-100">
-                          {seat.seatNumber}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className={`w-6 shrink-0 text-[14px] font-semibold tabular-nums ${
+                        seat.isAlive ? 'text-primary' : 'text-muted line-through'
+                      }`}
+                    >
+                      {formatSeatNum(seat.seatNumber)}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-[14px] text-primary">
+                          {seat.nickname.trim() || `${seat.seatNumber}號`}
                         </span>
-                        <span className="truncate text-xs font-bold text-slate-200">
-                          {seat.nickname.trim() || `${seat.seatNumber} 號`}
-                        </span>
+                        {isSheriff && (
+                          <span className="text-[12px] font-semibold text-sheriff">警</span>
+                        )}
                       </div>
-                      {isSheriff && (
-                        <span
-                          title="警長"
-                          className="shrink-0 rounded-md border border-amber-400/40 bg-amber-500/20 px-1 py-0.5 text-[10px] font-bold text-amber-200"
-                        >
-                          👮 警
-                        </span>
-                      )}
+                      <div className="text-[12px] text-muted tabular-nums">
+                        {seat.isAlive
+                          ? '存活'
+                          : `R${seat.deathRound ?? '?'} · ${formatDeathReason(seat.deathReason)}`}
+                      </div>
                     </div>
-
-                    {/* 底牌角色標籤 */}
-                    <div className="mt-2 flex flex-wrap items-center gap-1">
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {seat.roleId === 'mech_wolf' && learnedRoleName && (
+                      <span className="text-[12px] text-third">學:{learnedRoleName}</span>
+                    )}
+                    {role && (
                       <span
-                        className={`rounded-lg border px-2 py-0.5 text-xs font-extrabold ${getRoleBadgeClasses(seat.roleId)}`}
+                        className={`rounded-md border px-2 py-0.5 text-[12px] font-semibold ${getRoleBadgeClasses(role.id)}`}
                       >
-                        {role?.name ?? '未指派'}
+                        {role.name}
                       </span>
-                      {isMechWolf && learnedRoleName && (
-                        <span className="rounded-md border border-fuchsia-400/40 bg-fuchsia-950/70 px-1.5 py-0.5 text-[10px] font-bold text-fuchsia-200">
-                          學：{learnedRoleName}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 最終存活或死因標籤 */}
-                    <div className="mt-2 text-[11px] leading-snug">
-                      {seat.isAlive ? (
-                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                          {seat.idiotRevealed ? '存活（白痴翻牌）' : '存活至結束'}
-                        </span>
-                      ) : (
-                        <span className="font-medium text-rose-300/90">
-                          第 {seat.deathRound ?? '?'} 輪 · {formatDeathReason(seat.deathReason)}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
               );
@@ -369,220 +291,135 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
         )}
 
         {activeTab === 'timeline' && (
-          <div className="space-y-3">
-            {timelineRounds.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
-                本局尚無日夜行動紀錄
-              </div>
-            ) : (
-              timelineRounds.map(({ round: r, night, day }) => (
-                <div
-                  key={r}
-                  className="space-y-2.5 rounded-xl border border-slate-800 bg-slate-950/80 p-3 text-xs"
-                >
-                  {night && (
-                    <div>
-                      <div className="flex items-center gap-1.5 font-extrabold text-indigo-300">
-                        <span>🌙</span>
-                        <span>第 {r} 晚</span>
-                      </div>
-                      <ul className="mt-1.5 space-y-1 text-slate-300">
-                        {night.draft.mechWolfLearnTarget !== null && (
-                          <li>• 機械狼首夜學習：{night.draft.mechWolfLearnTarget} 號</li>
-                        )}
-                        {night.draft.mechWolfSkillTarget !== null && (
-                          <li>
-                            • 機械狼使用學習技能：{night.draft.mechWolfSkillTarget} 號
-                          </li>
-                        )}
-                        {night.draft.guardTarget !== null && (
-                          <li>• 守衛守護：{night.draft.guardTarget} 號</li>
-                        )}
-                        <li>
-                          • 狼人點刀：
-                          {night.draft.wolfTarget !== null
-                            ? `${night.draft.wolfTarget} 號`
-                            : '空刀'}
-                        </li>
-                        {night.draft.witchUseAntidote && <li>• 女巫使用解藥救人</li>}
-                        {night.draft.witchPoisonTarget !== null && (
-                          <li>• 女巫使用毒藥：{night.draft.witchPoisonTarget} 號</li>
-                        )}
-                        {night.draft.seerCheckTarget !== null && (
-                          <li>• 預言家查驗：{night.draft.seerCheckTarget} 號</li>
-                        )}
-                        {night.draft.psychicCheckTarget !== null && (
-                          <li>• 通靈師查驗：{night.draft.psychicCheckTarget} 號</li>
-                        )}
-                        {night.draft.wolfBeautyCharmTarget != null && (
-                          <li>• 狼美人魅惑：{night.draft.wolfBeautyCharmTarget} 號</li>
-                        )}
-                        {night.draft.dreamCatcherTarget != null && (
-                          <li>• 攝夢人攝夢：{night.draft.dreamCatcherTarget} 號</li>
-                        )}
-                        {night.bearRoar && (
-                          <li className="text-amber-200">• 熊判定：{night.bearRoar.reason}</li>
-                        )}
-                        <li className="font-semibold text-amber-200">
-                          • 天亮結果：
-                          {night.deaths.length === 0
-                            ? '平安夜'
-                            : night.deaths
-                                .map((d) => `${d.seat} 號（${formatDeathReason(d.reason)}）`)
-                                .join('、')}
-                        </li>
-                      </ul>
-                    </div>
-                  )}
-
-                  {day && day.events.length > 0 && (
-                    <div className={night ? 'border-t border-slate-800 pt-2.5' : ''}>
-                      <div className="flex items-center gap-1.5 font-extrabold text-amber-300">
-                        <span>☀️</span>
-                        <span>第 {r} 天</span>
-                      </div>
-                      <ul className="mt-1.5 space-y-1.5 text-slate-300">
-                        {(() => {
-                          const remainingVoteEvents = [...(day.structuredEvents ?? [])].filter(
-                            (s) => s.voteRecord,
-                          );
-                          return day.events.map((evt, idx) => {
-                            const matchIdx = remainingVoteEvents.findIndex(
-                              (s) => s.summary === evt,
-                            );
-                            const matched =
-                              matchIdx !== -1
-                                ? remainingVoteEvents.splice(matchIdx, 1)[0]
-                                : undefined;
-                            return (
-                              <li key={idx} className="space-y-1">
-                                <div>• {evt}</div>
-                                {matched?.voteRecord && (
-                                  <div className="ml-3 space-y-0.5 rounded-lg border border-slate-800 bg-slate-900/90 px-2.5 py-1.5 text-[11px] text-slate-300">
-                                    {formatVoteRecordLines(matched.voteRecord).map(
-                                      (line, lIdx) => (
-                                        <div key={lIdx}>- {line}</div>
-                                      ),
-                                    )}
-                                  </div>
-                                )}
-                              </li>
-                            );
-                          });
-                        })()}
-                      </ul>
-                    </div>
-                  )}
+          <div className="divide-y divide-subtle">
+            {timelineRounds.map(({ round: r, night, day }) => (
+              <div key={r} className="space-y-1.5 py-2.5">
+                <div className="text-[12px] font-semibold tabular-nums text-sheriff">
+                  第 {r} 回合
                 </div>
-              ))
-            )}
+                {night && (
+                  <div className="text-[12px] text-secondary tabular-nums">
+                    夜間：
+                    {night.deaths.length === 0
+                      ? '平安夜'
+                      : night.deaths
+                          .map((d) => `${formatSeatNum(d.seat)}號(${formatDeathReason(d.reason)})`)
+                          .join('、')}
+                  </div>
+                )}
+                {day && day.events.length > 0 && (
+                  <ul className="space-y-1 text-[12px] text-primary">
+                    {day.events.map((evt, idx) => {
+                      const matchedVote = day.structuredEvents?.find(
+                        (s) => s.summary === evt && s.voteRecord,
+                      )?.voteRecord;
+                      return (
+                        <li key={idx}>
+                          <div>• {evt}</div>
+                          {matchedVote && (
+                            <div className="mt-0.5 pl-3 text-[12px] tabular-nums text-muted">
+                              {formatVoteRecordLines(matchedVote).join(' / ')}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
         {activeTab === 'notes' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-slate-400">
-                以下筆記將自動附帶於匯出戰報中
-              </p>
-              {onOpenNotebook && (
-                <button
-                  type="button"
-                  onClick={onOpenNotebook}
-                  className="min-h-10 shrink-0 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 text-xs font-bold text-amber-200 hover:bg-amber-500/25"
-                >
-                  ✏️ 編輯筆記
-                </button>
-              )}
-            </div>
-            <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-800 bg-slate-950/85 p-3 font-sans text-xs leading-relaxed text-slate-200">
-              {notebookPreviewText}
-            </pre>
+          <div className="space-y-2 py-1">
+            {noteHasContent ? (
+              <pre className="whitespace-pre-wrap font-sans text-[12px] leading-5 text-secondary">
+                {notebookPreviewText}
+              </pre>
+            ) : (
+              <p className="py-6 text-center text-[14px] text-muted">尚無筆記內容。</p>
+            )}
+            {onOpenNotebook && (
+              <button
+                type="button"
+                onClick={onOpenNotebook}
+                className="min-h-11 w-full rounded-md border border-subtle bg-canvas text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+              >
+                開啟筆記本編輯
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* 4. 底部匯出與大廳控制列（固定不捲動） */}
-      <section className="shrink-0 space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={handleCopyReplay}
-            className={`min-h-12 rounded-xl border px-3 text-xs font-extrabold transition active:scale-[0.98] sm:text-sm ${
-              copied
-                ? 'border-emerald-400 bg-emerald-500/25 text-emerald-100'
-                : 'border-amber-400/50 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
-            }`}
-          >
-            {copied ? '✓ 已複製戰報！' : '📋 複製紀錄表'}
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadReplay}
-            className={`min-h-12 rounded-xl border px-3 text-xs font-extrabold transition active:scale-[0.98] sm:text-sm ${
-              downloaded
-                ? 'border-emerald-400 bg-emerald-500/25 text-emerald-100'
-                : 'border-sky-400/45 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
-            }`}
-          >
-            {downloaded ? '✓ 已下載 .txt！' : '⬇️ 下載紀錄表 (.txt)'}
-          </button>
-        </div>
+      {/* 4. 底部操作列：匯出／解散線框 ＋ 單一實心主按鈕（再來一局） */}
+      <footer className="flex shrink-0 items-center gap-1.5 border-t border-subtle pt-2">
+        <button
+          type="button"
+          onClick={handleCopyReplay}
+          className="min-h-12 shrink-0 rounded-md border border-subtle bg-surface px-3 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+        >
+          {copied ? '已複製' : '複製'}
+        </button>
+        <button
+          type="button"
+          onClick={handleDownloadReplay}
+          className="min-h-12 shrink-0 rounded-md border border-subtle bg-surface px-3 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+        >
+          {downloaded ? '已下載' : '匯出'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmDissolveOpen(true)}
+          className="min-h-12 shrink-0 rounded-md border border-wolf-border bg-wolf-tint px-3 text-[12px] font-semibold text-wolf"
+        >
+          結束
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmRestartOpen(true)}
+          className="min-h-12 flex-1 rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90"
+        >
+          再來一局
+        </button>
+      </footer>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setConfirmRestartOpen(true)}
-            className="min-h-12 rounded-xl border border-emerald-500/40 bg-emerald-950/50 px-3 text-xs font-extrabold text-emerald-200 transition hover:bg-emerald-900/50 active:scale-[0.98] sm:text-sm"
-          >
-            🔄 重新開始新局
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmDissolveOpen(true)}
-            className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/50 px-3 text-xs font-extrabold text-rose-200 transition hover:bg-rose-900/55 active:scale-[0.98] sm:text-sm"
-          >
-            🚪 解散房間回主頁
-          </button>
-        </div>
-      </section>
-
-      {/* 二次確認彈窗 */}
       <ConfirmModal
         open={confirmContinueOpen}
-        title="解除結束鎖定並強制繼續對局？"
-        description="系統將清除目前的勝負狀態並返回原本的白天階段，後續對局改由法官手動控制結算（可透過「勝負覆蓋」隨時結束）。"
-        confirmLabel="確認強制繼續"
+        title="強制繼續對局"
+        description="解除勝負鎖定並返回對局流程。"
+        confirmLabel="確認繼續"
         tone="warning"
         onConfirm={() => {
-          setConfirmContinueOpen(false);
           forceContinueGame();
+          setConfirmContinueOpen(false);
         }}
         onCancel={() => setConfirmContinueOpen(false)}
       />
 
       <ConfirmModal
         open={confirmRestartOpen}
-        title="保留原配置重新開始新局？"
-        description="將保留目前的板子、3D 主持模式、房規設定與座位暱稱，並清空本局身分、歷史紀錄與個人筆記本。"
-        confirmLabel="確認重新開始"
-        tone="warning"
+        title="再來一局"
+        description="保留目前板子與玩家暱稱，重置回合與身分。"
+        confirmLabel="確認重開"
+        tone="primary"
         onConfirm={() => {
-          setConfirmRestartOpen(false);
           restartGame({ keepNicknames: true });
+          setConfirmRestartOpen(false);
         }}
         onCancel={() => setConfirmRestartOpen(false)}
       />
 
       <ConfirmModal
         open={confirmDissolveOpen}
-        title="確定解散房間並返回主頁？"
-        description="將清空目前對局紀錄、已選板子、座位暱稱與個人筆記本，並直接返回主頁。"
-        confirmLabel="確認解散房間"
+        title="結束並清空房間"
+        description="將清空本局資料並返回選板畫面。"
+        confirmLabel="確認結束"
         tone="danger"
         onConfirm={() => {
-          setConfirmDissolveOpen(false);
           dissolveRoom();
+          setConfirmDissolveOpen(false);
         }}
         onCancel={() => setConfirmDissolveOpen(false)}
       />

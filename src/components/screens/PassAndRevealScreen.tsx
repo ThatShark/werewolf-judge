@@ -5,8 +5,9 @@ import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
   formatFactionLabel,
-  formatSeatDisplay,
+  formatSeatNum,
   getRoleBadgeClasses,
+  getRoleShortSummary,
 } from '../common/displayHelpers';
 
 export function PassAndRevealScreen() {
@@ -29,9 +30,10 @@ export function PassAndRevealScreen() {
 
   const confirmedSet = useMemo(() => new Set(confirmedSeats), [confirmedSeats]);
 
-  const nextUnconfirmedSeat = useMemo(() => {
-    return seats.find((seat) => !confirmedSet.has(seat.seatNumber)) ?? null;
-  }, [seats, confirmedSet]);
+  const nextUnconfirmedSeat = useMemo(
+    () => seats.find((seat) => !confirmedSet.has(seat.seatNumber)) ?? null,
+    [seats, confirmedSet],
+  );
 
   const activeSeat = useMemo(() => {
     if (overrideSeatNumber !== null) {
@@ -40,8 +42,20 @@ export function PassAndRevealScreen() {
     return nextUnconfirmedSeat;
   }, [overrideSeatNumber, seats, nextUnconfirmedSeat]);
 
-  const allConfirmed = seats.length > 0 && confirmedSeats.length >= seats.length && !overrideSeatNumber;
+  const allConfirmed =
+    seats.length > 0 && confirmedSeats.length >= seats.length && !overrideSeatNumber;
   const activeRole = activeSeat ? getRoleById(activeSeat.roleId) : undefined;
+
+  const wolfTeammateSeats = useMemo(() => {
+    if (!activeSeat || activeRole?.faction !== 'wolf') return [];
+    return seats
+      .filter((s) => {
+        if (s.seatNumber === activeSeat.seatNumber) return false;
+        const r = getRoleById(s.roleId);
+        return r?.faction === 'wolf';
+      })
+      .map((s) => s.seatNumber);
+  }, [activeSeat, activeRole, seats]);
 
   const handleConfirmAndHide = () => {
     if (!activeSeat) return;
@@ -57,7 +71,7 @@ export function PassAndRevealScreen() {
     setIsCardVisible(false);
     setOverrideSeatNumber(null);
     if (res.ok) {
-      setNotice('已重新隨機發牌，請從 1 號開始依序傳閱確認身分。');
+      setNotice('已重新洗牌。');
     } else {
       setNotice(res.errors.join(' '));
     }
@@ -70,7 +84,7 @@ export function PassAndRevealScreen() {
     setIsCardVisible(false);
     setPendingRecheckSeat(null);
     setRecheckPickerOpen(false);
-    setNotice(`請將裝置交給 ${pendingRecheckSeat} 號玩家重新確認身分。`);
+    setNotice(`請交給 ${formatSeatNum(pendingRecheckSeat)} 號重看。`);
   };
 
   const handleStartFirstNight = () => {
@@ -87,192 +101,163 @@ export function PassAndRevealScreen() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      {/* 頂部進度列 */}
-      <section className="shrink-0 rounded-2xl border border-slate-800 bg-slate-900/90 p-3">
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+      {/* 頂部極簡進度列 */}
+      <section className="shrink-0 space-y-2 border-b border-subtle pb-2">
         <div className="flex items-center justify-between gap-2">
-          <div>
-            <h1 className="text-sm font-extrabold text-slate-50">傳閱確認身分</h1>
-            <p className="mt-0.5 text-xs text-slate-400">
-              依序由 1 號至 {seats.length} 號單獨查看，確認後自動隱藏。
-            </p>
-          </div>
-          <span className="shrink-0 rounded-xl border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 text-xs font-extrabold text-amber-200">
-            已確認 {confirmedSeats.length} / {seats.length}
+          <h1 className="text-[18px] font-semibold leading-6 text-primary">傳閱底牌</h1>
+          <span className="text-[14px] font-semibold tabular-nums text-sheriff">
+            {confirmedSeats.length} / {seats.length}
           </span>
         </div>
 
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {seats.map((seat) => {
             const isConfirmed = confirmedSet.has(seat.seatNumber);
             const isCurrent = activeSeat?.seatNumber === seat.seatNumber;
             return (
               <span
                 key={seat.seatNumber}
-                className={`inline-flex h-7 min-w-7 items-center justify-center rounded-lg border px-1.5 text-xs font-extrabold transition ${
+                className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[12px] font-semibold tabular-nums ${
                   isCurrent
-                    ? 'border-amber-400 bg-amber-500 text-slate-950'
+                    ? 'bg-sheriff text-inverse'
                     : isConfirmed
-                      ? 'border-emerald-500/45 bg-emerald-500/20 text-emerald-200'
-                      : 'border-slate-800 bg-slate-950 text-slate-500'
+                      ? 'border border-good-border bg-good-tint text-good'
+                      : 'border border-subtle bg-surface text-muted'
                 }`}
               >
-                {seat.seatNumber}
+                {formatSeatNum(seat.seatNumber)}
               </span>
             );
           })}
         </div>
 
         {notice && (
-          <div className="mt-2 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-1.5 text-xs text-amber-200">
+          <div className="border-l-2 border-sheriff bg-surface px-3 py-1.5 text-[12px] text-sheriff">
             {notice}
           </div>
         )}
       </section>
 
-      {/* 中央互動卡片區 */}
+      {/* 中央底牌區 */}
       <section className="flex min-h-0 flex-1 flex-col justify-center overflow-hidden">
         {allConfirmed ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-emerald-500/40 bg-gradient-to-b from-emerald-950/40 to-slate-900 p-6 text-center shadow-xl">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 text-3xl">
-              ✅
+          <div className="flex flex-col items-center justify-center rounded-lg border border-good-border bg-surface p-6 text-center">
+            <div className="text-[12px] font-semibold uppercase tracking-widest text-good">
+              READY
             </div>
-            <h2 className="mt-4 text-xl font-extrabold text-emerald-200">
-              全體 {seats.length} 位玩家皆已確認身分
+            <h2 className="mt-2 text-[18px] font-semibold tabular-nums text-primary">
+              全體 {seats.length} 位玩家已確認
             </h2>
-            <p className="mt-2 text-xs leading-relaxed text-slate-300">
-              請將裝置交還給法官或放回桌面中央，點擊下方按鈕即可進入第一晚。
-            </p>
             <button
               type="button"
               onClick={handleStartFirstNight}
-              className="mt-6 min-h-14 w-full max-w-xs rounded-2xl bg-emerald-500 px-6 py-3.5 text-base font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 active:scale-[0.98]"
+              className="mt-6 min-h-12 w-full max-w-xs rounded-md bg-good px-6 text-[14px] font-semibold text-inverse transition hover:opacity-90"
             >
-              🌙 進入第一夜
+              進入第一夜
             </button>
           </div>
         ) : activeSeat && !isCardVisible ? (
-          /* 待機防窺遮罩 */
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-slate-700 bg-slate-900/95 p-6 text-center shadow-2xl">
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-300">
-              防窺待機畫面
-            </span>
-            <div className="mt-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-400/50 bg-slate-950 text-3xl font-black text-amber-300">
-              {activeSeat.seatNumber}
+          <div className="flex flex-col items-center justify-center rounded-lg border border-subtle bg-surface p-6 text-center">
+            <div className="text-[12px] font-semibold uppercase tracking-widest text-secondary">
+              PASS DEVICE TO
             </div>
-            <h2 className="mt-4 text-xl font-extrabold text-slate-50">
-              請將裝置交給 {formatSeatDisplay(activeSeat)}
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              確認周圍沒有其他玩家偷看後，點擊下方按鈕查看本局身分。
-            </p>
+            <div className="mt-3 text-[36px] font-bold leading-none tabular-nums text-sheriff">
+              {formatSeatNum(activeSeat.seatNumber)}
+            </div>
+            {activeSeat.nickname.trim() && (
+              <div className="mt-2 text-[14px] font-medium text-primary">
+                {activeSeat.nickname.trim()}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setIsCardVisible(true)}
-              className="mt-6 min-h-14 w-full max-w-xs rounded-2xl bg-amber-500 px-6 py-3.5 text-base font-extrabold text-slate-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 active:scale-[0.98]"
+              className="mt-6 min-h-12 w-full max-w-xs rounded-md bg-sheriff px-6 text-[14px] font-semibold text-inverse transition hover:opacity-90"
             >
-              👁️ 點擊查看身分
+              查看底牌
             </button>
           </div>
         ) : activeSeat ? (
-          /* 角色卡片與技能簡介 */
-          <div className="flex min-h-0 flex-col justify-between rounded-3xl border border-indigo-500/40 bg-slate-900 p-5 shadow-2xl">
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-400">
-                  {formatSeatDisplay(activeSeat)} 的本局身分
+          <div className="flex flex-col items-center justify-center rounded-lg border border-strong bg-surface p-6 text-center">
+            <div className="flex items-center gap-2 text-[12px] tabular-nums text-secondary">
+              <span>{formatSeatNum(activeSeat.seatNumber)} 號</span>
+              {activeRole && (
+                <span
+                  className={`rounded-md border px-2 py-0.5 font-semibold ${getRoleBadgeClasses(activeRole.id)}`}
+                >
+                  {formatFactionLabel(activeRole.faction)}
                 </span>
-                {activeRole && (
-                  <span
-                    className={`rounded-lg border px-2.5 py-0.5 text-xs font-bold ${getRoleBadgeClasses(activeRole.id)}`}
-                  >
-                    {formatFactionLabel(activeRole.faction)}
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/80 p-4 text-center">
-                <div className="text-3xl font-black tracking-tight text-slate-50">
-                  {activeRole?.name ?? activeSeat.roleId ?? '未分配'}
-                </div>
-                {activeRole?.aliases && activeRole.aliases.length > 0 && (
-                  <div className="mt-1 text-xs text-slate-400">
-                    別名：{activeRole.aliases.join(' / ')}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5">
-                <div className="text-xs font-bold text-amber-300">技能與職責</div>
-                <p className="mt-1.5 text-sm leading-relaxed text-slate-200">
-                  {activeRole?.description ?? '請依照本板子規則進行遊戲。'}
-                </p>
-                {activeRole?.warnings && activeRole.warnings.length > 0 && (
-                  <ul className="mt-2.5 space-y-1 border-t border-slate-800 pt-2 text-xs leading-relaxed text-rose-200">
-                    {activeRole.warnings.map((w, idx) => (
-                      <li key={idx}>⚠️ {w}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              )}
             </div>
+
+            <div className="mt-4 text-[32px] font-bold leading-tight tracking-tight text-primary">
+              {activeRole?.name ?? activeSeat.roleId ?? '未分配'}
+            </div>
+
+            <p className="mt-2 text-[14px] font-medium text-secondary">
+              {getRoleShortSummary(activeSeat.roleId)}
+            </p>
+
+            {wolfTeammateSeats.length > 0 && (
+              <div className="mt-4 border-l-2 border-wolf bg-wolf-tint px-3 py-2 text-[14px] font-semibold tabular-nums text-wolf">
+                狼隊友：{wolfTeammateSeats.map((n) => `${formatSeatNum(n)}號`).join('、')}
+              </div>
+            )}
 
             <button
               type="button"
               onClick={handleConfirmAndHide}
-              className="mt-4 min-h-14 w-full shrink-0 rounded-2xl bg-indigo-500 px-6 py-3.5 text-base font-extrabold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-400 active:scale-[0.98]"
+              className="mt-6 min-h-12 w-full max-w-xs rounded-md bg-sheriff px-6 text-[14px] font-semibold text-inverse transition hover:opacity-90"
             >
-              🙈 確認並隱藏身分
+              確認並隱藏
             </button>
           </div>
         ) : null}
       </section>
 
-      {/* 底部常駐防呆按鈕列 */}
-      <footer className="shrink-0 grid grid-cols-3 gap-2 border-t border-slate-800 pt-2.5">
+      {/* 底部極簡線框工具列 */}
+      <footer className="grid shrink-0 grid-cols-3 gap-1.5 border-t border-subtle pt-2">
         <button
           type="button"
           onClick={returnToLobby}
-          className="min-h-12 rounded-xl border border-slate-700 bg-slate-900 px-2.5 text-xs font-bold text-slate-300 transition hover:bg-slate-800 active:scale-[0.98]"
+          className="min-h-12 rounded-md border border-subtle bg-surface px-2 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
         >
-          ← 返回大廳
+          返回大廳
         </button>
         <button
           type="button"
           onClick={() => setRecheckPickerOpen(true)}
-          className="min-h-12 rounded-xl border border-sky-500/40 bg-sky-950/40 px-2.5 text-xs font-bold text-sky-200 transition hover:bg-sky-900/50 active:scale-[0.98]"
+          className="min-h-12 rounded-md border border-subtle bg-surface px-2 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
         >
-          🔍 指定重看
+          指定重看
         </button>
         <button
           type="button"
           onClick={() => setConfirmRedealOpen(true)}
-          className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/40 px-2.5 text-xs font-bold text-rose-200 transition hover:bg-rose-900/50 active:scale-[0.98]"
+          className="min-h-12 rounded-md border border-wolf-border bg-wolf-tint px-2 text-[12px] font-semibold text-wolf"
         >
-          🎲 重新發牌
+          重新發牌
         </button>
       </footer>
 
-      {/* 重新隨機發牌二次確認 */}
       <ConfirmModal
         open={confirmRedealOpen}
-        title="確定要重新隨機發牌？"
-        description="將重新打亂所有玩家的身分配置，並重置全部座位的傳閱確認進度（從 1 號重新開始）。"
-        confirmLabel="確定重新發牌"
+        title="重新隨機發牌"
+        description="將重新洗牌並重置所有座位的確認進度。"
+        confirmLabel="確認重發"
         tone="danger"
         onConfirm={handleRedeal}
         onCancel={() => setConfirmRedealOpen(false)}
       />
 
-      {/* 指定號碼重新查看選擇與確認 */}
       <ConfirmModal
         open={recheckPickerOpen}
-        title="指定號碼重新查看身分"
-        description="請點選忘記身分的玩家座號，確認後將切換回該座號的防窺待機畫面。"
+        title="指定座號重看"
         confirmLabel={
           pendingRecheckSeat !== null
-            ? `讓 ${pendingRecheckSeat} 號重新查看`
-            : '請先選擇座號'
+            ? `讓 ${formatSeatNum(pendingRecheckSeat)} 號重看`
+            : '請選擇座號'
         }
         tone="warning"
         onConfirm={() => {
@@ -285,7 +270,7 @@ export function PassAndRevealScreen() {
           setPendingRecheckSeat(null);
         }}
       >
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-1.5">
           {seats.map((seat) => {
             const selected = pendingRecheckSeat === seat.seatNumber;
             return (
@@ -293,13 +278,13 @@ export function PassAndRevealScreen() {
                 key={seat.seatNumber}
                 type="button"
                 onClick={() => setPendingRecheckSeat(seat.seatNumber)}
-                className={`min-h-12 rounded-xl border text-sm font-extrabold transition ${
+                className={`min-h-11 rounded-md text-[14px] font-semibold tabular-nums transition ${
                   selected
-                    ? 'border-amber-400 bg-amber-500 text-slate-950'
-                    : 'border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800'
+                    ? 'bg-sheriff text-inverse'
+                    : 'border border-subtle bg-canvas text-secondary hover:border-strong'
                 }`}
               >
-                {seat.seatNumber} 號
+                {formatSeatNum(seat.seatNumber)}
               </button>
             );
           })}

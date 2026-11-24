@@ -110,6 +110,7 @@ function App() {
   };
 
   const isZeroScrollPhase =
+    phase === 'board_select' ||
     phase === 'seat_setup' ||
     phase === 'pass_and_reveal' ||
     phase === 'night' ||
@@ -141,7 +142,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-canvas text-primary">
       {activeView === 'home' ? (
         <HomeScreen
           hasActiveGame={hasActiveGame}
@@ -169,7 +170,7 @@ function App() {
             onOpenRestart={() => setRestartOpen(true)}
           />
 
-          <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 py-3 md:max-w-2xl">
+          <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 py-2 md:max-w-2xl">
             {renderMainContent()}
           </main>
         </>
@@ -185,13 +186,13 @@ function App() {
 
       <ConfirmModal
         open={confirmUndoOpen && undoStack.length > 0}
-        title="確定撤銷上一步操作？"
+        title="撤銷上一步"
         description={
           latestUndoLabel
-            ? `即將還原「${latestUndoLabel}」之前的對局狀態（目前共可連續撤銷 ${undoStack.length} 步）。`
-            : '即將還原至上一步的對局狀態。'
+            ? `還原「${latestUndoLabel}」前的狀態（可撤銷 ${undoStack.length} 步）。`
+            : '還原至上一步的對局狀態。'
         }
-        confirmLabel="↩ 確認撤銷上一步"
+        confirmLabel="確認撤銷"
         tone="warning"
         onConfirm={() => {
           undoLastStep();

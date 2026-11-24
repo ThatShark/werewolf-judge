@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { getRoleById } from '../../data/roles';
 import {
   getBatch5ExileExtraVotes,
   getEligibleExileVoters,
@@ -9,7 +8,8 @@ import {
 } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
-import { formatSeatDisplay, getRoleBadgeClasses } from '../common/displayHelpers';
+import { SlideDrawer } from '../common/SlideDrawer';
+import { formatSeatNum, splitSeatsIntoSymmetricColumns } from '../common/displayHelpers';
 
 interface ExileVotePanelProps {
   disabled?: boolean;
@@ -17,7 +17,6 @@ interface ExileVotePanelProps {
 
 export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const seats = useGameStore((s) => s.seats);
-  const hostMode = useGameStore((s) => s.hostMode);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const exilePkCandidates = useGameStore((s) => s.exilePkCandidates);
   const voteInputMode = useGameStore((s) => s.voteInputMode);
@@ -32,37 +31,21 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const [votesDraft, setVotesDraft] = useState<Record<number, number | null>>({});
   const [selectedCandidateTab, setSelectedCandidateTab] = useState<number | null>(null);
   const [extraVotes, setExtraVotes] = useState<Record<number, number>>({});
-  const [showExtraVotes, setShowExtraVotes] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmBallotOpen, setConfirmBallotOpen] = useState(false);
   const [confirmUndoRecordOpen, setConfirmUndoRecordOpen] = useState(false);
-  const [lastTallyNotice, setLastTallyNotice] = useState<string | null>(null);
-
-  const hasDraftInput =
-    Object.values(votesDraft).some((v) => v !== null && v !== undefined) ||
-    Object.values(extraVotes).some((v) => v > 0);
-  const latestUndoLabel = undoStack.length > 0 ? undoStack[undoStack.length - 1].label : undefined;
-
-  // 快速直接放逐折疊區
-  const [showQuickExile, setShowQuickExile] = useState(false);
   const [quickExileSeat, setQuickExileSeat] = useState<number | null>(null);
   const [confirmQuickExileOpen, setConfirmQuickExileOpen] = useState(false);
+  const [lastTallyNotice, setLastTallyNotice] = useState<string | null>(null);
 
-  const isOnlineJudge = hostMode.judgeMode === 'online_judge';
   const aliveSeats = useMemo(() => seats.filter((s) => s.isAlive), [seats]);
   const eligibleVoters = useMemo(() => getEligibleExileVoters(seats), [seats]);
-  const revealedIdiots = useMemo(
-    () => seats.filter((s) => s.isAlive && s.roleId === 'idiot' && s.idiotRevealed),
-    [seats],
-  );
-
   const activeSheriffSeat =
     sheriffState.badgeStatus === 'active' ? sheriffState.sheriffSeat : null;
 
   const targetSeats = useMemo(
     () =>
-      exilePkCandidates.length > 0
-        ? exilePkCandidates
-        : aliveSeats.map((s) => s.seatNumber),
+      exilePkCandidates.length > 0 ? exilePkCandidates : aliveSeats.map((s) => s.seatNumber),
     [exilePkCandidates, aliveSeats],
   );
 
@@ -113,491 +96,406 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
 
   const tallyPreview = useMemo(() => {
     if (eligibleVoters.length === 0) return null;
-    return tallyExileVotes({
+    const raw = tallyExileVotes({
       seats,
       votes: normalizedVotes,
       sheriffSeat: activeSheriffSeat,
       extraVotes: normalizedExtraVotes,
-      pkCandidates: exilePkCandidates,
-      roundIndex: exilePkCandidates.length > 0 ? 2 : 1,
     });
-  }, [
-    eligibleVoters.length,
-    seats,
-    normalizedVotes,
-    activeSheriffSeat,
-    normalizedExtraVotes,
-    exilePkCandidates,
-  ]);
+    const entries = Object.entries(raw.record.totals);
+    const maxVotes = entries.reduce((m, [, v]) => Math.max(m, v), 0);
+    const topSeats =
+      maxVotes > 0
+        ? entries
+            .filter(([, v]) => v === maxVotes)
+            .map(([k]) => Number(k))
+            .sort((a, b) => a - b)
+        : [];
+    return { ...raw, totals: raw.record.totals, topSeats, maxVotes };
+  }, [seats, normalizedVotes, activeSheriffSeat, normalizedExtraVotes, eligibleVoters.length]);
 
-  const isPkRound = exilePkCandidates.length > 0;
-  const quickExileObj = seats.find((s) => s.seatNumber === quickExileSeat);
+  const targetSeatObjects = useMemo(
+    () => targetSeats.map((num) => seats.find((s) => s.seatNumber === num)).filter(Boolean) as typeof seats,
+    [targetSeats, seats],
+  );
+  const { left: leftTargets, right: rightTargets } = splitSeatsIntoSymmetricColumns(targetSeatObjects);
+
+  const handleToggleVoter = (voterSeat: number) => {
+    if (disabled || activeCandidateForTally === null) return;
+    setVotesDraft((prev) =>
+      toggleVoterForCandidate(prev, voterSeat, activeCandidateForTally),
+    );
+  };
+
+  const handleConfirmBallot = () => {
+    setConfirmBallotOpen(false);
+    const res = submitExileVotes(normalizedVotes, normalizedExtraVotes);
+    setVotesDraft({});
+    setExtraVotes({});
+    if (res.outcome === 'exile' && res.record.electedSeat !== null) {
+      setLastTallyNotice(`放逐結果：${formatSeatNum(res.record.electedSeat)} 號出局`);
+    } else if (res.outcome === 'tie') {
+      setLastTallyNotice(`平票 PK：${res.record.tiedSeats.map(formatSeatNum).join('、')} 號`);
+    } else if (res.outcome === 'no_exile') {
+      setLastTallyNotice('平安日（無人出局）');
+    } else {
+      setLastTallyNotice('已結算放逐結果');
+    }
+  };
+
+  const renderTargetRow = (seat: (typeof seats)[number]) => {
+    const isActive = activeCandidateForTally === seat.seatNumber;
+    const total = tallyPreview?.totals[seat.seatNumber] ?? 0;
+    const extra = normalizedExtraVotes[seat.seatNumber] ?? 0;
+    const isTop = tallyPreview?.topSeats.includes(seat.seatNumber) && total > 0;
+
+    return (
+      <button
+        key={seat.seatNumber}
+        type="button"
+        disabled={disabled}
+        onClick={() => setSelectedCandidateTab(seat.seatNumber)}
+        className={`flex min-h-12 w-full items-center justify-between gap-2 rounded-md px-2.5 text-left transition ${
+          isActive
+            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+            : 'border border-subtle bg-surface text-primary hover:border-strong'
+        }`}
+      >
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="w-6 shrink-0 text-[14px] font-semibold tabular-nums">
+            {formatSeatNum(seat.seatNumber)}
+          </span>
+          <span className="truncate text-[12px] text-secondary">
+            {seat.nickname.trim() || `${seat.seatNumber}號`}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 tabular-nums">
+          {extra > 0 && (
+            <span className="text-[12px] font-semibold text-third">+{extra}</span>
+          )}
+          <span
+            className={`text-[18px] font-semibold leading-none ${
+              isTop ? 'text-wolf' : total > 0 ? 'text-primary' : 'text-muted'
+            }`}
+          >
+            {total}
+          </span>
+        </div>
+      </button>
+    );
+  };
 
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-base font-bold text-slate-50">
-            {isPkRound ? '⚖️ 放逐平票 PK 投票' : '🗳️ 雙模式放逐投票紀錄器'}
-          </h2>
-          <p className="mt-0.5 text-[11px] text-slate-400">
-            自由切換逐人或依候選人唱票，共用同一份票型草稿（自動套用警長 1.5 票與白痴排權）。
-          </p>
+    <div className="space-y-2.5">
+      {/* 頂部精簡列：標題／PK 標記 ＋ 右上角選單 */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[14px] font-semibold text-primary">
+            {exilePkCandidates.length > 0 ? 'PK 投票' : '放逐計票'}
+          </span>
+          {tallyPreview && tallyPreview.topSeats.length > 0 && tallyPreview.maxVotes > 0 && (
+            <span className="text-[12px] font-semibold tabular-nums text-wolf">
+              領先 {tallyPreview.topSeats.map(formatSeatNum).join('/')}（{tallyPreview.maxVotes}）
+            </span>
+          )}
         </div>
-      </div>
-
-      {/* 雙模式切換器 */}
-      <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950 p-1">
         <button
           type="button"
-          onClick={() => setVoteInputMode('by_voter')}
-          className={`min-h-10 rounded-lg text-xs font-extrabold transition ${
-            voteInputMode === 'by_voter'
-              ? 'bg-amber-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800'
-          }`}
+          onClick={() => setMenuOpen(true)}
+          className="min-h-10 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
         >
-          方式一：逐人記錄
-        </button>
-        <button
-          type="button"
-          onClick={() => setVoteInputMode('by_candidate')}
-          className={`min-h-10 rounded-lg text-xs font-extrabold transition ${
-            voteInputMode === 'by_candidate'
-              ? 'bg-amber-500 text-slate-950'
-              : 'text-slate-300 hover:bg-slate-800'
-          }`}
-        >
-          方式二：依候選人唱票
+          計票選單
         </button>
       </div>
-
-      {isPkRound && (
-        <div className="rounded-xl border border-amber-400/50 bg-amber-950/35 px-3 py-2 text-xs font-bold text-amber-200">
-          ⚖️ 平票 PK 輪：僅可投給 {exilePkCandidates.join('、')} 號（再平票即平安日）。
-        </div>
-      )}
-
-      {revealedIdiots.length > 0 && (
-        <div className="rounded-xl border border-indigo-400/40 bg-indigo-950/30 px-3 py-2 text-xs text-indigo-200">
-          🃏 已翻牌白痴（無投票權）：
-          {revealedIdiots.map((s) => `${s.seatNumber} 號`).join('、')}
-        </div>
-      )}
 
       {lastTallyNotice && (
-        <div className="rounded-xl border border-amber-400/45 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
+        <div className="border-l-2 border-sheriff bg-surface px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">
           {lastTallyNotice}
         </div>
       )}
 
-      {/* 模式一：逐人記錄 */}
-      {voteInputMode === 'by_voter' ? (
-        <div className="space-y-2">
+      {/* 候選座位雙欄票數表（右側大號 tabular-nums 票數 ＋ +1 小標記） */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="flex flex-col gap-1.5">{leftTargets.map(renderTargetRow)}</div>
+        <div className="flex flex-col gap-1.5">{rightTargets.map(renderTargetRow)}</div>
+      </div>
+
+      {/* 投給當前焦點候選人的投票人點選區 */}
+      {voteInputMode === 'by_candidate' && activeCandidateForTally !== null && (
+        <div className="space-y-1.5 border-t border-subtle pt-2">
+          <div className="flex items-center justify-between text-[12px] text-secondary tabular-nums">
+            <span>
+              點選投給{' '}
+              <strong className="text-sheriff">{formatSeatNum(activeCandidateForTally)} 號</strong>{' '}
+              的座位
+            </span>
+            <span>
+              {(votersByCandidate[activeCandidateForTally] ?? []).length} 人
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+            {eligibleVoters.map((voterSeat) => {
+              const votedTarget = normalizedVotes[voterSeat] ?? null;
+              const isForActive = votedTarget === activeCandidateForTally;
+              const isForOther = votedTarget !== null && !isForActive;
+              const isSheriff = activeSheriffSeat === voterSeat;
+              return (
+                <button
+                  key={voterSeat}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => handleToggleVoter(voterSeat)}
+                  className={`min-h-11 rounded-md text-[14px] font-semibold tabular-nums transition ${
+                    isForActive
+                      ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                      : isForOther
+                        ? 'border border-subtle bg-canvas text-muted opacity-55'
+                        : 'border border-subtle bg-surface text-primary hover:border-strong'
+                  }`}
+                >
+                  {formatSeatNum(voterSeat)}
+                  {isSheriff && <span className="ml-0.5 text-[12px] text-sheriff">*</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {voteInputMode === 'by_voter' && (
+        <div className="divide-y divide-subtle border-t border-subtle pt-1">
           {eligibleVoters.map((voterSeat) => {
-            const voterObj = seats.find((s) => s.seatNumber === voterSeat);
-            const isSheriff = activeSheriffSeat === voterSeat;
-            const selectedTarget = normalizedVotes[voterSeat] ?? null;
-
+            const picked = normalizedVotes[voterSeat] ?? null;
             return (
-              <div
-                key={voterSeat}
-                className="rounded-xl border border-slate-800 bg-slate-950/80 p-2.5"
-              >
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="text-xs font-extrabold text-slate-100">
-                    {voterObj ? formatSeatDisplay(voterObj) : `${voterSeat} 號`}
-                  </span>
-                  {isSheriff && (
-                    <span className="rounded-md border border-amber-400/50 bg-amber-500/20 px-2 py-0.5 text-[10px] font-extrabold text-amber-200">
-                      👮 1.5票
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {targetSeats.map((targetSeat) => {
-                    const picked = selectedTarget === targetSeat;
-                    return (
-                      <button
-                        key={targetSeat}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() =>
-                          setVotesDraft((prev) => ({
-                            ...prev,
-                            [voterSeat]: picked ? null : targetSeat,
-                          }))
-                        }
-                        className={`min-h-10 rounded-lg border px-2.5 text-xs font-extrabold transition ${
-                          picked
-                            ? 'border-amber-400 bg-amber-500 text-slate-950'
-                            : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
-                        }`}
-                      >
-                        {targetSeat}號
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() =>
-                      setVotesDraft((prev) => ({
-                        ...prev,
-                        [voterSeat]: null,
-                      }))
-                    }
-                    className={`min-h-10 rounded-lg border px-2.5 text-xs font-bold transition ${
-                      selectedTarget === null
-                        ? 'border-slate-500 bg-slate-700 text-slate-100'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800'
-                    }`}
-                  >
-                    棄票
-                  </button>
+              <div key={voterSeat} className="flex items-center justify-between gap-2 py-2">
+                <span className="w-10 shrink-0 text-[14px] font-semibold tabular-nums text-primary">
+                  {formatSeatNum(voterSeat)}
+                </span>
+                <div className="flex flex-1 flex-wrap justify-end gap-1">
+                  {targetSeats.map((target) => (
+                    <button
+                      key={target}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() =>
+                        setVotesDraft((prev) => ({
+                          ...prev,
+                          [voterSeat]: prev[voterSeat] === target ? null : target,
+                        }))
+                      }
+                      className={`min-h-9 min-w-9 rounded-md px-2 text-[12px] font-semibold tabular-nums ${
+                        picked === target
+                          ? 'bg-sheriff text-inverse'
+                          : 'border border-subtle bg-canvas text-secondary'
+                      }`}
+                    >
+                      {formatSeatNum(target)}
+                    </button>
+                  ))}
                 </div>
               </div>
             );
           })}
         </div>
-      ) : (
-        /* 模式二：依候選人唱票勾選 */
-        <div className="space-y-2.5">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-300">1. 點選得票候選人：</span>
-              <span className="text-slate-400">
-                棄票 {tallyPreview?.record.abstainers.length ?? 0} 人
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {targetSeats.map((candSeat) => {
-                const score = tallyPreview?.record.totals[candSeat] ?? 0;
-                const voterCount = votersByCandidate[candSeat]?.length ?? 0;
-                const active = activeCandidateForTally === candSeat;
-                return (
-                  <button
-                    key={candSeat}
-                    type="button"
-                    onClick={() => setSelectedCandidateTab(candSeat)}
-                    className={`min-h-11 rounded-xl border px-2.5 text-xs font-extrabold transition ${
-                      active
-                        ? 'border-amber-400 bg-amber-500 text-slate-950'
-                        : voterCount > 0 || score > 0
-                          ? 'border-amber-500/40 bg-amber-950/35 text-amber-200'
-                          : 'border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    {candSeat}號{score > 0 ? ` (${score}票)` : ''}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {activeCandidateForTally !== null && (
-            <div className="space-y-2 rounded-xl border border-amber-500/35 bg-slate-950/80 p-3">
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="font-bold text-amber-200">
-                  2. 勾選投給「{activeCandidateForTally} 號」的投票者：
-                </span>
-                <span className="font-bold text-slate-300">
-                  目前 {tallyPreview?.record.totals[activeCandidateForTally] ?? 0} 票
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                {eligibleVoters.map((voterSeat) => {
-                  const votedFor = normalizedVotes[voterSeat] ?? null;
-                  const pickedHere = votedFor === activeCandidateForTally;
-                  const pickedOther = votedFor !== null && !pickedHere;
-                  const isSheriff = activeSheriffSeat === voterSeat;
-
-                  return (
-                    <button
-                      key={voterSeat}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() =>
-                        setVotesDraft((prev) =>
-                          toggleVoterForCandidate(prev, activeCandidateForTally, voterSeat),
-                        )
-                      }
-                      className={`min-h-11 rounded-xl border px-2 py-1.5 text-xs font-extrabold transition ${
-                        pickedHere
-                          ? 'border-amber-400 bg-amber-500 text-slate-950'
-                          : pickedOther
-                            ? 'border-slate-700 bg-slate-900/70 text-slate-400'
-                            : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
-                      }`}
-                    >
-                      <div>
-                        {voterSeat}號{isSheriff ? '👮' : ''}
-                      </div>
-                      {pickedOther && (
-                        <div className="text-[10px] font-normal">已投 {votedFor}號</div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
       )}
 
-      {/* 預留烏鴉額外 +1 票加票鈕 */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2.5">
-        <button
-          type="button"
-          onClick={() => setShowExtraVotes((prev) => !prev)}
-          className="flex min-h-10 w-full items-center justify-between text-xs font-bold text-slate-300"
-        >
-          <span>🐦 額外加票設定（如烏鴉詛咒 +1 票）</span>
-          <span className="text-amber-300">
-            {Object.keys(normalizedExtraVotes).length > 0
-              ? `已加票：${Object.entries(normalizedExtraVotes)
-                  .map(([s, v]) => `${s}號+${v}`)
-                  .join('、')}`
-              : showExtraVotes
-                ? '收起'
-                : '展開'}
-          </span>
-        </button>
-
-        {showExtraVotes && (
-          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-800 pt-2">
-            {targetSeats.map((targetSeat) => {
-              const hasBonus = (normalizedExtraVotes[targetSeat] ?? 0) > 0;
-              return (
-                <button
-                  key={targetSeat}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    setExtraVotes((prev) => ({
-                      ...prev,
-                      [targetSeat]: hasBonus ? 0 : 1,
-                    }))
-                  }
-                  className={`min-h-10 rounded-lg border px-3 text-xs font-bold transition ${
-                    hasBonus
-                      ? 'border-indigo-400 bg-indigo-500/30 text-indigo-100'
-                      : 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  {targetSeat} 號 {hasBonus ? '✓ +1票' : '+1票'}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 送出計票 */}
+      {/* 底部單一主按鈕：確認放逐結果 */}
       <button
         type="button"
-        disabled={disabled || eligibleVoters.length === 0}
+        disabled={disabled}
         onClick={() => setConfirmBallotOpen(true)}
-        className={`min-h-12 w-full rounded-xl px-4 py-3 text-sm font-extrabold transition ${
-          !disabled && eligibleVoters.length > 0
-            ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 active:scale-[0.99]'
-            : 'cursor-not-allowed bg-slate-800 text-slate-500'
+        className={`min-h-12 w-full rounded-md px-4 text-[14px] font-semibold transition ${
+          disabled
+            ? 'cursor-not-allowed bg-elevated text-muted'
+            : 'bg-sheriff text-inverse hover:opacity-90'
         }`}
       >
-        {isPkRound ? '送出 PK 放逐計票' : '一鍵送出放逐計票'}
+        確認放逐結果
       </button>
 
-      {/* 明確區分「清空本地草稿」與「放棄／撤銷正式紀錄」 */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          disabled={disabled || !hasDraftInput}
-          onClick={() => {
-            setVotesDraft({});
-            setExtraVotes({});
-          }}
-          className="min-h-12 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          🧹 清空草稿
-        </button>
-        <button
-          type="button"
-          disabled={disabled || undoStack.length === 0}
-          onClick={() => setConfirmUndoRecordOpen(true)}
-          className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/35 px-3 text-xs font-bold text-rose-200 transition hover:bg-rose-900/50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          ↩ 放棄正式紀錄
-        </button>
-      </div>
+      {/* 右上角計票選單抽屜（清空草稿、計票模式、附加票調整、直接放逐、撤銷） */}
+      <SlideDrawer open={menuOpen} onClose={() => setMenuOpen(false)} title="計票選單">
+        <div className="divide-y divide-subtle">
+          <div className="space-y-2 py-3">
+            <div className="text-[12px] font-semibold text-secondary">計票方式</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setVoteInputMode('by_candidate')}
+                className={`min-h-11 rounded-md text-[14px] font-semibold ${
+                  voteInputMode === 'by_candidate'
+                    ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                    : 'border border-subtle bg-canvas text-secondary'
+                }`}
+              >
+                依候選人點票
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoteInputMode('by_voter')}
+                className={`min-h-11 rounded-md text-[14px] font-semibold ${
+                  voteInputMode === 'by_voter'
+                    ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                    : 'border border-subtle bg-canvas text-secondary'
+                }`}
+              >
+                逐號填寫
+              </button>
+            </div>
+          </div>
 
-      {/* 快速手動直接放逐 */}
-      <div className="border-t border-slate-800 pt-2">
-        <button
-          type="button"
-          onClick={() => setShowQuickExile((prev) => !prev)}
-          className="min-h-10 w-full text-center text-xs font-semibold text-slate-400 hover:text-slate-200"
-        >
-          {showQuickExile ? '收起快速指定放逐' : '⚡ 略過票型紀錄，直接指定放逐出局座位'}
-        </button>
-
-        {showQuickExile && (
-          <div className="mt-2 space-y-2">
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-              {aliveSeats.map((seat) => {
-                const active = quickExileSeat === seat.seatNumber;
-                const role = !isOnlineJudge ? getRoleById(seat.roleId) : undefined;
+          <div className="space-y-2 py-3">
+            <div className="text-[12px] font-semibold text-secondary">特殊附加票（+1）</div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {targetSeats.map((seatNum) => {
+                const count = extraVotes[seatNum] ?? 0;
                 return (
-                  <button
-                    key={seat.seatNumber}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() =>
-                      setQuickExileSeat((prev) =>
-                        prev === seat.seatNumber ? null : seat.seatNumber,
-                      )
-                    }
-                    className={`min-h-12 rounded-xl border p-2 text-left transition ${
-                      active
-                        ? 'border-amber-400 bg-amber-500/20 ring-1 ring-amber-400/40'
-                        : 'border-slate-800 bg-slate-950/80 hover:border-slate-600'
-                    }`}
+                  <div
+                    key={seatNum}
+                    className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-2 py-1.5"
                   >
-                    <div className="text-xs font-extrabold text-slate-100">
-                      {seat.seatNumber} 號
-                    </div>
-                    <div className="truncate text-[10px] text-slate-400">
-                      {seat.nickname.trim() || `${seat.seatNumber}號`}
-                    </div>
-                    {role && (
-                      <span
-                        className={`mt-1 inline-block rounded border px-1 py-0.5 text-[9px] font-bold ${getRoleBadgeClasses(role.id)}`}
+                    <span className="text-[12px] font-semibold tabular-nums text-primary">
+                      {formatSeatNum(seatNum)}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExtraVotes((prev) => ({
+                            ...prev,
+                            [seatNum]: Math.max(0, (prev[seatNum] ?? 0) - 1),
+                          }))
+                        }
+                        className="min-h-8 min-w-8 rounded bg-surface text-[12px] text-secondary"
                       >
-                        {role.name}
+                        −
+                      </button>
+                      <span className="w-4 text-center text-[12px] font-semibold tabular-nums text-third">
+                        {count}
                       </span>
-                    )}
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExtraVotes((prev) => ({
+                            ...prev,
+                            [seatNum]: (prev[seatNum] ?? 0) + 1,
+                          }))
+                        }
+                        className="min-h-8 min-w-8 rounded bg-surface text-[12px] text-secondary"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="space-y-2 py-3">
+            <div className="text-[12px] font-semibold text-secondary">快速直接放逐</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {aliveSeats.map((s) => (
+                <button
+                  key={s.seatNumber}
+                  type="button"
+                  onClick={() => setQuickExileSeat(s.seatNumber)}
+                  className={`min-h-10 rounded-md text-[12px] font-semibold tabular-nums ${
+                    quickExileSeat === s.seatNumber
+                      ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                      : 'border border-subtle bg-canvas text-secondary'
+                  }`}
+                >
+                  {formatSeatNum(s.seatNumber)}
+                </button>
+              ))}
             </div>
             <button
               type="button"
               disabled={disabled || quickExileSeat === null}
               onClick={() => setConfirmQuickExileOpen(true)}
-              className="min-h-12 w-full rounded-xl border border-amber-400/50 bg-amber-500/20 px-4 text-sm font-extrabold text-amber-200 hover:bg-amber-500/30 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-500"
+              className="min-h-11 w-full rounded-md bg-wolf text-[14px] font-semibold text-primary disabled:bg-elevated disabled:text-muted"
             >
-              {quickExileObj
-                ? `直接放逐 ${formatSeatDisplay(quickExileObj)}`
-                : '請先點選要直接放逐的座位'}
+              {quickExileSeat !== null
+                ? `直接放逐 ${formatSeatNum(quickExileSeat)} 號`
+                : '選擇直接放逐座位'}
             </button>
           </div>
-        )}
-      </div>
 
-      {/* 確認計票 Modal */}
-      <ConfirmModal
-        open={confirmBallotOpen && tallyPreview !== null}
-        title={isPkRound ? '確認送出放逐 PK 計票？' : '確認送出放逐投票紀錄？'}
-        description={
-          tallyPreview
-            ? tallyPreview.outcome === 'exile'
-              ? `最高票為 ${tallyPreview.record.electedSeat} 號（${tallyPreview.record.totals[tallyPreview.record.electedSeat!]} 票），確定送出結算？（若為未翻牌白痴將自動翻牌免死）`
-              : tallyPreview.outcome === 'tie'
-                ? `平票候選人：${tallyPreview.record.tiedSeats.join('、')} 號，將進入平票 PK 輪。`
-                : '本輪無人出局（平安日），確定送出？'
-            : undefined
-        }
-        confirmLabel="確認計票"
-        tone="warning"
-        onConfirm={() => {
-          const tally = submitExileVotes(normalizedVotes, {
-            extraVotes: normalizedExtraVotes,
-          });
-          setVotesDraft({});
-          setExtraVotes({});
-          if (tally.outcome === 'tie') {
-            setLastTallyNotice(
-              `⚖️ 放逐投票平票：${tally.record.tiedSeats.join('、')} 號進入 PK 輪，請於發言後進行 PK 投票。`,
-            );
-          } else if (tally.outcome === 'no_exile') {
-            setLastTallyNotice('☀️ 本輪無人得票／再次平票，今日平安日無人出局。');
-          } else {
-            setLastTallyNotice(null);
-          }
-          setConfirmBallotOpen(false);
-        }}
-        onCancel={() => setConfirmBallotOpen(false)}
-      >
-        {tallyPreview && (
-          <div className="space-y-1 rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200">
-            {Object.entries(tallyPreview.record.totals)
-              .sort(([, a], [, b]) => b - a)
-              .map(([seatKey, score]) => {
-                const voters = tallyPreview.record.votersByTarget[Number(seatKey)] ?? [];
-                return (
-                  <div key={seatKey}>
-                    • {seatKey} 號：{score} 票（
-                    {voters.length > 0 ? voters.map((v) => `${v}號`).join('、') : '無投票'}
-                    {tallyPreview.record.extraVotes?.[Number(seatKey)]
-                      ? `；含額外 +${tallyPreview.record.extraVotes[Number(seatKey)]} 票`
-                      : ''}
-                    ）
-                  </div>
-                );
-              })}
-            <div>
-              • 棄票：
-              {tallyPreview.record.abstainers.length > 0
-                ? tallyPreview.record.abstainers.map((s) => `${s}號`).join('、')
-                : '無'}
-            </div>
+          <div className="flex gap-2 py-3">
+            <button
+              type="button"
+              onClick={() => {
+                setVotesDraft({});
+                setExtraVotes({});
+                setMenuOpen(false);
+              }}
+              className="min-h-11 flex-1 rounded-md border border-subtle bg-canvas text-[12px] font-semibold text-secondary hover:text-primary"
+            >
+              清空草稿
+            </button>
+            {undoStack.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setConfirmUndoRecordOpen(true);
+                }}
+                className="min-h-11 flex-1 rounded-md border border-sheriff-border bg-sheriff-tint text-[12px] font-semibold text-sheriff"
+              >
+                撤銷上一步
+              </button>
+            )}
           </div>
-        )}
-      </ConfirmModal>
+        </div>
+      </SlideDrawer>
 
-      {/* 快速直接放逐 Modal */}
       <ConfirmModal
-        open={confirmQuickExileOpen && quickExileObj !== undefined}
-        title="確認執行快速放逐？"
+        open={confirmBallotOpen}
+        title="確認放逐結果"
         description={
-          quickExileObj
-            ? `確定將 ${formatSeatDisplay(quickExileObj)} 放逐投票投出？（若為未翻牌白痴將自動翻牌免死）`
-            : undefined
+          tallyPreview && tallyPreview.topSeats.length === 1 && tallyPreview.maxVotes > 0
+            ? `最高票 ${formatSeatNum(tallyPreview.topSeats[0])} 號（${tallyPreview.maxVotes} 票）將放逐出局。`
+            : tallyPreview && tallyPreview.topSeats.length > 1 && tallyPreview.maxVotes > 0
+              ? `平票 ${tallyPreview.topSeats.map(formatSeatNum).join('、')} 號（${tallyPreview.maxVotes} 票），將進入 PK 或平安日。`
+              : '無人得票，將判定平安日。'
+        }
+        confirmLabel="確認結算"
+        tone="warning"
+        onConfirm={handleConfirmBallot}
+        onCancel={() => setConfirmBallotOpen(false)}
+      />
+
+      <ConfirmModal
+        open={confirmQuickExileOpen && quickExileSeat !== null}
+        title="確認直接放逐"
+        description={
+          quickExileSeat !== null ? `將直接宣告 ${formatSeatNum(quickExileSeat)} 號放逐出局。` : undefined
         }
         confirmLabel="確認放逐"
-        tone="warning"
+        tone="danger"
         onConfirm={() => {
           if (quickExileSeat !== null) {
             exilePlayer(quickExileSeat);
             setQuickExileSeat(null);
-            setLastTallyNotice(null);
+            setMenuOpen(false);
           }
           setConfirmQuickExileOpen(false);
         }}
         onCancel={() => setConfirmQuickExileOpen(false)}
       />
 
-      {/* 放棄／撤銷上一筆正式紀錄 Modal */}
       <ConfirmModal
-        open={confirmUndoRecordOpen && undoStack.length > 0}
-        title="確定放棄／撤銷上一筆正式紀錄？"
-        description={
-          latestUndoLabel
-            ? `即將撤銷已送出的正式對局紀錄「${latestUndoLabel}」（不同於僅清空本頁票型草稿）。`
-            : '即將撤銷上一筆已送出的正式對局紀錄。'
-        }
-        confirmLabel="確認撤銷正式紀錄"
-        tone="danger"
+        open={confirmUndoRecordOpen}
+        title="撤銷上一步"
+        confirmLabel="確認撤銷"
+        tone="warning"
         onConfirm={() => {
           undoLastStep();
-          setVotesDraft({});
-          setExtraVotes({});
-          setLastTallyNotice(null);
           setConfirmUndoRecordOpen(false);
         }}
         onCancel={() => setConfirmUndoRecordOpen(false)}
       />
-    </section>
+    </div>
   );
 }

@@ -17,10 +17,10 @@ interface TopBarProps {
   onOpenRestart: () => void;
 }
 
-const VIEW_TITLES: Record<Exclude<AppView, 'game' | 'home'>, { title: string; badge: string }> = {
-  join_room: { title: '加入房間', badge: '連線大廳' },
-  rules_atlas: { title: '板子與角色圖鑑', badge: '142 板子 · 128 角色' },
-  about: { title: '關於本網站', badge: '專案資訊' },
+const VIEW_TITLES: Record<Exclude<AppView, 'game' | 'home'>, string> = {
+  join_room: '加入房間',
+  rules_atlas: '規則圖鑑',
+  about: '關於',
 };
 
 export function TopBar({
@@ -39,67 +39,70 @@ export function TopBar({
 }: TopBarProps) {
   const isGame = activeView === 'game';
   const showQA = isGame && Boolean(board);
-  const isNight = isGame && phase === 'night';
-  const viewMeta =
+  const viewTitle =
     activeView !== 'game' && activeView !== 'home' ? VIEW_TITLES[activeView] : null;
 
+  const roundCode =
+    isGame && (phase === 'night' || phase === 'day_announcement' || phase === 'day_vote')
+      ? `${phase === 'night' ? 'N' : 'D'}${round}`
+      : null;
+
   return (
-    <header className="shrink-0 border-b border-slate-800 bg-slate-950/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-lg items-center justify-between gap-2 px-3 py-2 md:max-w-2xl">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+    <header className="h-[52px] shrink-0 border-b border-subtle bg-surface">
+      <div className="mx-auto flex h-full max-w-lg items-center justify-between gap-2 px-2 md:max-w-2xl">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <button
             type="button"
             onClick={onGoHome}
             aria-label="返回主頁"
-            className="min-h-12 shrink-0 rounded-xl border border-slate-800 bg-slate-900 px-3 text-xs font-bold text-slate-300 transition hover:bg-slate-800 hover:text-slate-100 active:scale-[0.98]"
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-[14px] font-semibold text-secondary transition hover:bg-elevated hover:text-primary active:bg-elevated"
           >
-            ← 主頁
+            ←
           </button>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-bold text-slate-100">
-                {viewMeta ? viewMeta.title : board ? board.name : '狼人殺法官輔助'}
+              <span className="truncate text-[14px] font-semibold leading-5 text-primary">
+                {viewTitle ?? (board ? board.name : '狼人殺法官')}
               </span>
+              {roundCode && (
+                <span className="shrink-0 text-[12px] font-semibold tabular-nums text-sheriff">
+                  {roundCode}
+                </span>
+              )}
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400">
-              <span className="rounded bg-slate-800 px-1.5 py-0.5 font-medium text-amber-300">
-                {viewMeta ? viewMeta.badge : PHASE_LABELS[phase]}
-              </span>
-              {isGame &&
-                (phase === 'night' || phase === 'day_announcement' || phase === 'day_vote') && (
-                  <span>
-                    第 {round} {phase === 'night' ? '晚' : '天'}
-                  </span>
-                )}
-            </div>
+            {isGame && (
+              <div className="truncate text-[12px] leading-4 text-secondary">
+                {PHASE_LABELS[phase]}
+              </div>
+            )}
           </div>
         </div>
 
         {isGame && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-0.5">
             {canUndo && onUndo && (
               <button
                 type="button"
                 onClick={onUndo}
                 title={undoLabel ? `撤銷：${undoLabel}` : '撤銷上一步'}
                 aria-label="撤銷上一步"
-                className="min-h-12 rounded-xl border border-amber-400/60 bg-amber-500/20 px-2.5 text-xs font-extrabold text-amber-200 shadow-xs shadow-amber-500/15 transition hover:bg-amber-500/30 active:scale-[0.98]"
+                className="min-h-11 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff transition hover:bg-elevated"
               >
-                ↩ 撤銷
+                撤銷
               </button>
             )}
             <button
               type="button"
               onClick={onOpenNotebook}
-              className="min-h-12 rounded-xl border border-slate-700 bg-slate-900 px-2 text-xs font-bold text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
+              className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
             >
               筆記
             </button>
             <button
               type="button"
               onClick={onOpenHistory}
-              className="min-h-12 rounded-xl border border-slate-700 bg-slate-900 px-2 text-xs font-bold text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
+              className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
             >
               紀錄
             </button>
@@ -107,19 +110,15 @@ export function TopBar({
               <button
                 type="button"
                 onClick={onOpenQA}
-                className={`min-h-12 rounded-xl border px-2 text-xs font-bold transition active:scale-[0.98] ${
-                  isNight
-                    ? 'border-amber-400/60 bg-amber-500/20 text-amber-200 shadow-xs shadow-amber-500/10 hover:bg-amber-500/30'
-                    : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
-                }`}
+                className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
               >
-                Q&amp;A
+                規則
               </button>
             )}
             <button
               type="button"
               onClick={onOpenRestart}
-              className="min-h-12 rounded-xl border border-rose-500/40 bg-rose-950/50 px-2 text-xs font-bold text-rose-200 transition hover:bg-rose-900/60 active:scale-[0.98]"
+              className="min-h-11 rounded-md px-2 text-[12px] font-medium text-wolf transition hover:bg-wolf-tint"
             >
               重開
             </button>

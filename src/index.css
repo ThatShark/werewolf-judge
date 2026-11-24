@@ -1,8 +1,52 @@
 @import "tailwindcss";
 
+@theme {
+  --color-canvas: #0C0E12;
+  --color-surface: #14171D;
+  --color-elevated: #1D212A;
+  --color-blackout: #000000;
+
+  --color-primary: #F3F4F6;
+  --color-secondary: #9CA3AF;
+  --color-muted: #6B7280;
+  --color-inverse: #0C0E12;
+
+  --color-subtle: rgba(255, 255, 255, 0.08);
+  --color-strong: rgba(255, 255, 255, 0.16);
+
+  --color-wolf: #E5484D;
+  --color-wolf-tint: rgba(229, 72, 77, 0.12);
+  --color-wolf-border: rgba(229, 72, 77, 0.35);
+
+  --color-good: #30A46C;
+  --color-good-tint: rgba(48, 164, 108, 0.12);
+  --color-good-border: rgba(48, 164, 108, 0.35);
+
+  --color-sheriff: #F5A623;
+  --color-sheriff-tint: rgba(245, 166, 35, 0.12);
+  --color-sheriff-border: rgba(245, 166, 35, 0.35);
+
+  --color-third: #9E8CFC;
+  --color-third-tint: rgba(158, 140, 252, 0.12);
+  --color-third-border: rgba(158, 140, 252, 0.35);
+}
+
 @layer base {
   :root {
     color-scheme: dark;
+    --bg-canvas: #0C0E12;
+    --bg-surface: #14171D;
+    --bg-elevated: #1D212A;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text-primary: #F3F4F6;
+    --text-secondary: #9CA3AF;
+    --text-muted: #6B7280;
+    --text-inverse: #0C0E12;
+    --accent-wolf: #E5484D;
+    --accent-good: #30A46C;
+    --accent-sheriff: #F5A623;
+    --accent-third: #9E8CFC;
   }
 
   html,
@@ -11,8 +55,45 @@
     height: 100dvh;
     width: 100%;
     overflow: hidden;
-    background-color: #020617;
-    color: #f1f5f9;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
     -webkit-tap-highlight-color: transparent;
+    font-feature-settings: "tnum" 0;
+  }
+
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  .border-hairline {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .border-selected-sheriff {
+    border: 1.5px solid #F5A623;
+  }
+  .border-selected-wolf {
+    border: 1.5px solid #E5484D;
+  }
+  .border-selected-good {
+    border: 1.5px solid #30A46C;
+  }
+  .border-selected-third {
+    border: 1.5px solid #9E8CFC;
   }
 }

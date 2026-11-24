@@ -84,6 +84,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SlideDrawer } from '../common/SlideDrawer';
 import {
+  formatSeatNum,
   formatSeatShort,
   getRoleBadgeClasses,
   splitSeatsIntoSymmetricColumns,
@@ -101,7 +102,7 @@ interface NightConsoleScreenProps {
 
 const BUFFER_PRESET_STEPS = [0, 3, 5, 8, 10];
 
-export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScreenProps) {
+export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
@@ -387,7 +388,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
   if (!board || !currentStep) {
     return (
-      <div className="flex h-full items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center text-sm text-slate-300">
+      <div className="flex h-full items-center justify-center rounded-lg border border-subtle bg-surface p-6 text-center text-sm text-secondary">
         無法載入夜間主持步驟，請重開新局。
       </div>
     );
@@ -1941,195 +1942,166 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         type="button"
         disabled={control.disabled}
         onClick={control.onSelect}
-        className={`flex min-h-12 w-full flex-col justify-between rounded-xl border px-2.5 py-1.5 text-left transition ${
+        className={`flex min-h-12 w-full flex-col justify-center rounded-md px-2.5 py-1.5 text-left transition ${
           control.selected
-            ? 'border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/50'
+            ? 'border-selected-sheriff bg-sheriff-tint'
             : isClaimedAsActive
-              ? 'border-emerald-400/60 bg-emerald-950/40'
+              ? 'border-selected-good bg-good-tint'
               : control.disabled
-                ? 'cursor-not-allowed border-slate-800/80 bg-slate-950/60 opacity-55'
-                : 'border-slate-800 bg-slate-950/85 hover:border-slate-600 active:scale-[0.98]'
+                ? 'cursor-not-allowed border border-subtle bg-canvas opacity-50'
+                : 'border border-subtle bg-surface hover:border-strong'
         }`}
       >
         <div className="flex w-full items-center justify-between gap-1">
-          <span className="text-sm font-extrabold tabular-nums text-slate-50">
-            {seat.seatNumber}號
-          </span>
-          <div className="flex items-center gap-0.5 text-xs">
-            {!seat.isAlive && <span title="已出局">💀</span>}
-            {seat.isAlive && seat.idiotRevealed && <span title="白痴已翻牌">🤡</span>}
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span
+              className={`w-6 shrink-0 text-[14px] font-semibold tabular-nums ${
+                seat.isAlive ? 'text-primary' : 'text-muted line-through'
+              }`}
+            >
+              {formatSeatNum(seat.seatNumber)}
+            </span>
+            {showRoleBadge && role ? (
+              <span
+                className={`truncate rounded-md border px-1.5 py-0.5 text-[12px] font-medium ${getRoleBadgeClasses(role.id)}`}
+              >
+                {role.name}
+              </span>
+            ) : (
+              <span className="truncate text-[12px] text-secondary">
+                {seat.nickname.trim() || `${seat.seatNumber}號`}
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1 text-[12px]">
+            {!seat.isAlive && <span className="text-muted">死</span>}
+            {seat.isAlive && seat.idiotRevealed && <span className="text-sheriff">翻</span>}
             {actionIcons.map((icon, i) => (
               <span key={i}>{icon}</span>
             ))}
             {control.selected && (
-              <span className="rounded bg-amber-400 px-1 py-0.5 text-[10px] font-black text-slate-950">
-                預選
+              <span className="rounded bg-sheriff px-1 text-[12px] font-semibold text-inverse">
+                選
               </span>
             )}
             {!control.selected && isClaimedAsActive && (
-              <span className="rounded bg-emerald-500/25 px-1 py-0.5 text-[10px] font-bold text-emerald-200">
-                已認
-              </span>
+              <span className="text-[12px] font-semibold text-good">認</span>
             )}
           </div>
         </div>
-
-        <div className="mt-0.5 flex w-full items-center justify-between gap-1">
-          {showRoleBadge && role ? (
-            <span
-              className={`truncate rounded border px-1.5 py-0.2 text-[10px] font-bold ${getRoleBadgeClasses(role.id)}`}
-            >
-              {role.name}
-            </span>
-          ) : (
-            <span className="truncate text-[11px] text-slate-400">
-              {seat.nickname.trim() || `${seat.seatNumber} 號`}
-            </span>
-          )}
-          {control.disabled && control.reason && (
-            <span className="shrink-0 truncate text-[10px] font-medium text-rose-300">
-              🔒 {control.reason}
-            </span>
-          )}
-        </div>
+        {control.disabled && control.reason && (
+          <div className="mt-0.5 truncate pl-7 text-[12px] text-wolf">{control.reason}</div>
+        )}
       </button>
     );
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      {/* 1. 頂部狀態列：第 N 晚 ／ 當前睜眼角色 */}
-      <section className="shrink-0 rounded-2xl border border-slate-800 bg-slate-900/95 px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold">
-              <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-indigo-200">
-                第 {round} 晚
-              </span>
-              <span className="text-slate-400">
-                步驟 {currentStepIndex + 1} / {steps.length}
-              </span>
-              {isClaimStage && (
-                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
-                  實體發牌認領
-                </span>
-              )}
-            </div>
-            <h1 className="mt-0.5 truncate text-base font-extrabold text-slate-50">
-              {currentStep.actorLabel}
-            </h1>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            {isOnlineJudge ? (
-              <>
-                <button
-                  type="button"
-                  onClick={handleToggleTts}
-                  aria-label="切換語音播報"
-                  className={`min-h-10 rounded-xl border px-2.5 text-xs font-bold transition ${
-                    onlineJudgeSettings.ttsEnabled
-                      ? 'border-indigo-400/40 bg-indigo-950/50 text-indigo-200'
-                      : 'border-slate-700 bg-slate-950 text-slate-500'
-                  }`}
-                >
-                  {onlineJudgeSettings.ttsEnabled ? '🔊' : '🔇'}
-                </button>
-                <button
-                  type="button"
-                  disabled={!onlineJudgeSettings.ttsEnabled || !ttsSupported}
-                  onClick={handleReplayTts}
-                  aria-label="重播語音"
-                  className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-40"
-                >
-                  🔁
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCycleBufferSeconds}
-                  title="點擊切換閉眼緩衝秒數"
-                  className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-2.5 text-xs font-bold tabular-nums text-amber-200 hover:bg-slate-800"
-                >
-                  ⏱ {onlineJudgeSettings.stepBufferSeconds}s
-                </button>
-              </>
-            ) : (
-              <>
-                <span
-                  className={`rounded-xl border px-2 py-1 text-[11px] font-bold ${
-                    actorSeatsAlive
-                      ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
-                      : 'border-slate-700 bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  {actorSeatsAlive ? '存活' : '已出局'}
-                </span>
-                {isPhysicalDealFirstNight && claimSummary?.requiresClaiming && !isClaimStage && (
-                  <button
-                    type="button"
-                    onClick={() => setForceEditClaims(true)}
-                    className="min-h-10 rounded-xl border border-amber-400/40 bg-amber-950/40 px-2.5 text-xs font-bold text-amber-200 hover:bg-amber-900/40"
-                  >
-                    ✏️ 認領
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setSeatDrawerOpen(true)}
-                  className="min-h-10 rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-2.5 text-xs font-bold text-indigo-200 hover:bg-indigo-900/50"
-                >
-                  👥 座位
-                </button>
-              </>
-            )}
-          </div>
+      {/* 1. 頂部極簡狀態列：當前睜眼角色 ＋ 右上角進度數字 */}
+      <section className="flex shrink-0 items-center justify-between gap-2 border-b border-subtle pb-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h1 className="truncate text-[18px] font-semibold leading-6 text-primary">
+            {currentStep.actorLabel}
+          </h1>
+          {isClaimStage && (
+            <span className="shrink-0 rounded-md border border-sheriff-border bg-sheriff-tint px-1.5 py-0.5 text-[12px] font-semibold text-sheriff">
+              認領
+            </span>
+          )}
+          {!isOnlineJudge && !actorSeatsAlive && (
+            <span className="shrink-0 text-[12px] font-semibold text-wolf">已出局</span>
+          )}
         </div>
 
-        <div className="mt-2 flex gap-1">
-          {steps.map((step, idx) => (
-            <div
-              key={step.stepId}
-              className={`h-1.5 flex-1 rounded-full transition ${
-                idx < currentStepIndex
-                  ? 'bg-emerald-500/75'
-                  : idx === currentStepIndex
-                    ? 'bg-amber-400'
-                    : 'bg-slate-800'
-              }`}
-            />
-          ))}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {isOnlineJudge ? (
+            <>
+              <button
+                type="button"
+                onClick={handleToggleTts}
+                aria-label="切換語音播報"
+                className={`min-h-10 rounded-md border px-2.5 text-[12px] font-semibold transition ${
+                  onlineJudgeSettings.ttsEnabled
+                    ? 'border-good-border bg-good-tint text-good'
+                    : 'border-subtle bg-surface text-muted'
+                }`}
+              >
+                {onlineJudgeSettings.ttsEnabled ? '語音' : '靜音'}
+              </button>
+              <button
+                type="button"
+                disabled={!onlineJudgeSettings.ttsEnabled || !ttsSupported}
+                onClick={handleReplayTts}
+                aria-label="重播語音"
+                className="min-h-10 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong disabled:opacity-40"
+              >
+                重播
+              </button>
+              <button
+                type="button"
+                onClick={handleCycleBufferSeconds}
+                title="點擊切換閉眼緩衝秒數"
+                className="min-h-10 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-semibold tabular-nums text-sheriff"
+              >
+                {onlineJudgeSettings.stepBufferSeconds}s
+              </button>
+            </>
+          ) : (
+            <>
+              {isPhysicalDealFirstNight && claimSummary?.requiresClaiming && !isClaimStage && (
+                <button
+                  type="button"
+                  onClick={() => setForceEditClaims(true)}
+                  className="min-h-10 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff"
+                >
+                  認領
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSeatDrawerOpen(true)}
+                className="min-h-10 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+              >
+                座位
+              </button>
+            </>
+          )}
+          <span className="pl-1 text-[14px] font-semibold tabular-nums text-sheriff">
+            {currentStepIndex + 1} / {steps.length}
+          </span>
         </div>
       </section>
 
-      {/* 2. 中央座位區：緊湊網格＋小圖示標記 */}
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-2.5">
-        <div className="mb-2 flex shrink-0 items-center justify-between gap-2 px-0.5">
-          <div className="truncate text-xs font-bold text-slate-300">
+      {/* 2. 中央左右對稱雙欄座位網格（無多餘外框） */}
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+          <div className="truncate text-[12px] text-secondary">
             {isClaimStage
-              ? `請點選座位預選「${activeClaimRoleName}」（再點取消）`
+              ? `點選座位認領「${activeClaimRoleName}」`
               : isSeatSelectableForSkill
-                ? '點選座位預選目標（再點取消），按下方確認紀錄'
-                : '本步驟檢視座位與狀態後，按下方確認繼續'}
+                ? '點選目標座位，按下方確認'
+                : '檢視狀態後按下方確認'}
           </div>
           {!isOnlineJudge && (
             <button
               type="button"
               onClick={() => setMaskSeatRoles((prev) => !prev)}
-              className="shrink-0 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] font-bold text-slate-300 hover:bg-slate-800"
+              className="shrink-0 rounded-md border border-subtle bg-surface px-2.5 py-1 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
             >
-              {maskSeatRoles ? '👁️ 顯示身分' : '🙈 遮罩身分'}
+              {maskSeatRoles ? '顯示身分' : '遮罩身分'}
             </button>
           )}
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pr-0.5">
+        <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-1.5 overflow-y-auto pr-0.5">
           <div className="flex flex-col gap-1.5">{leftSeats.map(renderNightSeatButton)}</div>
           <div className="flex flex-col gap-1.5">{rightSeats.map(renderNightSeatButton)}</div>
         </div>
       </section>
 
-      {/* 3. 底部操作區：步驟情境盤 ＋ 防誤觸確認鍵 */}
-      <section className="shrink-0 space-y-2 rounded-2xl border border-slate-800 bg-slate-900/95 p-2.5">
+      {/* 3. 底部精簡操作盤（Bottom Action Sheet）＋ 單一主按鈕 */}
+      <section className="shrink-0 space-y-2 border-t border-subtle pt-2">
         {/* 實體發牌首夜認領分頁列 */}
         {isClaimStage && claimSummary && (
           <div className="space-y-1.5">
@@ -2147,53 +2119,52 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                       setPendingClaimSeat(null);
                       setClaimError(null);
                     }}
-                    className={`min-h-10 rounded-xl border px-3 text-xs font-bold transition ${
+                    className={`min-h-10 rounded-md px-2.5 text-[12px] font-semibold tabular-nums transition ${
                       active
-                        ? 'border-amber-400 bg-amber-500/20 text-amber-100'
+                        ? 'border-selected-sheriff bg-sheriff-tint text-primary'
                         : done
-                          ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200'
-                          : 'border-slate-700 bg-slate-950 text-slate-300'
+                          ? 'border border-good-border bg-good-tint text-good'
+                          : 'border border-subtle bg-surface text-secondary'
                     }`}
                   >
                     {roleName} {r.claimedSeats.length}/{r.expectedCount}
-                    {done ? ' ✓' : ''}
                   </button>
                 );
               })}
             </div>
             {claimError && (
-              <div className="rounded-xl border border-rose-500/40 bg-rose-950/40 px-3 py-1.5 text-xs font-semibold text-rose-200">
-                ⚠️ {claimError}
+              <div className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf">
+                {claimError}
               </div>
             )}
           </div>
         )}
 
-        {/* 技能階段專屬精簡提示盤 */}
+        {/* 技能階段精簡提示與 Bottom Action Sheet（限高避免擠壓雙欄座位） */}
         {!isClaimStage && (
-          <div className="space-y-1.5">
-            {/* 實體法官專屬：已出局角色假裝操作紅色警告（置於提詞機上方，絕不跳過步驟） */}
+          <div className="max-h-[26dvh] space-y-1.5 overflow-y-auto pr-0.5">
+            {/* 實體法官專屬：已出局角色假裝操作紅字警告（保留，左側 2px 緋紅線） */}
             {showDeadActorWarning && (
               <div
                 role="alert"
-                className="rounded-xl border border-rose-500/70 bg-rose-950/75 px-3 py-2 text-xs font-extrabold leading-relaxed text-rose-100 shadow-xs shadow-rose-500/20"
+                className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf"
               >
-                ⚠️ 該角色已出局！請照常唸詞並默數 5 秒假裝操作，切勿跳過暴露資訊
+                該角色已出局：請照常唸詞並默數 5 秒假裝操作，切勿跳過。
               </div>
             )}
 
-            {/* 實體法官專屬：精簡台詞條（線上法官完全隱藏逐字稿） */}
+            {/* 極簡左側 2px 指示線提詞機（線上法官隱藏逐字稿，只顯示極簡操作指令） */}
             {!isOnlineJudge && (
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-950/20 px-2.5 py-2">
-                <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-snug text-amber-100">
-                  🗣️ {currentStep.actionPrompt.replace(/\n+/g, ' ')}
+              <div className="flex items-center justify-between gap-2 border-l-2 border-sheriff bg-surface px-3 py-1.5">
+                <p className="line-clamp-2 min-w-0 flex-1 text-[12px] leading-4 text-primary">
+                  {currentStep.actionPrompt.replace(/\n+/g, ' ')}
                 </p>
                 <button
                   type="button"
                   onClick={() => setScriptDrawerOpen(true)}
-                  className="min-h-10 shrink-0 rounded-lg border border-amber-400/40 bg-amber-500/15 px-2.5 text-[11px] font-bold text-amber-200 hover:bg-amber-500/25"
+                  className="min-h-10 shrink-0 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
                 >
-                  📜 台詞
+                  台詞
                 </button>
               </div>
             )}
@@ -2201,21 +2172,21 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             {/* 步驟專屬操作快捷項 */}
             {currentStep.actionType === 'wolf_kill' && (
               <div className="flex flex-wrap items-center justify-between gap-1.5">
-                <div className="text-xs text-slate-300">
+                <div className="text-xs text-secondary">
                   {pendingTarget !== null ? (
                     <span>
                       {pendingSeedWolfInfect ? '預選種狼感染：' : '預選落刀：'}
-                      <strong className={pendingSeedWolfInfect ? 'text-purple-300' : 'text-rose-300'}>
+                      <strong className={pendingSeedWolfInfect ? 'text-third' : 'text-wolf'}>
                         {pendingTarget} 號
                       </strong>
                     </span>
                   ) : (
                     <span>
-                      目前預選：<strong className="text-amber-200">空刀（不殺人）</strong>
+                      目前預選：<strong className="text-sheriff">空刀（不殺人）</strong>
                     </span>
                   )}
                   {pendingSelfExplodeSeat !== null && (
-                    <span className="ml-2 text-amber-300">
+                    <span className="ml-2 text-sheriff">
                       💥 {pendingSelfExplodeSeat}號自爆
                     </span>
                   )}
@@ -2228,10 +2199,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                         setPendingSeedWolfInfect((prev) => !prev);
                         setPendingTarget(null);
                       }}
-                      className={`min-h-12 rounded-xl border px-3 text-xs font-bold transition ${
+                      className={`min-h-12 rounded-md border px-3 text-xs font-bold transition ${
                         pendingSeedWolfInfect
-                          ? 'border-purple-400 bg-purple-500/25 text-purple-100'
-                          : 'border-purple-500/40 bg-purple-950/40 text-purple-200 hover:bg-purple-900/40'
+                          ? 'border-third bg-third-tint text-third'
+                          : 'border-third-border bg-third-tint text-third hover:opacity-90'
                       }`}
                     >
                       {pendingSeedWolfInfect ? '✓ 種狼感染模式（再點切回狼刀）' : '🦠 改為種狼感染（限一次）'}
@@ -2241,14 +2212,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                     <button
                       type="button"
                       onClick={() => setPendingTarget(null)}
-                      className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800"
+                      className="min-h-10 rounded-md border border-subtle bg-canvas px-3 text-xs font-bold text-primary hover:bg-elevated"
                     >
                       改為空刀
                     </button>
                   )}
                 </div>
                 {wolfTeamFearedTonight && (
-                  <div className="w-full rounded-xl border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-200">
+                  <div className="w-full rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-2 text-xs font-bold text-sheriff">
                     ⚠️ 今晚夢魘恐懼到狼隊友，狼隊強制空刀（無法落刀或感染）
                   </div>
                 )}
@@ -2257,14 +2228,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'nightmare_fear' && (
               <div className="flex flex-wrap items-center justify-between gap-1.5">
-                <div className="text-xs text-slate-300">
+                <div className="text-xs text-secondary">
                   昨晚恐懼：
-                  <strong className="text-amber-300">
+                  <strong className="text-sheriff">
                     {lastFearedSeat !== null ? `${lastFearedSeat} 號` : '無'}
                   </strong>
                   {' · '}
                   預選：
-                  <strong className="text-purple-300">
+                  <strong className="text-third">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '不恐懼'}
                   </strong>
                 </div>
@@ -2272,7 +2243,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   <button
                     type="button"
                     onClick={() => setPendingTarget(null)}
-                    className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800"
+                    className="min-h-10 rounded-md border border-subtle bg-canvas px-3 text-xs font-bold text-primary hover:bg-elevated"
                   >
                     改為不恐懼
                   </button>
@@ -2282,9 +2253,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'hybrid_choose' && (
               <div className="flex flex-wrap items-center justify-between gap-1.5">
-                <div className="text-xs text-slate-300">
+                <div className="text-xs text-secondary">
                   首夜榜樣：
-                  <strong className="text-emerald-300">
+                  <strong className="text-good">
                     {pendingTarget !== null ? `${pendingTarget} 號（勝利條件將綁定其陣營）` : '請點選上方座位選擇榜樣'}
                   </strong>
                 </div>
@@ -2293,14 +2264,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'guard_protect' && (
               <div className="flex flex-wrap items-center justify-between gap-1.5">
-                <div className="text-xs text-slate-300">
+                <div className="text-xs text-secondary">
                   昨晚守：
-                  <strong className="text-amber-300">
+                  <strong className="text-sheriff">
                     {lastGuardedSeat !== null ? `${lastGuardedSeat} 號` : '無'}
                   </strong>
                   {' · '}
                   預選：
-                  <strong className="text-sky-300">
+                  <strong className="text-good">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '空守'}
                   </strong>
                 </div>
@@ -2308,7 +2279,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   <button
                     type="button"
                     onClick={() => setPendingTarget(null)}
-                    className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800"
+                    className="min-h-10 rounded-md border border-subtle bg-canvas px-3 text-xs font-bold text-primary hover:bg-elevated"
                   >
                     改為空守
                   </button>
@@ -2319,9 +2290,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             {currentStep.actionType === 'witch_action' && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-slate-300">
+                  <span className="text-secondary">
                     今晚刀口：
-                    <strong className="text-rose-300">
+                    <strong className="text-wolf">
                       {!witchAntidoteUsed
                         ? wolfTargetSeat
                           ? formatSeatShort(wolfTargetSeat)
@@ -2329,12 +2300,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                         : '解藥已用（無刀口資訊）'}
                     </strong>
                   </span>
-                  <span className="text-[11px] font-bold">
-                    <span className={witchAntidoteUsed ? 'text-slate-500 line-through' : 'text-emerald-300'}>
+                  <span className="text-[12px] font-bold">
+                    <span className={witchAntidoteUsed ? 'text-primary0 line-through' : 'text-good'}>
                       解{witchAntidoteUsed ? '×0' : '×1'}
                     </span>
                     {' / '}
-                    <span className={witchPoisonUsed ? 'text-slate-500 line-through' : 'text-rose-300'}>
+                    <span className={witchPoisonUsed ? 'text-primary0 line-through' : 'text-wolf'}>
                       毒{witchPoisonUsed ? '×0' : '×1'}
                     </span>
                   </span>
@@ -2344,12 +2315,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                     type="button"
                     disabled={!antidoteCheck.allowed || antidoteBlockedByPoison}
                     onClick={() => setPendingUseAntidote((prev) => !prev)}
-                    className={`min-h-12 flex-1 rounded-xl border px-3 text-xs font-bold transition ${
+                    className={`min-h-12 flex-1 rounded-md border px-3 text-xs font-bold transition ${
                       pendingUseAntidote
-                        ? 'border-emerald-400 bg-emerald-500/25 text-emerald-100'
+                        ? 'border-good bg-good-tint text-good'
                         : !antidoteCheck.allowed || antidoteBlockedByPoison
-                          ? 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-500'
-                          : 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/40'
+                          ? 'cursor-not-allowed border-subtle bg-canvas text-primary0'
+                          : 'border-good-border bg-good-tint text-good hover:opacity-90'
                     }`}
                   >
                     {pendingUseAntidote
@@ -2364,7 +2335,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                     <button
                       type="button"
                       onClick={() => setPendingTarget(null)}
-                      className="min-h-12 shrink-0 rounded-xl border border-rose-500/40 bg-rose-950/40 px-3 text-xs font-bold text-rose-200"
+                      className="min-h-12 shrink-0 rounded-md border border-wolf-border bg-wolf-tint px-3 text-xs font-bold text-wolf"
                     >
                       取消毒 {pendingTarget}號
                     </button>
@@ -2375,12 +2346,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'seer_check' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                   seerOutcome
                     ? seerOutcome.faction === 'wolf'
-                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                      : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
-                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                      ? 'border-wolf-border bg-wolf-tint text-wolf'
+                      : 'border-good-border bg-good-tint text-good'
+                    : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {seerOutcome ? (
@@ -2398,10 +2369,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'psychic_check' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                   psychicOutcome
-                    ? 'border-indigo-400/50 bg-indigo-950/50 text-indigo-100'
-                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                    ? 'border-third-border bg-third-tint text-third'
+                    : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {psychicOutcome ? (
@@ -2420,10 +2391,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'wolf_kill' && moonSpiritHowlPreview && (
               <div
-                className={`rounded-xl border px-3 py-1.5 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-1.5 text-center text-xs font-bold ${
                   moonSpiritHowlPreview.howled
-                    ? 'border-purple-400/50 bg-purple-950/40 text-purple-100'
-                    : 'border-slate-800 bg-slate-950 text-slate-400'
+                    ? 'border-third-border bg-third-tint text-third'
+                    : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {moonSpiritHowlPreview.howled ? '🌕 ' : '🌑 '}
@@ -2433,12 +2404,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'awakened_seer_check' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                   awakenedSeerOutcome
                     ? awakenedSeerOutcome.result === 'suspected_wolf'
-                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                      : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
-                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                      ? 'border-wolf-border bg-wolf-tint text-wolf'
+                      : 'border-good-border bg-good-tint text-good'
+                    : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {awakenedSeerOutcome ? (
@@ -2460,12 +2431,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'lantern_seer_check' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                   lanternSeerOutcome
                     ? lanternSeerOutcome.faction === 'wolf'
-                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                      : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
-                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                      ? 'border-wolf-border bg-wolf-tint text-wolf'
+                      : 'border-good-border bg-good-tint text-good'
+                    : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {lanternSeerOutcome ? (
@@ -2484,8 +2455,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             {currentStep.actionType === 'drunk_seer_check' && (
               <div className="space-y-1.5">
                 {!isOnlineJudge && !revealConfirmed && (
-                  <div className="flex items-center justify-center gap-1.5 text-[11px]">
-                    <span className="text-slate-400">酒鬼結果：</span>
+                  <div className="flex items-center justify-center gap-1.5 text-[12px]">
+                    <span className="text-secondary">酒鬼結果：</span>
                     {(
                       [
                         [null, '🎲 隨機'],
@@ -2499,8 +2470,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                         onClick={() => setPendingDrunkManual(val)}
                         className={`min-h-8 rounded-lg border px-2 font-bold ${
                           pendingDrunkManual === val
-                            ? 'border-amber-400 bg-amber-500/25 text-amber-100'
-                            : 'border-slate-700 bg-slate-950 text-slate-300'
+                            ? 'border-sheriff bg-sheriff-tint text-sheriff'
+                            : 'border-subtle bg-canvas text-secondary'
                         }`}
                       >
                         {label}
@@ -2509,12 +2480,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   </div>
                 )}
                 <div
-                  className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                  className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                     drunkSeerOutcome
                       ? drunkSeerOutcome.faction === 'wolf'
-                        ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                        : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
-                      : 'border-slate-800 bg-slate-950 text-slate-300'
+                        ? 'border-wolf-border bg-wolf-tint text-wolf'
+                        : 'border-good-border bg-good-tint text-good'
+                      : 'border-subtle bg-canvas text-secondary'
                   }`}
                 >
                   {drunkSeerOutcome ? (
@@ -2533,12 +2504,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'fool_seer_check' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                   foolSeerOutcome
                     ? foolSeerOutcome.faction === 'wolf'
-                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                      : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
-                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                      ? 'border-wolf-border bg-wolf-tint text-wolf'
+                      : 'border-good-border bg-good-tint text-good'
+                    : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {foolSeerOutcome ? (
@@ -2556,14 +2527,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'fox_check' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                   foxLostAbility
-                    ? 'border-slate-700 bg-slate-900 text-slate-400'
+                    ? 'border-subtle bg-surface text-secondary'
                     : foxOutcome
                       ? foxOutcome.hasWolf
-                        ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                        : 'border-amber-500/50 bg-amber-950/50 text-amber-100'
-                      : 'border-slate-800 bg-slate-950 text-slate-300'
+                        ? 'border-wolf-border bg-wolf-tint text-wolf'
+                        : 'border-sheriff-border bg-amber-950/50 text-sheriff'
+                      : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {foxLostAbility ? (
@@ -2582,7 +2553,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'gargoyle_team_status' && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-center text-xs font-bold text-amber-100">
+              <div className="rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-2 text-center text-xs font-bold text-sheriff">
                 {gargoyleState.hasJoinedWolfTeam
                   ? '✅ 石像鬼已入狼隊（場上其他狼人皆已出局，今晚可參與狼刀）'
                   : '⏳ 石像鬼尚未入隊（場上仍有其他存活狼人）'}
@@ -2595,12 +2566,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'pumpkin_ghost_check') && (
               <div className="space-y-1.5">
                 {currentStep.actionType === 'pumpkin_ghost_check' && (
-                  <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-1.5 text-center text-[11px] font-bold text-amber-100">
+                  <div className="rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-1.5 text-center text-[12px] font-bold text-sheriff">
                     {pumpkinGhostState.hasInherited ? (
                       <>
                         🎃 已繼承石像鬼查驗能力
                         {pumpkinGhostState.inheritedHistory.length > 0 && (
-                          <div className="mt-0.5 text-amber-200/90">
+                          <div className="mt-0.5 text-sheriff/90">
                             歷史紀錄：
                             {pumpkinGhostState.inheritedHistory
                               .map(
@@ -2629,10 +2600,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                           : pumpkinGhostOutcome;
                   return (
                     <div
-                      className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                      className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                         exactOutcome
-                          ? 'border-indigo-400/50 bg-indigo-950/50 text-indigo-100'
-                          : 'border-slate-800 bg-slate-950 text-slate-300'
+                          ? 'border-third-border bg-third-tint text-third'
+                          : 'border-subtle bg-canvas text-secondary'
                       }`}
                     >
                       {exactOutcome ? (
@@ -2657,10 +2628,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'demon_wolf_check' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                className={`rounded-md border px-3 py-2 text-center text-xs font-bold ${
                   demonWolfOutcome
-                    ? 'border-purple-400/50 bg-purple-950/50 text-purple-100'
-                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                    ? 'border-third-border bg-third-tint text-third'
+                    : 'border-subtle bg-canvas text-secondary'
                 }`}
               >
                 {demonWolfOutcome ? (
@@ -2680,11 +2651,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'super_gravekeeper_action' ||
               currentStep.actionType === 'super_gravekeeper_heir_check') && (
               <div className="space-y-1.5">
-                <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/35 px-3 py-2 text-center text-xs font-extrabold text-emerald-100">
+                <div className="rounded-md border border-good-border bg-emerald-950/35 px-3 py-2 text-center text-xs font-extrabold text-good">
                   🪦 {gravekeeperOutcome?.summary ?? '尚無放逐紀錄'}
                 </div>
                 {currentStep.actionType === 'super_gravekeeper_action' && (
-                  <div className="text-center text-xs text-slate-300">
+                  <div className="text-center text-xs text-secondary">
                     {pendingTarget !== null
                       ? `預選繼承者：${pendingTarget} 號`
                       : `目前繼承者：${
@@ -2695,13 +2666,13 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   </div>
                 )}
                 {currentStep.actionType === 'super_gravekeeper_heir_check' && (
-                  <div className="rounded-xl border border-amber-400/40 bg-amber-950/30 px-3 py-1.5 text-center text-[11px] font-bold text-amber-100">
+                  <div className="rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-1.5 text-center text-[12px] font-bold text-sheriff">
                     {superGravekeeperState.heirInherited ? (
                       <>
                         ✅ 繼承者（{superGravekeeperState.heirSeat} 號）已接手！原超級守墓人為{' '}
                         {superGravekeeperState.superGravekeeperSeat ?? '?'} 號
                         {exiledHistory.length > 0 && (
-                          <div className="mt-0.5 text-amber-200/90">
+                          <div className="mt-0.5 text-sheriff/90">
                             歷史放逐：
                             {exiledHistory
                               .map(
@@ -2724,10 +2695,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'nine_tailed_fox_check' && nineTailedFoxOutcome && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-sm font-extrabold ${
+                className={`rounded-md border px-3 py-2 text-center text-sm font-extrabold ${
                   nineTailedFoxOutcome.diedFromNoTails
-                    ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                    : 'border-amber-400/50 bg-amber-950/35 text-amber-100'
+                    ? 'border-wolf-border bg-wolf-tint text-wolf'
+                    : 'border-sheriff-border bg-amber-950/35 text-sheriff'
                 }`}
               >
                 🦊 {nineTailedFoxOutcome.reason}
@@ -2735,11 +2706,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'awakened_dream_catcher_dream' && (
-              <div className="flex items-center justify-between gap-2 text-xs text-slate-300">
+              <div className="flex items-center justify-between gap-2 text-xs text-secondary">
                 <span>
                   昨晚夢語：{lastAwakenedDreamTarget !== null ? `${lastAwakenedDreamTarget} 號` : '無'} ·
                   預選：
-                  <strong className="text-indigo-300">
+                  <strong className="text-third">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '尚未選擇'}
                   </strong>
                 </span>
@@ -2747,8 +2718,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'awakened_dream_catcher_judge' && (
-              <div className="space-y-2 rounded-xl border border-indigo-400/40 bg-indigo-950/35 p-2.5 text-center">
-                <div className="text-xs font-extrabold text-indigo-100">
+              <div className="space-y-2 rounded-md border border-third-border bg-indigo-950/35 p-2.5 text-center">
+                <div className="text-xs font-extrabold text-third">
                   {awakenedDreamJudgeOutcome
                     ? `🌙 夢語者判定：${awakenedDreamJudgeOutcome.reason}`
                     : '今晚尚未選擇夢語者'}
@@ -2757,10 +2728,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   <button
                     type="button"
                     onClick={() => setPendingAwakenedDreamKill((v) => !v)}
-                    className={`min-h-11 w-full rounded-xl border px-3 text-xs font-extrabold transition ${
+                    className={`min-h-11 w-full rounded-md border px-3 text-xs font-extrabold transition ${
                       pendingAwakenedDreamKill
-                        ? 'border-rose-400 bg-rose-600 text-white'
-                        : 'border-slate-700 bg-slate-900 text-slate-200'
+                        ? 'border-wolf bg-rose-600 text-white'
+                        : 'border-subtle bg-surface text-primary'
                     }`}
                   >
                     {pendingAwakenedDreamKill
@@ -2774,7 +2745,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             {(currentStep.actionType === 'magician_swap' ||
               currentStep.actionType === 'wolf_warlock_swap' ||
               currentStep.actionType === 'trickster_wolf_swap') && (
-              <div className="rounded-xl border border-indigo-400/40 bg-indigo-950/35 px-3 py-2 text-center text-xs font-bold text-indigo-100">
+              <div className="rounded-md border border-third-border bg-indigo-950/35 px-3 py-2 text-center text-xs font-bold text-third">
                 🔀 已選交換號碼：
                 {pendingDualTargets[0] !== null && pendingDualTargets[1] !== null
                   ? `${pendingDualTargets[0]} 號 ⇄ ${pendingDualTargets[1]} 號`
@@ -2785,7 +2756,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'alchemy_witch_fog' && (
-              <div className="rounded-xl border border-amber-400/40 bg-amber-950/35 px-3 py-2 text-center text-xs font-bold text-amber-100">
+              <div className="rounded-md border border-sheriff-border bg-amber-950/35 px-3 py-2 text-center text-xs font-bold text-sheriff">
                 🌫️ 未明之霧（限 1 次，選 3 位限制狼刀且禁空刀）：
                 {interferenceState.alchemyFogUsed
                   ? '已使用完畢'
@@ -2796,7 +2767,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'alchemy_witch_snake' && (
-              <div className="rounded-xl border border-emerald-400/45 bg-emerald-950/35 px-3 py-2 text-center text-xs font-bold text-emerald-100">
+              <div className="rounded-md border border-good/45 bg-emerald-950/35 px-3 py-2 text-center text-xs font-bold text-good">
                 🐍 法老之蛇資訊：
                 {currentNightDraft.wolfTarget !== null
                   ? `今晚狼刀目標為 ${currentNightDraft.wolfTarget} 號（將於天亮發言後決定是否救活）`
@@ -2806,7 +2777,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {(currentStep.actionType === 'silent_night_mentor_action' ||
               currentStep.actionType === 'daylight_scholar_action') && (
-              <div className="space-y-1.5 rounded-xl border border-purple-400/40 bg-purple-950/35 p-2 text-center text-xs">
+              <div className="space-y-1.5 rounded-md border border-third/40 bg-purple-950/35 p-2 text-center text-xs">
                 <div className="flex items-center justify-center gap-2">
                   {(
                     [
@@ -2825,14 +2796,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                       className={`min-h-9 rounded-lg border px-2.5 font-bold ${
                         pendingAmplifyMode === mode
                           ? 'border-purple-300 bg-purple-600 text-white'
-                          : 'border-slate-700 bg-slate-900 text-slate-200'
+                          : 'border-subtle bg-surface text-primary'
                       }`}
                     >
                       {label}
                     </button>
                   ))}
                 </div>
-                <div className="text-[11px] font-bold text-purple-100">
+                <div className="text-[12px] font-bold text-third">
                   {pendingAmplifyMode
                     ? `已選${pendingAmplifyMode === 'amplify' ? '增幅' : '削弱'}，目標：${
                         pendingTarget !== null ? `${pendingTarget} 號` : '請點選上方座位'
@@ -2843,9 +2814,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'awakened_witch_action' && (
-              <div className="space-y-2 rounded-xl border border-emerald-400/40 bg-slate-950/80 p-2.5 text-xs">
+              <div className="space-y-2 rounded-md border border-good/40 bg-canvas p-2.5 text-xs">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-slate-200">
+                  <span className="font-bold text-primary">
                     🧪 覺醒女巫（解藥：{interferenceState.awakenedWitchAntidoteUsed ? '已用' : '可用'} ·
                     毒藥已用 {interferenceState.awakenedWitchPoisonsUsed}/3）
                   </span>
@@ -2859,8 +2830,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                         }}
                         className={`min-h-9 rounded-lg border px-2.5 font-bold ${
                           pendingUseAntidote
-                            ? 'border-emerald-400 bg-emerald-600 text-white'
-                            : 'border-slate-700 bg-slate-900 text-slate-200'
+                            ? 'border-good bg-emerald-600 text-white'
+                            : 'border-subtle bg-surface text-primary'
                         }`}
                       >
                         {pendingUseAntidote ? '💊 已選解藥救人' : '使用解藥'}
@@ -2868,8 +2839,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                     )}
                 </div>
                 {!pendingUseAntidote && pendingTarget !== null && (
-                  <div className="space-y-1.5 border-t border-slate-800 pt-1.5">
-                    <div className="font-bold text-rose-200">
+                  <div className="space-y-1.5 border-t border-subtle pt-1.5">
+                    <div className="font-bold text-wolf">
                       ☠️ 預選毒殺 {pendingTarget} 號 — 請勾選{' '}
                       {interferenceState.awakenedWitchPoisonsUsed + 1} 位協助者：
                     </div>
@@ -2898,8 +2869,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                               }
                               className={`min-h-8 rounded-md border px-2 font-bold ${
                                 picked
-                                  ? 'border-amber-400 bg-amber-500/30 text-amber-100'
-                                  : 'border-slate-700 bg-slate-900 text-slate-300'
+                                  ? 'border-sheriff bg-amber-500/30 text-sheriff'
+                                  : 'border-subtle bg-surface text-secondary'
                               }`}
                             >
                               {s.seatNumber}號
@@ -2912,8 +2883,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                       onClick={() => setPendingAwHelpersApproved((v) => !v)}
                       className={`min-h-9 w-full rounded-lg border px-2 font-bold ${
                         pendingAwHelpersApproved
-                          ? 'border-rose-400 bg-rose-600/80 text-white'
-                          : 'border-slate-600 bg-slate-800 text-slate-300'
+                          ? 'border-wolf bg-rose-600/80 text-white'
+                          : 'border-strong bg-elevated text-secondary'
                       }`}
                     >
                       {pendingAwHelpersApproved
@@ -2973,7 +2944,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'happy_sheep_action' ||
               currentStep.actionType === 'police_dog_action' ||
               currentStep.actionType === 'little_girl_identify') && (
-              <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-center text-xs font-bold text-slate-200">
+              <div className="rounded-md border border-subtle bg-canvas px-3 py-2 text-center text-xs font-bold text-primary">
                 {pendingTarget !== null
                   ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
                   : '請點選上方座位選擇技能目標（或直接確認跳過）'}
@@ -2982,7 +2953,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {(currentStep.actionType === 'eclipse_maid_devour' ||
               currentStep.actionType === 'grey_wolf_boss_steal') && (
-              <div className="rounded-xl border border-rose-400/40 bg-rose-950/35 px-3 py-2 text-center text-xs font-bold text-rose-100">
+              <div className="rounded-md border border-wolf/40 bg-wolf-tint px-3 py-2 text-center text-xs font-bold text-wolf">
                 {currentStep.actionType === 'eclipse_maid_devour'
                   ? `🌑 蝕日侍女（吞噬對象 → 技能目標）：${pendingDualTargets.filter((n) => n !== null).join(' → ') || '請依序點選吞噬對象與技能目標'}`
                   : `🐺 灰太狼（偷竊對象 → 技能目標）：${pendingDualTargets.filter((n) => n !== null).join(' → ') || '請依序點選偷竊對象與技能目標'}`}
@@ -2991,7 +2962,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {(currentStep.actionType === 'dancer_dance' ||
               currentStep.actionType === 'super_black_market_gift') && (
-              <div className="rounded-xl border border-fuchsia-400/40 bg-fuchsia-950/35 px-3 py-2 text-center text-xs font-bold text-fuchsia-100">
+              <div className="rounded-md border border-fuchsia-400/40 bg-fuchsia-950/35 px-3 py-2 text-center text-xs font-bold text-fuchsia-100">
                 {currentStep.actionType === 'dancer_dance'
                   ? `💃 舞者舞池（須選 3 人）：${pendingMultiTargets.join('、') || '請點選 3 位未進舞池的存活玩家'}`
                   : `🎁 超級黑市商人（查驗／毒／槍 3 位幸運兒）：${pendingMultiTargets.join('、') || '請依序點選 3 位玩家'}`}
@@ -3000,7 +2971,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {(currentStep.actionType === 'masked_wolf_action' ||
               currentStep.actionType === 'medium_channel') && (
-              <div className="rounded-xl border border-indigo-400/40 bg-indigo-950/35 px-3 py-2 text-center text-xs font-bold text-indigo-100">
+              <div className="rounded-md border border-third-border bg-indigo-950/35 px-3 py-2 text-center text-xs font-bold text-third">
                 {currentStep.actionType === 'masked_wolf_action'
                   ? `🎭 假面（查舞池／改陣營）：${pendingDualTargets.filter((n) => n !== null).join(' ／ ') || '請依序點選查驗與改判目標'}`
                   : `🔮 通靈者（死者 → 繼承者）：${pendingDualTargets.filter((n) => n !== null).join(' → ') || '請依序點選已死亡玩家與存活繼承者'}`}
@@ -3011,14 +2982,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'ghost_bride_link' ||
               currentStep.actionType === 'scent_phantom_link' ||
               currentStep.actionType === 'xu_xian_action') && (
-              <div className="rounded-xl border border-pink-400/40 bg-pink-950/35 px-3 py-2 text-center text-xs font-bold text-pink-100">
+              <div className="rounded-md border border-pink-400/40 bg-pink-950/35 px-3 py-2 text-center text-xs font-bold text-pink-100">
                 💞 已選連線對象：
                 {pendingDualTargets.filter((n) => n !== null).join(' ⇄ ') || '請點選 2 位存活玩家'}
               </div>
             )}
 
             {currentStep.actionType === 'zombie_infect' && (
-              <div className="rounded-xl border border-lime-400/40 bg-lime-950/35 px-3 py-2 text-center text-xs font-bold text-lime-100">
+              <div className="rounded-md border border-lime-400/40 bg-lime-950/35 px-3 py-2 text-center text-xs font-bold text-lime-100">
                 🧟 殭屍感染（每晚 0～2 人）：
                 {pendingMultiTargets.length > 0
                   ? `已預選感染 ${pendingMultiTargets.join('、')} 號`
@@ -3027,8 +2998,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'assassin_wolf_assassinate' && (
-              <div className="space-y-1.5 rounded-xl border border-rose-400/40 bg-rose-950/30 p-2.5 text-xs">
-                <div className="text-center font-bold text-rose-100">
+              <div className="space-y-1.5 rounded-md border border-wolf/40 bg-wolf-tint p-2.5 text-xs">
+                <div className="text-center font-bold text-wolf">
                   🗡️ 刺客目標：{pendingTarget !== null ? `${pendingTarget} 號` : '未選擇（跳過）'}
                 </div>
                 {pendingTarget !== null && (
@@ -3044,8 +3015,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                         onClick={() => setPendingAssassinRoleId(rId)}
                         className={`min-h-8 rounded-md border px-2 font-bold ${
                           pendingAssassinRoleId === rId
-                            ? 'border-rose-400 bg-rose-600 text-white'
-                            : 'border-slate-700 bg-slate-900 text-slate-300'
+                            ? 'border-wolf bg-rose-600 text-white'
+                            : 'border-subtle bg-surface text-secondary'
                         }`}
                       >
                         {getRoleById(rId)?.name ?? rId}
@@ -3057,7 +3028,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'bee_wild_hunt_sting' && (
-              <div className="rounded-xl border border-amber-400/40 bg-amber-950/35 px-3 py-2 text-center text-xs font-bold text-amber-100">
+              <div className="rounded-md border border-sheriff-border bg-amber-950/35 px-3 py-2 text-center text-xs font-bold text-sheriff">
                 🐝 蜂之狂獵蜂刺（選 2 位，可同人）：
                 {combatState.beeWildHuntLostAbility
                   ? '技能已永久失效'
@@ -3066,7 +3037,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'anubis_scale' && (
-              <div className="rounded-xl border border-purple-400/40 bg-purple-950/35 px-3 py-2 text-center text-xs font-bold text-purple-100">
+              <div className="rounded-md border border-third/40 bg-purple-950/35 px-3 py-2 text-center text-xs font-bold text-third">
                 ⚖️ 阿努比斯天平（神&gt;民&gt;狼&gt;神）：左側死者{' '}
                 {pendingDualTargets[0] !== null ? `${pendingDualTargets[0]} 號` : '未選'} vs 右側活人{' '}
                 {pendingDualTargets[1] !== null ? `${pendingDualTargets[1]} 號` : '未選'}
@@ -3074,8 +3045,8 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'warden_wolf_trade' && (
-              <div className="space-y-1.5 rounded-xl border border-indigo-400/40 bg-indigo-950/35 p-2.5 text-xs">
-                <div className="text-center font-bold text-indigo-100">
+              <div className="space-y-1.5 rounded-md border border-third-border bg-indigo-950/35 p-2.5 text-xs">
+                <div className="text-center font-bold text-third">
                   ⛓️ 典獄長交易對象：
                   {pendingDualTargets[0] !== null && pendingDualTargets[1] !== null
                     ? `${pendingDualTargets[0]} 號 & ${pendingDualTargets[1]} 號`
@@ -3094,7 +3065,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                               : [prev[0], prev[1] === 'trade' ? 'betray' : 'trade'],
                           )
                         }
-                        className="min-h-9 rounded-lg border border-slate-700 bg-slate-900 px-2 font-bold text-slate-100"
+                        className="min-h-9 rounded-lg border border-subtle bg-surface px-2 font-bold text-primary"
                       >
                         {pendingDualTargets[idx]} 號：
                         {pendingWardenChoices[idx] === 'trade' ? '🤝 交易' : '🗡️ 背叛'}
@@ -3107,12 +3078,12 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
 
             {currentStep.actionType === 'hunter_gesture' && (
               <div
-                className={`rounded-xl border px-3 py-2 text-center text-sm font-extrabold ${
+                className={`rounded-md border px-3 py-2 text-center text-sm font-extrabold ${
                   !hunterSeat || !hunterSeat.isAlive
-                    ? 'border-slate-800 bg-slate-950 text-slate-400'
+                    ? 'border-subtle bg-canvas text-secondary'
                     : isHunterPoisonedTonight
-                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
-                      : 'border-emerald-500/50 bg-emerald-950/40 text-emerald-100'
+                      ? 'border-wolf-border bg-wolf-tint text-wolf'
+                      : 'border-good-border bg-good-tint text-good'
                 }`}
               >
                 {!hunterSeat || !hunterSeat.isAlive
@@ -3126,7 +3097,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'mech_wolf_learn' && (
-              <div className="flex items-center justify-between gap-2 text-xs text-slate-300">
+              <div className="flex items-center justify-between gap-2 text-xs text-secondary">
                 <span>
                   {pendingTarget !== null
                     ? `預選學習：${pendingTarget} 號`
@@ -3138,7 +3109,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   <button
                     type="button"
                     onClick={() => setPendingTarget(null)}
-                    className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200"
+                    className="min-h-10 rounded-md border border-subtle bg-canvas px-3 text-xs font-bold text-primary"
                   >
                     改為跳過
                   </button>
@@ -3147,7 +3118,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'mech_wolf_reveal_skill' && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-center text-xs font-bold text-amber-100">
+              <div className="rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-2 text-center text-xs font-bold text-sheriff">
                 {mechLearnedTargetSeat && mechLearnedTargetSeat.roleId
                   ? `已學習 ${mechLearnedTargetSeat.seatNumber} 號 ➜ 習得【${
                       getRoleById(mechLearnedTargetSeat.roleId)?.name ??
@@ -3160,10 +3131,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             {currentStep.actionType === 'mech_wolf_night_action' && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className={mechWolfState.hasJoinedWolfTeam ? 'font-bold text-rose-300' : 'text-amber-200'}>
+                  <span className={mechWolfState.hasJoinedWolfTeam ? 'font-bold text-wolf' : 'text-sheriff'}>
                     {mechWolfState.hasJoinedWolfTeam ? '✅ 已入狼隊' : '⏳ 尚未入隊'}
                   </span>
-                  <span className="text-slate-300">
+                  <span className="text-secondary">
                     所學：
                     <strong>
                       {mechWolfState.learnedRoleId
@@ -3176,14 +3147,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                     <button
                       type="button"
                       onClick={() => setPendingTarget(null)}
-                      className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] font-bold text-slate-200"
+                      className="rounded-lg border border-subtle bg-canvas px-2 py-1 text-[12px] font-bold text-primary"
                     >
                       不使用
                     </button>
                   )}
                 </div>
                 {mechWolfPsychicOutcome && (
-                  <div className="rounded-xl border border-indigo-400/50 bg-indigo-950/50 px-3 py-1.5 text-center text-sm font-extrabold text-indigo-100">
+                  <div className="rounded-md border border-third-border bg-third-tint px-3 py-1.5 text-center text-sm font-extrabold text-third">
                     機械狼查驗：{mechWolfPsychicOutcome.targetSeat} 號 ➜{' '}
                     {getRoleById(mechWolfPsychicOutcome.perceivedRoleId)?.name ??
                       mechWolfPsychicOutcome.perceivedRoleId}
@@ -3193,10 +3164,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'wolf_beauty_charm' && (
-              <div className="flex items-center justify-between gap-2 text-xs text-slate-300">
+              <div className="flex items-center justify-between gap-2 text-xs text-secondary">
                 <span>
                   昨晚魅惑：{lastCharmedSeat !== null ? `${lastCharmedSeat} 號` : '無'} · 預選：
-                  <strong className="text-rose-300">
+                  <strong className="text-wolf">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '空魅'}
                   </strong>
                 </span>
@@ -3204,7 +3175,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   <button
                     type="button"
                     onClick={() => setPendingTarget(null)}
-                    className="min-h-10 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200"
+                    className="min-h-10 rounded-md border border-subtle bg-canvas px-3 text-xs font-bold text-primary"
                   >
                     改為空魅
                   </button>
@@ -3213,31 +3184,31 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             )}
 
             {currentStep.actionType === 'dream_catcher_dream' && (
-              <div className="text-xs text-slate-300">
+              <div className="text-xs text-secondary">
                 昨晚夢遊：{lastDreamTarget !== null ? `${lastDreamTarget} 號` : '無'} ·{' '}
                 {pendingTarget !== null && pendingTarget === lastDreamTarget ? (
-                  <span className="font-bold text-rose-300">
+                  <span className="font-bold text-wolf">
                     ⚠️ 連夢 {lastDreamTarget} 號將夢死！
                   </span>
                 ) : pendingTarget !== null ? (
-                  <span className="font-bold text-indigo-200">
+                  <span className="font-bold text-third">
                     💤 預選 {pendingTarget} 號為夢遊者
                   </span>
                 ) : (
-                  <span className="text-amber-200">請必選一名自己以外的存活玩家</span>
+                  <span className="text-sheriff">請必選一名自己以外的存活玩家</span>
                 )}
               </div>
             )}
 
             {!pendingValidation.allowed && pendingValidation.reason && (
-              <div className="rounded-xl border border-rose-500/40 bg-rose-950/40 px-3 py-1.5 text-xs font-semibold text-rose-200">
+              <div className="rounded-md border border-wolf-border bg-wolf-tint px-3 py-1.5 text-xs font-semibold text-wolf">
                 ⚠️ {pendingValidation.reason}
               </div>
             )}
           </div>
         )}
 
-        {/* 底部操作列：抽屜／上一步 ＋ 獨立確認紀錄鍵 */}
+        {/* 底部操作列：上一步線框 ＋ 單一實心主按鈕 */}
         <div className="flex items-center gap-2">
           {!isOnlineJudge && (
             <button
@@ -3245,33 +3216,13 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               disabled={isFirstStep}
               onClick={prevNightStep}
               aria-label="上一步"
-              className={`min-h-12 shrink-0 rounded-xl border px-3 text-xs font-bold transition ${
+              className={`min-h-12 min-w-12 shrink-0 rounded-md border px-3 text-[14px] font-semibold transition ${
                 isFirstStep
-                  ? 'cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600'
-                  : 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700'
+                  ? 'cursor-not-allowed border-subtle bg-canvas text-muted opacity-50'
+                  : 'border-subtle bg-surface text-secondary hover:border-strong hover:text-primary'
               }`}
             >
               ←
-            </button>
-          )}
-
-          {!isOnlineJudge && onOpenHistory && (
-            <button
-              type="button"
-              onClick={onOpenHistory}
-              className="min-h-12 shrink-0 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-slate-200 hover:bg-slate-800"
-            >
-              📋 紀錄
-            </button>
-          )}
-
-          {onOpenQA && (
-            <button
-              type="button"
-              onClick={onOpenQA}
-              className="min-h-12 shrink-0 rounded-xl border border-slate-700 bg-slate-950 px-3 text-xs font-bold text-amber-200 hover:bg-slate-800"
-            >
-              ❓ 規則
             </button>
           )}
 
@@ -3279,14 +3230,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
             type="button"
             disabled={primaryButtonDisabled}
             onClick={isClaimStage ? handleConfirmClaimAction : handleConfirmSkillAction}
-            className={`min-h-12 flex-1 rounded-xl px-4 text-sm font-extrabold transition active:scale-[0.98] ${
+            className={`min-h-12 flex-1 rounded-md px-4 text-[14px] font-semibold transition ${
               primaryButtonDisabled
-                ? 'cursor-not-allowed bg-slate-800 text-slate-500'
+                ? 'cursor-not-allowed bg-elevated text-muted'
                 : isClaimStage && isPendingUnclaim
-                  ? 'bg-rose-500 text-slate-950 hover:bg-rose-400'
+                  ? 'bg-wolf text-primary hover:opacity-90'
                   : isLastStep && !isClaimStage && (!isInfoRevealStep || revealConfirmed)
-                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400'
-                    : 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                    ? 'bg-good text-inverse hover:opacity-90'
+                    : 'bg-sheriff text-inverse hover:opacity-90'
             }`}
           >
             {primaryButtonLabel}
@@ -3320,47 +3271,46 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       <SlideDrawer
         open={scriptDrawerOpen && !isOnlineJudge}
         onClose={() => setScriptDrawerOpen(false)}
-        title={`${currentStep.actorLabel} · 主持逐字稿`}
-        subtitle={`第 ${round} 晚 · 步驟 ${currentStepIndex + 1} / ${steps.length}`}
+        title={`${currentStep.actorLabel} · 台詞`}
         placement="bottom"
       >
-        <div className="space-y-3 pb-4">
+        <div className="divide-y divide-subtle">
           {!actorSeatsAlive && (
-            <div className="rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs text-slate-300">
-              ⚠️ 此角色目前場上已無存活玩家。線下主持仍建議照常唸出台詞並默數 5 秒，避免場上聽出神職已出局。
+            <div className="border-l-2 border-wolf bg-wolf-tint px-3 py-2 text-[12px] font-semibold text-wolf">
+              此角色已出局：請照常唸詞並默數 5 秒避免暴露資訊。
             </div>
           )}
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-            <div className="text-xs font-bold text-sky-300">👁️ 睜眼</div>
-            <p className="mt-1 text-base font-bold text-slate-100">{currentStep.openPrompt}</p>
+          <div className="py-3">
+            <div className="text-[12px] font-semibold text-secondary">睜眼</div>
+            <p className="mt-1 text-[14px] font-semibold text-primary">{currentStep.openPrompt}</p>
           </div>
-          <div className="rounded-xl border border-amber-500/35 bg-amber-950/25 p-3.5">
-            <div className="text-xs font-bold text-amber-300">🗣️ 引導台詞</div>
-            <p className="mt-1.5 whitespace-pre-line text-base font-extrabold leading-relaxed text-amber-50">
+          <div className="border-l-2 border-sheriff py-3 pl-3">
+            <div className="text-[12px] font-semibold text-sheriff">引導台詞</div>
+            <p className="mt-1 whitespace-pre-line text-[14px] font-semibold leading-6 text-primary">
               {currentStep.actionPrompt}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-            <div className="text-xs font-bold text-slate-400">🙈 閉眼</div>
-            <p className="mt-1 text-base font-bold text-slate-200">{currentStep.closePrompt}</p>
+          <div className="py-3">
+            <div className="text-[12px] font-semibold text-secondary">閉眼</div>
+            <p className="mt-1 text-[14px] font-medium text-secondary">{currentStep.closePrompt}</p>
           </div>
           {currentStep.judgeTips && currentStep.judgeTips.length > 0 && (
-            <div className="space-y-1 rounded-xl border border-indigo-500/30 bg-indigo-950/25 p-3">
-              <div className="text-xs font-bold text-indigo-300">法官即時提醒</div>
+            <div className="space-y-1 py-3">
+              <div className="text-[12px] font-semibold text-third">法官提醒</div>
               {currentStep.judgeTips.map((tip, idx) => (
-                <p key={idx} className="text-xs leading-relaxed text-slate-200">
+                <p key={idx} className="text-[12px] leading-5 text-secondary">
                   • {tip}
                 </p>
               ))}
             </div>
           )}
           {relatedQAs.length > 0 && (
-            <div className="space-y-1.5 rounded-xl border border-amber-500/30 bg-slate-950 p-3">
-              <div className="text-xs font-bold text-amber-300">相關 Q &amp; A</div>
+            <div className="space-y-2 py-3">
+              <div className="text-[12px] font-semibold text-sheriff">相關 Q&amp;A</div>
               {relatedQAs.map((qa) => (
-                <div key={qa.id} className="text-xs leading-relaxed text-slate-200">
-                  <div className="font-bold text-amber-100">Q：{qa.question}</div>
-                  <div className="mt-0.5 text-slate-300">A：{qa.answer}</div>
+                <div key={qa.id} className="text-[12px] leading-5">
+                  <div className="font-semibold text-primary">Q：{qa.question}</div>
+                  <div className="mt-0.5 text-secondary">A：{qa.answer}</div>
                 </div>
               ))}
             </div>
@@ -3371,14 +3321,14 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       {/* 女巫用藥不可逆二次確認彈窗 */}
       <ConfirmModal
         open={confirmWitchPotionOpen}
-        title={pendingUseAntidote ? '確認使用女巫解藥？' : '確認使用女巫毒藥？'}
+        title={pendingUseAntidote ? '確認使用解藥' : '確認使用毒藥'}
         description={
           pendingUseAntidote
-            ? `確定消耗本局唯一一瓶【解藥】救起 ${currentNightDraft.wolfTarget} 號？（若與守衛同守將觸發奶穿）`
-            : `確定消耗本局唯一一瓶【毒藥】毒殺 ${pendingTarget} 號？被毒殺者無法發動開槍等亡語技能。`
+            ? `消耗唯一解藥救起 ${currentNightDraft.wolfTarget} 號（若與守衛同守將奶穿）。`
+            : `消耗唯一毒藥毒殺 ${pendingTarget} 號（被毒者無法開槍）。`
         }
-        confirmLabel={pendingUseAntidote ? '💊 確認使用解藥' : '☠️ 確認使用毒藥'}
-        cancelLabel="返回修改"
+        confirmLabel={pendingUseAntidote ? '確認解藥' : '確認毒藥'}
+        cancelLabel="返回"
         tone={pendingUseAntidote ? 'warning' : 'danger'}
         onConfirm={() => {
           setConfirmWitchPotionOpen(false);
@@ -3391,10 +3341,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       {/* 實體法官：結束今夜結算確認彈窗 */}
       <ConfirmModal
         open={confirmFinishOpen}
-        title={`確認結束第 ${round} 晚並天亮結算？`}
-        description="請確認今晚各項行動紀錄無誤，按下確認後將立刻結算死亡與勝負結果："
+        title={`結束第 ${round} 晚並結算`}
         confirmLabel="確認結算"
-        cancelLabel="返回修改"
+        cancelLabel="返回"
         tone="warning"
         onConfirm={() => {
           setConfirmFinishOpen(false);
@@ -3403,16 +3352,16 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         onCancel={() => setConfirmFinishOpen(false)}
       >
         <div className="space-y-2">
-          <ul className="space-y-1.5 rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200">
+          <ul className="space-y-1 border-l-2 border-subtle pl-3 text-[12px] text-secondary tabular-nums">
             {summaryLines.length > 0 ? (
               summaryLines.map((line, idx) => <li key={idx}>• {line}</li>)
             ) : (
-              <li>• 已完成本晚 {steps.length} 個主持步驟</li>
+              <li>• 已完成本晚 {steps.length} 個步驟</li>
             )}
           </ul>
           {isPhysicalDealFirstNight && unclaimedSeats.length > 0 && (
-            <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/30 p-2.5 text-xs text-emerald-200">
-              🌾 實體發牌自動補平民：未認領的 {unclaimedSeats.join('、')} 號將於結算時自動判定為「平民」。
+            <div className="border-l-2 border-good bg-good-tint px-3 py-1.5 text-[12px] text-good tabular-nums">
+              未認領 {unclaimedSeats.join('、')} 號將自動補為平民。
             </div>
           )}
         </div>

@@ -863,6 +863,28 @@ const AUTOMATED_ROLE_IDS = new Set([
   'awakened_witch',
   'white_cat',
   'war_wolf',
+  // 第 3 批：免疫、反傷、額外傷害與特殊擊殺類（21 角色）
+  'demon_hunter',
+  'wolf_raven_claw',
+  'assassin_wolf',
+  'big_bad_wolf',
+  'big_grey_wolf',
+  'wolf_brother',
+  'wolf_younger_brother',
+  'bee_wild_hunt',
+  'perseus',
+  'anubis',
+  'blood_moon_apostle',
+  'pufferfish',
+  'awakened_wolf_king',
+  'awakened_wolf_beauty',
+  'awakened_hunter',
+  'scarlet_wolf_king',
+  'night_noble',
+  'awakened_idiot',
+  'old_rascal',
+  'rusty_sword_knight',
+  'warden_wolf',
 ]);
 
 function stripMarkdownFormatting(input: string): string {
@@ -1065,6 +1087,11 @@ function resolveRoleIdsFromLabel(
     ['覺醒預言家', 'awakened_seer'],
     ['覺醒攝夢人', 'awakened_dream_catcher'],
     ['覺醒女巫', 'awakened_witch'],
+    ['覺醒狼王', 'awakened_wolf_king'],
+    ['覺醒狼美人', 'awakened_wolf_beauty'],
+    ['覺醒獵人', 'awakened_hunter'],
+    ['覺醒白痴', 'awakened_idiot'],
+    ['猩紅狼王', 'scarlet_wolf_king'],
     ['煉金魔女', 'alchemy_witch'],
     ['超級守墓人', 'super_gravekeeper'],
     ['高級平民', 'senior_villager'],
@@ -1490,6 +1517,113 @@ function inferNightActionType(
     (combined.includes('解藥') || combined.includes('毒藥'))
   ) {
     return 'awakened_witch_action';
+  }
+
+  // === 第 3 批：免疫、反傷、額外傷害與特殊擊殺類角色 ===
+  if (
+    actorRoleIds.includes('demon_hunter') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('狩獵')
+  ) {
+    return 'demon_hunter_hunt';
+  }
+  if (
+    actorRoleIds.includes('wolf_raven_claw') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('無敵刀')
+  ) {
+    return 'wolf_raven_claw_kill';
+  }
+  if (
+    actorRoleIds.includes('assassin_wolf') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('刺殺')
+  ) {
+    return 'assassin_wolf_assassinate';
+  }
+  if (
+    actorRoleIds.includes('big_bad_wolf') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('擊殺')
+  ) {
+    return 'big_bad_wolf_kill';
+  }
+  if (
+    actorRoleIds.includes('big_grey_wolf') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('擊殺')
+  ) {
+    return 'big_grey_wolf_kill';
+  }
+  if (
+    actorRoleIds.includes('wolf_younger_brother') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('復仇刀') || combined.includes('擊殺'))
+  ) {
+    return 'wolf_younger_brother_kill';
+  }
+  if (
+    actorRoleIds.includes('bee_wild_hunt') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('蜂刺')
+  ) {
+    return 'bee_wild_hunt_sting';
+  }
+  if (
+    actorRoleIds.includes('perseus') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('處決')
+  ) {
+    return 'perseus_execute';
+  }
+  if (
+    actorRoleIds.includes('anubis') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('天平')
+  ) {
+    return 'anubis_scale';
+  }
+  if (
+    actorRoleIds.includes('awakened_wolf_king') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('分槍')
+  ) {
+    return 'awakened_wolf_king_give_gun';
+  }
+  if (
+    actorRoleIds.includes('awakened_wolf_beauty') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('魅惑')
+  ) {
+    return 'awakened_wolf_beauty_charm';
+  }
+  if (
+    actorRoleIds.includes('scarlet_wolf_king') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('附著')
+  ) {
+    return 'scarlet_wolf_king_attach';
+  }
+  if (
+    actorRoleIds.includes('night_noble') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('夜僕')
+  ) {
+    return 'night_noble_servant';
+  }
+  if (
+    actorRoleIds.includes('awakened_idiot') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('守護')
+  ) {
+    return 'awakened_idiot_shield';
+  }
+  if (
+    actorRoleIds.includes('warden_wolf') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('交易')
+  ) {
+    return 'warden_wolf_trade';
   }
 
   return 'confirm_only';

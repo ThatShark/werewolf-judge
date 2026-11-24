@@ -10,6 +10,7 @@ import {
   claimSeatRole as claimSeatRoleLogic,
   clampOnlineJudgeSettings,
   createEmptyNightDraft,
+  createInitialCombatState,
   createInitialGargoyleState,
   createInitialHiddenWolfState,
   createInitialHybridState,
@@ -30,10 +31,13 @@ import {
   handleSheriffElectionExplode,
   isValidPlayerCountForBoard,
   resolveAlchemySnakeRevive,
+  resolveAwakenedHunterDirectionShoot,
   resolveDayExile,
   resolveGoodSelfExplode,
   resolveKnightDuel,
   resolveNight,
+  resolveOldRascalDelayedDeath,
+  resolvePufferfishExplode,
   resolveSelfExplode,
   resolveSheriffVoteRound,
   resolveShoot,
@@ -124,6 +128,7 @@ export type UndoSnapshotData = Pick<
   | 'lastNineTailedFoxResult'
   | 'lastSeniorVillagerReveal'
   | 'interferenceState'
+  | 'combatState'
   | 'speakingQueue'
   | 'currentSpeakerIndex'
   | 'speakingMeta'
@@ -221,6 +226,9 @@ export interface GameStore extends GameState {
   knightDuel: (knightSeat: number, targetSeat: number) => KnightDuelResult;
   reviveWithAlchemySnake: (victimSeat: number) => { allowed: boolean; reason?: string };
   triggerWhiteCatDelayedDeath: () => void;
+  pufferfishExplode: (voterSeats: number[]) => { allowed: boolean; reason?: string; killedSeats?: number[] };
+  awakenedHunterShoot: (hunterSeat: number, direction: 'left' | 'right') => { allowed: boolean; killedSeat?: number | null };
+  triggerOldRascalDelayedDeath: () => void;
   advanceToNextNight: () => void;
 
   toggleSeatAlive: (seatNumber: number, options?: { reason?: DeathReason }) => void;
@@ -282,6 +290,7 @@ function createInitialGameState(): GameState & {
     lastNineTailedFoxResult: null,
     lastSeniorVillagerReveal: null,
     interferenceState: createInitialInterferenceState(),
+    combatState: createInitialCombatState(),
     speakingQueue: [],
     currentSpeakerIndex: 0,
     speakingMeta: null,
@@ -335,6 +344,7 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     lastNineTailedFoxResult: state.lastNineTailedFoxResult,
     lastSeniorVillagerReveal: state.lastSeniorVillagerReveal,
     interferenceState: state.interferenceState,
+    combatState: state.combatState,
     speakingQueue: state.speakingQueue,
     currentSpeakerIndex: state.currentSpeakerIndex,
     speakingMeta: state.speakingMeta,
@@ -743,6 +753,7 @@ export const useGameStore = create<GameStore>()(
           exiledHistory: state.exiledHistory ?? [],
           lastAwakenedDreamTarget: state.lastAwakenedDreamTarget ?? null,
           interferenceState: state.interferenceState ?? createInitialInterferenceState(),
+          combatState: state.combatState ?? createInitialCombatState(),
         });
 
         const deathMap = new Map(result.deaths.map((d) => [d.seat, d.reason]));
@@ -814,6 +825,7 @@ export const useGameStore = create<GameStore>()(
           lastNineTailedFoxResult: result.nineTailedFoxResult,
           lastSeniorVillagerReveal: result.seniorVillagerReveal,
           interferenceState: result.interferenceState,
+          combatState: result.combatState,
           sheriffState: nextSheriffState,
           speakingQueue: [],
           currentSpeakerIndex: 0,
@@ -1484,6 +1496,107 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
+      pufferfishExplode: (voterSeats) => {
+        const state = get();
+        const curCombat = state.combatState ?? createInitialCombatState();
+        const res = resolvePufferfishExplode(
+          state.seats,
+          voterSeats,
+          curCombat.pufferfishBombUsed,
+          state.round,
+          state.ruleOverrides,
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const triggerGameOver = shouldTriggerAutoVictory(
+          res.victory,
+          state.forceContinueAfterVictory,
+        );
+        const summary = `河豚翻牌炸死投票玩家：${res.killedSeats.join('、')} 號`;
+        set({
+          seats: res.seats,
+          combatState: { ...curCombat, pufferfishBombUsed: true },
+          sheriffState: syncSheriffBadgeOnDeaths(state.sheriffState, res.seats),
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+          }),
+          winner: triggerGameOver ? res.victory.winner : state.winner,
+          winReason: triggerGameOver ? res.victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, '河豚翻牌炸票'),
+        });
+        return { allowed: true, killedSeats: res.killedSeats };
+      },
+
+      awakenedHunterShoot: (hunterSeat, direction) => {
+        const state = get();
+        const res = resolveAwakenedHunterDirectionShoot(
+          state.seats,
+          hunterSeat,
+          direction,
+          state.round,
+          state.ruleOverrides,
+        );
+        if (!res.allowed) return { allowed: false };
+        const triggerGameOver = shouldTriggerAutoVictory(
+          res.victory,
+          state.forceContinueAfterVictory,
+        );
+        const dirLabel = direction === 'left' ? '左' : '右';
+        const summary =
+          res.killedSeat !== null
+            ? `覺醒獵人（${hunterSeat} 號）向${dirLabel}開槍帶走最近狼人 ${res.killedSeat} 號`
+            : `覺醒獵人（${hunterSeat} 號）向${dirLabel}開槍未命中存活狼人`;
+        set({
+          seats: res.seats,
+          sheriffState: syncSheriffBadgeOnDeaths(state.sheriffState, res.seats),
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'hunter_shoot',
+            summary,
+            actorSeat: hunterSeat,
+            targetSeat: res.killedSeat,
+          }),
+          winner: triggerGameOver ? res.victory.winner : state.winner,
+          winReason: triggerGameOver ? res.victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, `覺醒獵人向${dirLabel}開槍`),
+        });
+        return { allowed: true, killedSeat: res.killedSeat };
+      },
+
+      triggerOldRascalDelayedDeath: () => {
+        const state = get();
+        const res = resolveOldRascalDelayedDeath(
+          state.seats,
+          state.round,
+          state.ruleOverrides,
+          state.mechWolfState,
+        );
+        if (res.eliminatedSeat === null) return;
+        const triggerGameOver = shouldTriggerAutoVictory(
+          res.victory,
+          state.forceContinueAfterVictory,
+        );
+        const summary = `老流氓（${res.eliminatedSeat} 號）延遲死亡正式出局`;
+        set({
+          seats: res.seats,
+          mechWolfState: res.mechWolfState,
+          sheriffState: syncSheriffBadgeOnDeaths(state.sheriffState, res.seats),
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat: res.eliminatedSeat,
+          }),
+          winner: triggerGameOver ? res.victory.winner : state.winner,
+          winReason: triggerGameOver ? res.victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, `老流氓延遲出局（${res.eliminatedSeat} 號）`),
+        });
+      },
+
       selfExplode: (wolfSeat) => {
         const state = get();
         const result = resolveSelfExplode(state.seats, wolfSeat);
@@ -1500,7 +1613,15 @@ export const useGameStore = create<GameStore>()(
         const nextSheriffState = explodeBadge.sheriffState;
 
         const nextRound = state.round + 1;
-        const explodeSummary = `${wolfSeat} 號狼人自爆，強制進入第 ${nextRound} 晚（當晚點刀後正式死亡）`;
+        const explodingPlayer = state.seats.find((s) => s.seatNumber === wolfSeat);
+        const isBloodMoonExplode = explodingPlayer?.roleId === 'blood_moon_apostle';
+        const curCombat = state.combatState ?? createInitialCombatState();
+        const nextCombatState = isBloodMoonExplode
+          ? { ...curCombat, bloodMoonSealActiveTonight: true }
+          : curCombat;
+        const explodeSummary = isBloodMoonExplode
+          ? `${wolfSeat} 號（血月使徒）自爆，封印今晚所有好人技能並強制進入第 ${nextRound} 晚`
+          : `${wolfSeat} 號狼人自爆，強制進入第 ${nextRound} 晚（當晚點刀後正式死亡）`;
         let nextDayHistory = appendDayEvent(state.dayHistory, state.round, explodeSummary, {
           type: 'self_explode',
           summary: explodeSummary,
@@ -1529,6 +1650,7 @@ export const useGameStore = create<GameStore>()(
 
         set({
           pendingSelfExplodeSeat: result.pendingSelfExplodeSeat,
+          combatState: nextCombatState,
           sheriffState: nextSheriffState,
           dayHistory: nextDayHistory,
           round: nextRound,

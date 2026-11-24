@@ -5,9 +5,15 @@ import { getRoleById } from '../../data/roles';
 import {
   applyMechWolfLearn,
   canAwakenedDreamCatcherDream,
+  canAwakenedIdiotShield,
+  canAwakenedWolfBeautyCharm,
+  canAwakenedWolfKingGiveGun,
+  canBigBadWolfExtraKill,
+  canBigGreyWolfKill,
   canBlackBatShield,
   canDarkNightEnvoyShield,
   canDaylightScholarAct,
+  canDemonHunterHunt,
   canDemonWolfCheck,
   canDreamCatcherDream,
   canEnchanterBewitch,
@@ -19,9 +25,12 @@ import {
   canMechWolfUseLearnedSkill,
   canMedusaPetrify,
   canMuteElderMute,
+  canNightNobleChooseServant,
   canNightmareFear,
   canPenguinFreeze,
+  canPerseusExecute,
   canRadiantEarlShield,
+  canScarletAttach,
   canSeedWolfInfect,
   canSilentNightMentorAct,
   canSocialiteFavor,
@@ -31,6 +40,9 @@ import {
   canWitchUseAntidote,
   canWitchUsePoison,
   canWolfBeautyCharm,
+  canWolfRavenClawKill,
+  canWolfYoungerBrotherAwakenedKill,
+  createInitialCombatState,
   createInitialGargoyleState,
   createInitialInterferenceState,
   createInitialPumpkinGhostState,
@@ -160,6 +172,30 @@ function getInitialTargetForStep(
       return draft.darkNightEnvoyTarget ?? null;
     case 'awakened_witch_action':
       return draft.awakenedWitchPoisonTarget ?? null;
+    case 'demon_hunter_hunt':
+      return draft.demonHunterTarget ?? null;
+    case 'wolf_raven_claw_kill':
+      return draft.wolfRavenClawKillTarget ?? null;
+    case 'assassin_wolf_assassinate':
+      return draft.assassinTarget ?? null;
+    case 'big_bad_wolf_kill':
+      return draft.bigBadWolfKillTarget ?? null;
+    case 'big_grey_wolf_kill':
+      return draft.bigGreyWolfKillTarget ?? null;
+    case 'wolf_younger_brother_kill':
+      return draft.wolfYoungerBrotherKillTarget ?? null;
+    case 'perseus_execute':
+      return draft.perseusExecuteTarget ?? null;
+    case 'awakened_wolf_king_give_gun':
+      return draft.awakenedWolfKingGiveGunTarget ?? null;
+    case 'awakened_wolf_beauty_charm':
+      return draft.awakenedWolfBeautyCharmTarget ?? null;
+    case 'scarlet_wolf_king_attach':
+      return draft.scarletAttachTarget ?? null;
+    case 'night_noble_servant':
+      return draft.nightNobleServantTarget ?? null;
+    case 'awakened_idiot_shield':
+      return draft.awakenedIdiotShieldTarget ?? null;
     default:
       return null;
   }
@@ -235,6 +271,7 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const interferenceState = useGameStore(
     (s) => s.interferenceState ?? createInitialInterferenceState(),
   );
+  const combatState = useGameStore((s) => s.combatState ?? createInitialCombatState());
 
   const claimSeatRole = useGameStore((s) => s.claimSeatRole);
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
@@ -275,6 +312,10 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   );
   const [pendingAmplifyMode, setPendingAmplifyMode] = useState<'amplify' | 'weaken' | null>(null);
   const [pendingAwHelpersApproved, setPendingAwHelpersApproved] = useState<boolean>(true);
+  const [pendingAssassinRoleId, setPendingAssassinRoleId] = useState<string>('');
+  const [pendingWardenChoices, setPendingWardenChoices] = useState<
+    ['trade' | 'betray', 'trade' | 'betray']
+  >(['trade', 'trade']);
   const [revealConfirmed, setRevealConfirmed] = useState(false);
 
   // 實體發牌首夜認領狀態
@@ -321,8 +362,16 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           ? (currentNightDraft.wolfWarlockSwapPair ?? [null, null])
           : currentStep.actionType === 'trickster_wolf_swap'
             ? (currentNightDraft.tricksterSwapPair ?? [null, null])
-            : (currentNightDraft.awakenedSeerTargets ?? [null, null]),
+            : currentStep.actionType === 'bee_wild_hunt_sting'
+              ? (currentNightDraft.beeWildHuntTargets ?? [null, null])
+              : currentStep.actionType === 'anubis_scale'
+                ? [currentNightDraft.anubisDeadSeat ?? null, currentNightDraft.anubisAliveSeat ?? null]
+                : currentStep.actionType === 'warden_wolf_trade'
+                  ? (currentNightDraft.wardenTradePair ?? [null, null])
+                  : (currentNightDraft.awakenedSeerTargets ?? [null, null]),
     );
+    setPendingAssassinRoleId(currentNightDraft.assassinGuessedRoleId ?? '');
+    setPendingWardenChoices(currentNightDraft.wardenTradeChoices ?? ['trade', 'trade']);
     setPendingDrunkManual(currentNightDraft.drunkSeerManualResult ?? null);
     setPendingAwakenedDreamKill(Boolean(currentNightDraft.awakenedDreamKillTarget));
     setPendingMultiTargets(
@@ -1138,6 +1187,104 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           onSelect: toggleTarget,
         };
       }
+      case 'demon_hunter_hunt': {
+        const check = canDemonHunterHunt(seats, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'wolf_raven_claw_kill': {
+        const check = canWolfRavenClawKill(seats, combatState, seatNumber);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'assassin_wolf_assassinate': {
+        return { selected: pendingTarget === seatNumber, disabled: !isAlive || round < 2, reason: round < 2 ? '第 2 晚起' : !isAlive ? '已出局' : undefined, onSelect: toggleTarget };
+      }
+      case 'big_bad_wolf_kill': {
+        const check = canBigBadWolfExtraKill(seats, seatNumber);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'big_grey_wolf_kill': {
+        const check = canBigGreyWolfKill(seats, combatState, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'wolf_younger_brother_kill': {
+        const check = canWolfYoungerBrotherAwakenedKill(seats, combatState, seatNumber);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'bee_wild_hunt_sting': {
+        const [a, b] = pendingDualTargets;
+        const disabled = !isAlive || round < 2 || combatState.beeWildHuntLostAbility;
+        return {
+          selected: a === seatNumber || b === seatNumber,
+          disabled,
+          reason: combatState.beeWildHuntLostAbility ? '技能失效' : round < 2 ? '第 2 晚起' : !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingDualTargets(([first, second]) => {
+              if (first === null) return [seatNumber, second];
+              if (second === null) return [first, seatNumber];
+              if (first === seatNumber && second === seatNumber) return [null, null];
+              return [second, seatNumber];
+            });
+          },
+        };
+      }
+      case 'perseus_execute': {
+        const check = canPerseusExecute(seats, combatState, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'anubis_scale': {
+        const [deadSeat, aliveSeat] = pendingDualTargets;
+        const used = combatState.anubisUsedSeats.includes(seatNumber);
+        return {
+          selected: deadSeat === seatNumber || aliveSeat === seatNumber,
+          disabled: round < 2 || used,
+          reason: round < 2 ? '第 2 晚起' : used ? '已上天平' : undefined,
+          onSelect: () => {
+            setPendingDualTargets(([d, a]) =>
+              !isAlive
+                ? [d === seatNumber ? null : seatNumber, a]
+                : [d, a === seatNumber ? null : seatNumber],
+            );
+          },
+        };
+      }
+      case 'awakened_wolf_king_give_gun': {
+        const check = canAwakenedWolfKingGiveGun(seats, combatState, seatNumber);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'awakened_wolf_beauty_charm': {
+        const check = canAwakenedWolfBeautyCharm(seats, combatState, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'scarlet_wolf_king_attach': {
+        const check = canScarletAttach(seats, combatState, seatNumber);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'night_noble_servant': {
+        const check = canNightNobleChooseServant(seats, combatState, seatNumber, round);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'awakened_idiot_shield': {
+        const check = canAwakenedIdiotShield(seats, combatState, seatNumber);
+        return { selected: pendingTarget === seatNumber, disabled: !check.allowed, reason: check.reason, onSelect: toggleTarget };
+      }
+      case 'warden_wolf_trade': {
+        const [a, b] = pendingDualTargets;
+        const used = combatState.wardenTradedSeats.includes(seatNumber);
+        return {
+          selected: a === seatNumber || b === seatNumber,
+          disabled: !isAlive || round < 2 || used,
+          reason: round < 2 ? '第 2 晚起' : used ? '已交易過' : !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingDualTargets(([first, second]) => {
+              if (first === seatNumber) return [second, null];
+              if (second === seatNumber) return [first, null];
+              if (first === null) return [seatNumber, second];
+              if (second === null) return [first, seatNumber];
+              return [second, seatNumber];
+            });
+          },
+        };
+      }
       default:
         return {
           selected: false,
@@ -1298,6 +1445,60 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           awakenedWitchPoisonTarget: pendingUseAntidote ? null : pendingTarget,
           awakenedWitchHelpers: pendingUseAntidote ? [] : pendingMultiTargets,
           awakenedWitchHelpersApproved: pendingAwHelpersApproved,
+        });
+        break;
+      case 'demon_hunter_hunt':
+        updateNightDraft({ demonHunterTarget: pendingTarget });
+        break;
+      case 'wolf_raven_claw_kill':
+        updateNightDraft({ wolfRavenClawKillTarget: pendingTarget });
+        break;
+      case 'assassin_wolf_assassinate':
+        updateNightDraft({
+          assassinTarget: pendingTarget,
+          assassinGuessedRoleId: pendingTarget !== null ? pendingAssassinRoleId || null : null,
+        });
+        break;
+      case 'big_bad_wolf_kill':
+        updateNightDraft({ bigBadWolfKillTarget: pendingTarget });
+        break;
+      case 'big_grey_wolf_kill':
+        updateNightDraft({ bigGreyWolfKillTarget: pendingTarget });
+        break;
+      case 'wolf_younger_brother_kill':
+        updateNightDraft({ wolfYoungerBrotherKillTarget: pendingTarget });
+        break;
+      case 'bee_wild_hunt_sting':
+        updateNightDraft({ beeWildHuntTargets: pendingDualTargets });
+        break;
+      case 'perseus_execute':
+        updateNightDraft({ perseusExecuteTarget: pendingTarget });
+        break;
+      case 'anubis_scale':
+        updateNightDraft({
+          anubisDeadSeat: pendingDualTargets[0],
+          anubisAliveSeat: pendingDualTargets[1],
+        });
+        break;
+      case 'awakened_wolf_king_give_gun':
+        updateNightDraft({ awakenedWolfKingGiveGunTarget: pendingTarget });
+        break;
+      case 'awakened_wolf_beauty_charm':
+        updateNightDraft({ awakenedWolfBeautyCharmTarget: pendingTarget });
+        break;
+      case 'scarlet_wolf_king_attach':
+        updateNightDraft({ scarletAttachTarget: pendingTarget });
+        break;
+      case 'night_noble_servant':
+        updateNightDraft({ nightNobleServantTarget: pendingTarget });
+        break;
+      case 'awakened_idiot_shield':
+        updateNightDraft({ awakenedIdiotShieldTarget: pendingTarget });
+        break;
+      case 'warden_wolf_trade':
+        updateNightDraft({
+          wardenTradePair: pendingDualTargets,
+          wardenTradeChoices: pendingWardenChoices,
         });
         break;
       default:
@@ -2567,11 +2768,101 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'socialite_favor' ||
               currentStep.actionType === 'enchanter_bewitch' ||
               currentStep.actionType === 'black_bat_shield' ||
-              currentStep.actionType === 'dark_night_envoy_shield') && (
+              currentStep.actionType === 'dark_night_envoy_shield' ||
+              currentStep.actionType === 'demon_hunter_hunt' ||
+              currentStep.actionType === 'wolf_raven_claw_kill' ||
+              currentStep.actionType === 'big_bad_wolf_kill' ||
+              currentStep.actionType === 'big_grey_wolf_kill' ||
+              currentStep.actionType === 'wolf_younger_brother_kill' ||
+              currentStep.actionType === 'perseus_execute' ||
+              currentStep.actionType === 'awakened_wolf_king_give_gun' ||
+              currentStep.actionType === 'awakened_wolf_beauty_charm' ||
+              currentStep.actionType === 'scarlet_wolf_king_attach' ||
+              currentStep.actionType === 'night_noble_servant' ||
+              currentStep.actionType === 'awakened_idiot_shield') && (
               <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-center text-xs font-bold text-slate-200">
                 {pendingTarget !== null
                   ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
                   : '請點選上方座位選擇技能目標（或直接確認跳過）'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'assassin_wolf_assassinate' && (
+              <div className="space-y-1.5 rounded-xl border border-rose-400/40 bg-rose-950/30 p-2.5 text-xs">
+                <div className="text-center font-bold text-rose-100">
+                  🗡️ 刺客目標：{pendingTarget !== null ? `${pendingTarget} 號` : '未選擇（跳過）'}
+                </div>
+                {pendingTarget !== null && (
+                  <div className="flex flex-wrap justify-center gap-1">
+                    {Array.from(
+                      new Set(
+                        seats.map((s) => s.roleId).filter((r): r is string => Boolean(r)),
+                      ),
+                    ).map((rId) => (
+                      <button
+                        key={rId}
+                        type="button"
+                        onClick={() => setPendingAssassinRoleId(rId)}
+                        className={`min-h-8 rounded-md border px-2 font-bold ${
+                          pendingAssassinRoleId === rId
+                            ? 'border-rose-400 bg-rose-600 text-white'
+                            : 'border-slate-700 bg-slate-900 text-slate-300'
+                        }`}
+                      >
+                        {getRoleById(rId)?.name ?? rId}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'bee_wild_hunt_sting' && (
+              <div className="rounded-xl border border-amber-400/40 bg-amber-950/35 px-3 py-2 text-center text-xs font-bold text-amber-100">
+                🐝 蜂之狂獵蜂刺（選 2 位，可同人）：
+                {combatState.beeWildHuntLostAbility
+                  ? '技能已永久失效'
+                  : pendingDualTargets.filter((n) => n !== null).join('、') || '尚未選擇'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'anubis_scale' && (
+              <div className="rounded-xl border border-purple-400/40 bg-purple-950/35 px-3 py-2 text-center text-xs font-bold text-purple-100">
+                ⚖️ 阿努比斯天平（神&gt;民&gt;狼&gt;神）：左側死者{' '}
+                {pendingDualTargets[0] !== null ? `${pendingDualTargets[0]} 號` : '未選'} vs 右側活人{' '}
+                {pendingDualTargets[1] !== null ? `${pendingDualTargets[1]} 號` : '未選'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'warden_wolf_trade' && (
+              <div className="space-y-1.5 rounded-xl border border-indigo-400/40 bg-indigo-950/35 p-2.5 text-xs">
+                <div className="text-center font-bold text-indigo-100">
+                  ⛓️ 典獄長交易對象：
+                  {pendingDualTargets[0] !== null && pendingDualTargets[1] !== null
+                    ? `${pendingDualTargets[0]} 號 & ${pendingDualTargets[1]} 號`
+                    : '請點選 2 位存活玩家'}
+                </div>
+                {pendingDualTargets[0] !== null && pendingDualTargets[1] !== null && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[0, 1].map((idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() =>
+                          setPendingWardenChoices((prev) =>
+                            idx === 0
+                              ? [prev[0] === 'trade' ? 'betray' : 'trade', prev[1]]
+                              : [prev[0], prev[1] === 'trade' ? 'betray' : 'trade'],
+                          )
+                        }
+                        className="min-h-9 rounded-lg border border-slate-700 bg-slate-900 px-2 font-bold text-slate-100"
+                      >
+                        {pendingDualTargets[idx]} 號：
+                        {pendingWardenChoices[idx] === 'trade' ? '🤝 交易' : '🗡️ 背叛'}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

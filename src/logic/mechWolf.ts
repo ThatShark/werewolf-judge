@@ -127,6 +127,15 @@ export function getSeerCheckResult(
     };
   }
 
+  // 狼弟在狼兄死前被預言家查驗恆為金水
+  if (target.roleId === 'wolf_younger_brother') {
+    const wolfBrother = seats.find((s) => s.roleId === 'wolf_brother');
+    return {
+      targetSeat,
+      faction: wolfBrother && wolfBrother.isAlive ? 'good' : 'wolf',
+    };
+  }
+
   const role = getRoleById(target.roleId);
   if (!role) return null;
 

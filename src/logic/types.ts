@@ -96,6 +96,21 @@ export type NightActionType =
   | 'alchemy_witch_fog'
   | 'alchemy_witch_snake'
   | 'awakened_witch_action'
+  | 'demon_hunter_hunt'
+  | 'wolf_raven_claw_kill'
+  | 'assassin_wolf_assassinate'
+  | 'big_bad_wolf_kill'
+  | 'big_grey_wolf_kill'
+  | 'wolf_younger_brother_kill'
+  | 'bee_wild_hunt_sting'
+  | 'perseus_execute'
+  | 'anubis_scale'
+  | 'awakened_wolf_king_give_gun'
+  | 'awakened_wolf_beauty_charm'
+  | 'scarlet_wolf_king_attach'
+  | 'night_noble_servant'
+  | 'awakened_idiot_shield'
+  | 'warden_wolf_trade'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -299,6 +314,29 @@ export type DeathReason =
   | 'troublemaker_self_guard'
   | 'white_cat_delayed_death'
   | 'awakened_witch_poison'
+  | 'demon_hunter_kill'
+  | 'demon_hunter_backfire'
+  | 'wolf_raven_claw_kill'
+  | 'assassin_wolf_kill'
+  | 'big_bad_wolf_kill'
+  | 'big_grey_wolf_kill'
+  | 'wolf_younger_brother_kill'
+  | 'bee_wild_hunt_kill'
+  | 'perseus_execute'
+  | 'perseus_petrify_backfire'
+  | 'anubis_scale_kill'
+  | 'anubis_scale_backfire'
+  | 'blood_moon_exile_delayed'
+  | 'pufferfish_explode'
+  | 'awakened_wolf_king_shoot'
+  | 'awakened_wolf_beauty_substitute'
+  | 'awakened_hunter_shoot'
+  | 'scarlet_child_trigger'
+  | 'scarlet_wolf_link'
+  | 'night_noble_servant_death'
+  | 'old_rascal_delayed_death'
+  | 'rusty_sword_counter'
+  | 'warden_trade_death'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -324,6 +362,10 @@ export interface PlayerSeat {
   petrified?: boolean;
   /** 特殊狀態：當晚被禁言長老禁言（隔天白天不可發言） */
   muted?: boolean;
+  /** 特殊狀態：老流氓被毒／被獵人射殺後進入延遲死亡（隔天發言結束後死亡） */
+  oldRascalDelayedDeath?: boolean;
+  /** 特殊狀態：血月使徒作為最後一狼被放逐免死，隔夜復仇刀後正式出局 */
+  bloodMoonExileSurvived?: boolean;
 }
 
 export interface MechWolfRuntimeState {
@@ -501,6 +543,44 @@ export interface InterferenceRuntimeState {
   awakenedWitchUsedHelpers: number[];
 }
 
+/** 第 3 批：免疫、反傷、額外傷害與特殊擊殺類角色持久化狀態 */
+export interface CombatRuntimeState {
+  wolfRavenClawJoinedTeam: boolean;
+  wolfRavenClawInvincibleUsed: boolean;
+  bigGreyWolfJoinedTeam: boolean;
+  bigGreyWolfKillUsed: boolean;
+  wolfBrotherDiedRound: number | null;
+  wolfYoungerBrotherAwakenedKillUsed: boolean;
+  wolfYoungerBrotherJoinedTeam: boolean;
+  beeWildHuntLostAbility: boolean;
+  perseusExecuteUsed: boolean;
+  anubisJoinedTeam: boolean;
+  anubisUsedSeats: number[];
+  bloodMoonSealActiveTonight: boolean;
+  bloodMoonPendingExileDeathNextNight: boolean;
+  pufferfishBombUsed: boolean;
+  pufferfishWolfKilledToday: boolean;
+  /** 覺醒狼王剩餘槍數（初始 2） */
+  awakenedWolfKingGuns: number;
+  /** 各小狼被分到的槍數（seatNumber -> count） */
+  wolfDistributedGuns: Record<number, number>;
+  awakenedWolfBeautyLastCharmRound: number | null;
+  awakenedWolfBeautyActiveCharmSeat: number | null;
+  awakenedWolfBeautySubstituteUsed: boolean;
+  scarletWolfKingJoinedTeam: boolean;
+  /** 已公布附著「猩紅之子」的座號（最多 3 人） */
+  scarletAttachedSeats: number[];
+  /** 目前存活的夜僕座號（出局前不可選新夜僕） */
+  nightNobleServantSeat: number | null;
+  /** 覺醒白痴秘密之身是否仍有效（初始 true，抵擋一次傷害或白天翻牌後失效） */
+  awakenedIdiotSecretActive: boolean;
+  /** 鏽劍騎士被狼刀殺死之回合（下一晚天亮觸發左狼倒牌） */
+  rustySwordKilledRound: number | null;
+  rustySwordTriggered: boolean;
+  /** 典獄長已參與過交易的座號（每人整局限 1 次） */
+  wardenTradedSeats: number[];
+}
+
 export interface NightActionDraft {
   round: number;
   guardTarget: number | null;
@@ -559,6 +639,25 @@ export interface NightActionDraft {
   awakenedWitchPoisonTarget?: number | null;
   awakenedWitchHelpers?: number[];
   awakenedWitchHelpersApproved?: boolean;
+  /** 第 3 批：免疫、反傷、額外傷害與特殊擊殺類夜間草稿 */
+  demonHunterTarget?: number | null;
+  wolfRavenClawKillTarget?: number | null;
+  assassinTarget?: number | null;
+  assassinGuessedRoleId?: string | null;
+  bigBadWolfKillTarget?: number | null;
+  bigGreyWolfKillTarget?: number | null;
+  wolfYoungerBrotherKillTarget?: number | null;
+  beeWildHuntTargets?: [number | null, number | null];
+  perseusExecuteTarget?: number | null;
+  anubisDeadSeat?: number | null;
+  anubisAliveSeat?: number | null;
+  awakenedWolfKingGiveGunTarget?: number | null;
+  awakenedWolfBeautyCharmTarget?: number | null;
+  scarletAttachTarget?: number | null;
+  nightNobleServantTarget?: number | null;
+  awakenedIdiotShieldTarget?: number | null;
+  wardenTradePair?: [number | null, number | null];
+  wardenTradeChoices?: ['trade' | 'betray', 'trade' | 'betray'];
 }
 
 export interface BearRoarResult {
@@ -748,6 +847,8 @@ export interface GameState {
   lastSeniorVillagerReveal?: SeniorVillagerRevealResult | null;
   /** 第 2 批：干擾／交換／特殊守護持久化狀態 */
   interferenceState?: InterferenceRuntimeState;
+  /** 第 3 批：免疫／反傷／額外傷害／特殊擊殺持久化狀態 */
+  combatState?: CombatRuntimeState;
 
   /** 自動發言順序與單人倒數計時引擎 */
   speakingQueue: number[];
@@ -845,6 +946,7 @@ export interface NightResolutionInput {
   exiledHistory?: ExiledRecord[];
   lastAwakenedDreamTarget?: number | null;
   interferenceState?: InterferenceRuntimeState;
+  combatState?: CombatRuntimeState;
   /** 測試可注入之亂數產生器（酒鬼預言家預設隨機用） */
   rng?: () => number;
 }
@@ -874,6 +976,7 @@ export interface NightResolutionResult {
   foxLostAbility: boolean;
   lastAwakenedDreamTarget: number | null;
   interferenceState: InterferenceRuntimeState;
+  combatState: CombatRuntimeState;
   /** 今晚白貓觸發翻牌免死的座號 */
   whiteCatRevealedSeats: number[];
   /** 今晚因蒙面人被動而進入負傷／中毒延遲死亡的座號 */

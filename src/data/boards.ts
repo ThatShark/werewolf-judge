@@ -3490,7 +3490,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -3586,18 +3586,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人請閉眼"
         }
       ]
     },
@@ -4581,18 +4578,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_3",
@@ -4672,18 +4666,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_3",
@@ -5006,7 +4997,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -5034,18 +5025,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_beauty_charm",
           "actorLabel": "覺醒狼美人",
           "actorRoleIds": [
             "awakened_wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_beauty_charm",
           "openPrompt": "覺醒狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "覺醒狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -5107,18 +5095,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_beauty_charm",
           "actorLabel": "覺醒狼美人",
           "actorRoleIds": [
             "awakened_wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_beauty_charm",
           "openPrompt": "覺醒狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "覺醒狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -5441,7 +5426,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -5468,18 +5453,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_4",
@@ -5556,18 +5538,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_4",
@@ -6065,22 +6044,19 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_idiot_shield",
           "actorLabel": "覺醒白痴",
           "actorRoleIds": [
             "awakened_idiot"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_idiot_shield",
           "openPrompt": "覺醒白痴請睜眼",
           "actionPrompt": "請選擇要守護的玩家",
-          "closePrompt": "覺醒白痴請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒白痴請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -6119,18 +6095,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_idiot_shield",
           "actorLabel": "覺醒白痴",
           "actorRoleIds": [
             "awakened_idiot"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_idiot_shield",
           "openPrompt": "覺醒白痴請睜眼",
           "actionPrompt": "請選擇要守護的玩家",
-          "closePrompt": "覺醒白痴請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒白痴請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -6145,18 +6118,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "night_noble_servant",
           "actorLabel": "夜之貴族",
           "actorRoleIds": [
             "night_noble"
           ],
-          "actionType": "confirm_only",
+          "actionType": "night_noble_servant",
           "openPrompt": "夜之貴族請睜眼",
           "actionPrompt": "請選擇要成為夜僕的玩家",
-          "closePrompt": "夜之貴族請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夜之貴族請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -6620,7 +6590,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -6635,18 +6605,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scarlet_wolf_king_attach",
           "actorLabel": "猩紅狼王",
           "actorRoleIds": [
             "scarlet_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scarlet_wolf_king_attach",
           "openPrompt": "猩紅狼王請睜眼",
           "actionPrompt": "請選擇要附著的玩家",
-          "closePrompt": "猩紅狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "猩紅狼王請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -6707,18 +6674,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scarlet_wolf_king_attach",
           "actorLabel": "猩紅狼王",
           "actorRoleIds": [
             "scarlet_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scarlet_wolf_king_attach",
           "openPrompt": "猩紅狼王請睜眼",
           "actionPrompt": "請選擇要附著的玩家\n今晚的帶刀手勢是...",
-          "closePrompt": "猩紅狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "猩紅狼王請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -6755,18 +6719,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "bee_wild_hunt_sting",
           "actorLabel": "蜂之狂獵",
           "actorRoleIds": [
             "bee_wild_hunt"
           ],
-          "actionType": "confirm_only",
+          "actionType": "bee_wild_hunt_sting",
           "openPrompt": "蜂之狂獵請睜眼",
           "actionPrompt": "請選擇要蜂刺的目標",
-          "closePrompt": "蜂之狂獵請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蜂之狂獵請閉眼"
         }
       ]
     },
@@ -6824,7 +6785,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -6945,18 +6906,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "wolf_raven_claw_kill",
           "actorLabel": "狼鴉之爪",
           "actorRoleIds": [
             "wolf_raven_claw"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_raven_claw_kill",
           "openPrompt": "狼鴉之爪請睜眼",
           "actionPrompt": "今晚的無敵刀手勢為...，請選擇擊殺的目標",
-          "closePrompt": "狼鴉之爪請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼鴉之爪請閉眼"
         },
         {
           "stepId": "seer_check",
@@ -11493,7 +11451,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -12394,7 +12352,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -12490,18 +12448,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人請閉眼"
         }
       ]
     },
@@ -12584,7 +12539,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -12646,18 +12601,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "assassin_wolf_assassinate",
           "actorLabel": "刺客",
           "actorRoleIds": [
             "assassin_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "assassin_wolf_assassinate",
           "openPrompt": "刺客請睜眼",
           "actionPrompt": "今晚的入隊手勢為...\n請選擇要刺殺的目標，請猜測他的身分",
-          "closePrompt": "刺客請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "刺客請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -12694,18 +12646,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人請閉眼"
         }
       ]
     },
@@ -12775,7 +12724,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -12884,18 +12833,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人請閉眼"
         }
       ]
     },
@@ -13824,7 +13770,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -13909,18 +13855,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2_2",
+          "stepId": "wolf_younger_brother_kill_2",
           "actorLabel": "狼弟",
           "actorRoleIds": [
             "wolf_younger_brother"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_younger_brother_kill",
           "openPrompt": "狼弟請睜眼",
           "actionPrompt": "今晚的復仇刀手勢是...請選擇擊殺的目標",
-          "closePrompt": "狼弟請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼弟請閉眼"
         },
         {
           "stepId": "wolf_kill_3",
@@ -13968,18 +13911,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_2_cond_7",
+          "stepId": "wolf_younger_brother_kill_cond_7",
           "actorLabel": "狼弟",
           "actorRoleIds": [
             "wolf_younger_brother"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_younger_brother_kill",
           "openPrompt": "狼弟請睜眼",
           "actionPrompt": "今晚的復仇刀手勢是...請選擇擊殺的目標\n今晚的入隊手勢是...",
           "closePrompt": "狼弟請閉眼",
           "judgeTips": [
-            "條件分支步驟（第三晚之後）",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "條件分支步驟（第三晚之後）"
           ]
         }
       ]
@@ -14159,18 +14101,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2_2",
+          "stepId": "wolf_younger_brother_kill_2",
           "actorLabel": "狼弟",
           "actorRoleIds": [
             "wolf_younger_brother"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_younger_brother_kill",
           "openPrompt": "狼弟請睜眼",
           "actionPrompt": "今晚的復仇刀手勢是...請選擇擊殺的目標",
-          "closePrompt": "狼弟請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼弟請閉眼"
         },
         {
           "stepId": "wolf_kill_3",
@@ -14219,18 +14158,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2_cond_7",
+          "stepId": "wolf_younger_brother_kill_cond_7",
           "actorLabel": "狼弟",
           "actorRoleIds": [
             "wolf_younger_brother"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_younger_brother_kill",
           "openPrompt": "狼弟請睜眼",
           "actionPrompt": "今晚的復仇刀手勢是...請選擇擊殺的目標\n今晚的入隊手勢是...",
           "closePrompt": "狼弟請閉眼",
           "judgeTips": [
-            "條件分支步驟（第三晚之後）",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "條件分支步驟（第三晚之後）"
           ]
         }
       ]
@@ -14340,18 +14278,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_4",
@@ -14442,18 +14377,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_4",
@@ -15232,7 +15164,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -15260,18 +15192,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_beauty_charm",
           "actorLabel": "覺醒狼美人",
           "actorRoleIds": [
             "awakened_wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_beauty_charm",
           "openPrompt": "覺醒狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "覺醒狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -15333,18 +15262,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_beauty_charm",
           "actorLabel": "覺醒狼美人",
           "actorRoleIds": [
             "awakened_wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_beauty_charm",
           "openPrompt": "覺醒狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "覺醒狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼美人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -16358,7 +16284,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -16385,18 +16311,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_4",
@@ -16484,18 +16407,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_king_give_gun",
           "actorLabel": "覺醒狼王",
           "actorRoleIds": [
             "awakened_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_king_give_gun",
           "openPrompt": "覺醒狼王請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "覺醒狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼王請閉眼"
         },
         {
           "stepId": "step_4",
@@ -17289,22 +17209,19 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_idiot_shield",
           "actorLabel": "覺醒白痴",
           "actorRoleIds": [
             "awakened_idiot"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_idiot_shield",
           "openPrompt": "覺醒白痴請睜眼",
           "actionPrompt": "請選擇要守護的玩家",
-          "closePrompt": "覺醒白痴請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒白痴請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -17354,18 +17271,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_idiot_shield",
           "actorLabel": "覺醒白痴",
           "actorRoleIds": [
             "awakened_idiot"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_idiot_shield",
           "openPrompt": "覺醒白痴請睜眼",
           "actionPrompt": "請選擇要守護的玩家",
-          "closePrompt": "覺醒白痴請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒白痴請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -17380,18 +17294,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "night_noble_servant",
           "actorLabel": "夜之貴族",
           "actorRoleIds": [
             "night_noble"
           ],
-          "actionType": "confirm_only",
+          "actionType": "night_noble_servant",
           "openPrompt": "夜之貴族請睜眼",
           "actionPrompt": "請選擇要成為夜僕的玩家",
-          "closePrompt": "夜之貴族請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "夜之貴族請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -17416,18 +17327,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人請閉眼"
         }
       ]
     },
@@ -17926,7 +17834,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -17941,18 +17849,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scarlet_wolf_king_attach",
           "actorLabel": "猩紅狼王",
           "actorRoleIds": [
             "scarlet_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scarlet_wolf_king_attach",
           "openPrompt": "猩紅狼王請睜眼",
           "actionPrompt": "請選擇要附著的玩家",
-          "closePrompt": "猩紅狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "猩紅狼王請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -18013,18 +17918,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "scarlet_wolf_king_attach",
           "actorLabel": "猩紅狼王",
           "actorRoleIds": [
             "scarlet_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "scarlet_wolf_king_attach",
           "openPrompt": "猩紅狼王請睜眼",
           "actionPrompt": "請選擇要附著的玩家\n今晚的帶刀手勢是...",
-          "closePrompt": "猩紅狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "猩紅狼王請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -18061,18 +17963,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "bee_wild_hunt_sting",
           "actorLabel": "蜂之狂獵",
           "actorRoleIds": [
             "bee_wild_hunt"
           ],
-          "actionType": "confirm_only",
+          "actionType": "bee_wild_hunt_sting",
           "openPrompt": "蜂之狂獵請睜眼",
           "actionPrompt": "請選擇要蜂刺的目標",
-          "closePrompt": "蜂之狂獵請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蜂之狂獵請閉眼"
         }
       ]
     },
@@ -18471,7 +18370,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -18698,7 +18597,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -18840,18 +18739,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_5",
+          "stepId": "wolf_raven_claw_kill",
           "actorLabel": "狼鴉之爪",
           "actorRoleIds": [
             "wolf_raven_claw"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_raven_claw_kill",
           "openPrompt": "狼鴉之爪請睜眼",
           "actionPrompt": "今晚的無敵刀手勢為...，請選擇擊殺的目標",
           "closePrompt": "狼鴉之爪請閉眼",
           "judgeTips": [
-            "情境條件：煉金魔女尚未使用法老之蛇",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "情境條件：煉金魔女尚未使用法老之蛇"
           ]
         },
         {
@@ -18953,7 +18851,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -19135,18 +19033,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "wolf_raven_claw_kill",
           "actorLabel": "狼鴉之爪",
           "actorRoleIds": [
             "wolf_raven_claw"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_raven_claw_kill",
           "openPrompt": "狼鴉之爪請睜眼",
           "actionPrompt": "今晚的無敵刀手勢為...\n請選擇要擊殺的目標",
-          "closePrompt": "狼鴉之爪請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼鴉之爪請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -19446,18 +19341,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "wolf_raven_claw_kill",
           "actorLabel": "狼鴉之爪",
           "actorRoleIds": [
             "wolf_raven_claw"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_raven_claw_kill",
           "openPrompt": "狼鴉之爪請睜眼",
           "actionPrompt": "今晚的無敵刀手勢為...\n請選擇要擊殺的目標",
-          "closePrompt": "狼鴉之爪請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼鴉之爪請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -19482,18 +19374,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_9",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人請睜眼",
           "actionPrompt": "今晚的技能數量為...\n請選擇要狩獵的目標",
-          "closePrompt": "獵魔人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人請閉眼"
         }
       ]
     },
@@ -20443,18 +20332,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "big_bad_wolf_kill",
           "actorLabel": "大野狼",
           "actorRoleIds": [
             "big_bad_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "big_bad_wolf_kill",
           "openPrompt": "大野狼請睜眼",
           "actionPrompt": "請選擇擊殺的目標",
-          "closePrompt": "大野狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "大野狼請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -20505,18 +20391,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "big_bad_wolf_kill",
           "actorLabel": "大野狼",
           "actorRoleIds": [
             "big_bad_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "big_bad_wolf_kill",
           "openPrompt": "大野狼請睜眼",
           "actionPrompt": "請選擇擊殺的目標",
-          "closePrompt": "大野狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "大野狼請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -20606,7 +20489,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -21853,7 +21736,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -21952,18 +21835,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "big_grey_wolf_kill",
           "actorLabel": "大灰狼",
           "actorRoleIds": [
             "big_grey_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "big_grey_wolf_kill",
           "openPrompt": "大灰狼請睜眼",
           "actionPrompt": "請問是否要發動技能，擊殺目標限制為...，請選擇要擊殺的目標",
-          "closePrompt": "大灰狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "大灰狼請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -23426,7 +23306,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -23488,18 +23368,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "warden_wolf_trade",
           "actorLabel": "典獄長",
           "actorRoleIds": [
             "warden_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "warden_wolf_trade",
           "openPrompt": "典獄長請睜眼",
           "actionPrompt": "請選擇兩名進行交易的目標",
-          "closePrompt": "典獄長請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "典獄長請閉眼"
         },
         {
           "stepId": "step_2",
@@ -23680,7 +23557,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -23778,18 +23655,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2",
+          "stepId": "anubis_scale",
           "actorLabel": "阿努比斯",
           "actorRoleIds": [
             "anubis"
           ],
-          "actionType": "confirm_only",
+          "actionType": "anubis_scale",
           "openPrompt": "阿努比斯請睜眼",
           "actionPrompt": "請選擇要置於天平的兩位玩家",
           "closePrompt": "阿努比斯請閉眼",
           "judgeTips": [
-            "情境條件：煉金魔女尚未使用法老之蛇",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "情境條件：煉金魔女尚未使用法老之蛇"
           ]
         },
         {
@@ -24133,7 +24009,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -24251,18 +24127,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "perseus_execute",
           "actorLabel": "珀爾修斯",
           "actorRoleIds": [
             "perseus"
           ],
-          "actionType": "confirm_only",
+          "actionType": "perseus_execute",
           "openPrompt": "珀爾修斯請睜眼",
           "actionPrompt": "請選擇要處決的玩家",
-          "closePrompt": "珀爾修斯請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "珀爾修斯請閉眼"
         }
       ]
     },
@@ -28980,18 +28853,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "攝夢人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_beauty_charm",
           "actorLabel": "覺醒狼美人",
           "actorRoleIds": [
             "awakened_wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_beauty_charm",
           "openPrompt": "覺醒狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "覺醒狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼美人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -29142,18 +29012,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "攝夢人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "awakened_wolf_beauty_charm",
           "actorLabel": "覺醒狼美人",
           "actorRoleIds": [
             "awakened_wolf_beauty"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_wolf_beauty_charm",
           "openPrompt": "覺醒狼美人請睜眼",
           "actionPrompt": "請選擇要魅惑的玩家",
-          "closePrompt": "覺醒狼美人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒狼美人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -29214,32 +29081,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "通靈師請閉眼"
         },
         {
-          "stepId": "step_9",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人 A",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人 A 請睜眼",
           "actionPrompt": "今晚的技能狀態為...\n請選擇要狩獵的目標",
-          "closePrompt": "獵魔人 A 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人 A 請閉眼"
         },
         {
-          "stepId": "step_10",
+          "stepId": "demon_hunter_hunt_2",
           "actorLabel": "獵魔人 B",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人 B 請睜眼",
           "actionPrompt": "今晚的技能狀態為...\n請選擇要狩獵的目標",
-          "closePrompt": "獵魔人 B 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人 B 請閉眼"
         },
         {
           "stepId": "step_11",
@@ -31017,60 +30878,48 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_7",
+          "stepId": "demon_hunter_hunt",
           "actorLabel": "獵魔人 A",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人 A 請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人 A 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人 A 請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "demon_hunter_hunt_2",
           "actorLabel": "獵魔人 B",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人 B 請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人 B 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人 B 請閉眼"
         },
         {
-          "stepId": "step_9",
+          "stepId": "demon_hunter_hunt_3",
           "actorLabel": "獵魔人 C",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人 C 請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人 C 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人 C 請閉眼"
         },
         {
-          "stepId": "step_10",
+          "stepId": "demon_hunter_hunt_4",
           "actorLabel": "獵魔人 D",
           "actorRoleIds": [
             "demon_hunter"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_hunter_hunt",
           "openPrompt": "獵魔人 D 請睜眼",
           "actionPrompt": "請選擇要狩獵的目標",
-          "closePrompt": "獵魔人 D 請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "獵魔人 D 請閉眼"
         }
       ]
     },

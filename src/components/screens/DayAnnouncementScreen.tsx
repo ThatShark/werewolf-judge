@@ -24,8 +24,10 @@ export function DayAnnouncementScreen() {
   const lastMoonSpiritHowl = useGameStore((s) => s.lastMoonSpiritHowl ?? null);
   const lastSeniorVillagerReveal = useGameStore((s) => s.lastSeniorVillagerReveal ?? null);
   const interferenceState = useGameStore((s) => s.interferenceState);
+  const combatState = useGameStore((s) => s.combatState);
   const reviveWithAlchemySnake = useGameStore((s) => s.reviveWithAlchemySnake);
   const triggerWhiteCatDelayedDeath = useGameStore((s) => s.triggerWhiteCatDelayedDeath);
+  const triggerOldRascalDelayedDeath = useGameStore((s) => s.triggerOldRascalDelayedDeath);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const pendingShooters = useGameStore((s) => s.pendingShooters);
   const forceContinueAfterVictory = useGameStore((s) => s.forceContinueAfterVictory);
@@ -218,6 +220,33 @@ export function DayAnnouncementScreen() {
               className="min-h-11 shrink-0 rounded-xl bg-sky-600 px-3 text-xs font-extrabold text-white hover:bg-sky-500"
             >
               結算白貓出局
+            </button>
+          </section>
+        )}
+
+        {combatState && combatState.scarletAttachedSeats.length > 0 && (
+          <section className="rounded-2xl border border-rose-500/50 bg-rose-950/35 p-3.5 text-xs font-bold text-rose-100">
+            🩸 猩紅之子附著公告：{combatState.scarletAttachedSeats.join('、')} 號已被附著（成為神職技能目標時將於夜間出局）。
+          </section>
+        )}
+
+        {combatState?.pufferfishWolfKilledToday && (
+          <section className="rounded-2xl border border-amber-400/50 bg-amber-950/35 p-3.5 text-xs font-bold text-amber-100">
+            🐡 河豚吃狼刀翻牌：今日狼美人的魅惑技能失效！
+          </section>
+        )}
+
+        {seats.some((s) => s.isAlive && s.oldRascalDelayedDeath) && (
+          <section className="flex items-center justify-between gap-3 rounded-2xl border border-orange-400/50 bg-orange-950/35 p-3.5">
+            <div className="text-xs font-bold text-orange-100">
+              🍺 老流氓中毒／負傷延遲死亡（於本日發言階段結束後正式出局）
+            </div>
+            <button
+              type="button"
+              onClick={() => triggerOldRascalDelayedDeath()}
+              className="min-h-11 shrink-0 rounded-xl bg-orange-600 px-3 text-xs font-extrabold text-white hover:bg-orange-500"
+            >
+              結算老流氓出局
             </button>
           </section>
         )}

@@ -1,5 +1,9 @@
 import { getRoleById } from '../data/roles';
 import { applyWolfBeautyCharmDeath } from './advancedRoles';
+import {
+  isBloodMoonLastWolfExileSurvive,
+  isOldRascalDelayableDeath,
+} from './combatRoles';
 import { canGoodSelfExplode, isDemonWolfNightShootImmune } from './inspectionRoles';
 import {
   isWarWolfImmuneToDeath,
@@ -222,6 +226,24 @@ export function resolveShoot(
     };
   }
 
+  // 老流氓被獵人射殺進入負傷延遲死亡狀態（隔天發言結束後才出局）
+  if (isOldRascalDelayableDeath(target, shootReason)) {
+    const delayedSeats = seats.map((seat) =>
+      seat.seatNumber === targetSeat ? { ...seat, oldRascalDelayedDeath: true } : { ...seat },
+    );
+    return {
+      seats: delayedSeats,
+      shooterSeat,
+      targetSeat,
+      deathReason: shootReason,
+      targetSurvived: true,
+      charmedDeathSeat: null,
+      chainedShootEligibility: null,
+      mechWolfState,
+      victory: checkVictory(delayedSeats, ruleOverrides),
+    };
+  }
+
   let updatedSeats = seats.map((seat) =>
     seat.seatNumber === targetSeat
       ? {
@@ -311,6 +333,25 @@ export function resolveDayExile(
     };
   }
 
+  // 血月使徒作為最後一狼被放逐：翻牌免死並存活至下個天亮後出局
+  if (isBloodMoonLastWolfExileSurvive(seats, targetSeat)) {
+    const updatedSeats = seats.map((seat) =>
+      seat.seatNumber === targetSeat
+        ? { ...seat, isAlive: true, bloodMoonExileSurvived: true }
+        : seat,
+    );
+    return {
+      seats: updatedSeats,
+      exiledSeat: targetSeat,
+      idiotRevealed: false,
+      charmedDeathSeat: null,
+      shootEligibility: null,
+      mechWolfState,
+      treasureMasterState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
   // 白貓任何原因出局皆可翻牌免疫本次死亡（已翻牌期間亦免疫公投出局，至下次放逐結束才正式死亡）
   const whiteCatExileCheck = shouldWhiteCatSurviveDeath(target, 'exiled');
   if (whiteCatExileCheck.survive) {
@@ -336,9 +377,9 @@ export function resolveDayExile(
     };
   }
 
-  // 白痴白天首次被放逐：翻牌免死並失去投票權（若已被種狼感染或遭梅杜莎石化則無法翻牌）
+  // 白痴／覺醒白痴白天首次被放逐：翻牌免死並失去投票權（若已被種狼感染或遭梅杜莎石化則無法翻牌）
   if (
-    target.roleId === 'idiot' &&
+    (target.roleId === 'idiot' || target.roleId === 'awakened_idiot') &&
     !target.idiotRevealed &&
     !target.infectedBySeedWolf &&
     !target.petrified
@@ -502,6 +543,22 @@ export function resolveSelfExplode(
     return {
       allowed: false,
       reason: '寂夜導師不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  const nonExplodableCombatRoles: Record<string, string> = {
+    wolf_raven_claw: '狼鴉之爪不可自爆',
+    big_grey_wolf: '大灰狼不可自爆',
+    wolf_brother: '狼兄不可自爆',
+    anubis: '阿努比斯不可自爆',
+    awakened_wolf_beauty: '覺醒狼美人不可自爆',
+    scarlet_wolf_king: '猩紅狼王不可自爆',
+  };
+  if (player.roleId && nonExplodableCombatRoles[player.roleId]) {
+    return {
+      allowed: false,
+      reason: nonExplodableCombatRoles[player.roleId],
       pendingSelfExplodeSeat: null,
     };
   }
@@ -889,5 +946,49 @@ export function resolveAlchemySnakeRevive(
           }
         : s,
     ),
+  };
+}
+
+/**
+ * 老流氓延遲死亡結算（被女巫毒殺或獵人射殺後，於第二天發言結束後正式死亡）。
+ */
+export function resolveOldRascalDelayedDeath(
+  seats: PlayerSeat[],
+  round: number,
+  ruleOverrides: RuleOverrides,
+  mechWolfState: MechWolfRuntimeState,
+  treasureMasterState?: TreasureMasterRuntimeState,
+): {
+  seats: PlayerSeat[];
+  eliminatedSeat: number | null;
+  mechWolfState: MechWolfRuntimeState;
+  victory: ReturnType<typeof checkVictory>;
+} {
+  const delayed = seats.find((s) => s.isAlive && s.oldRascalDelayedDeath);
+  if (!delayed) {
+    return {
+      seats: seats.map((s) => ({ ...s })),
+      eliminatedSeat: null,
+      mechWolfState,
+      victory: checkVictory(seats, ruleOverrides, treasureMasterState),
+    };
+  }
+  const updatedSeats = seats.map((s) =>
+    s.seatNumber === delayed.seatNumber
+      ? {
+          ...s,
+          isAlive: false,
+          oldRascalDelayedDeath: false,
+          deathReason: 'old_rascal_delayed_death' as const,
+          deathRound: round,
+        }
+      : s,
+  );
+  const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
+  return {
+    seats: updatedSeats,
+    eliminatedSeat: delayed.seatNumber,
+    mechWolfState: nextMechWolfState,
+    victory: checkVictory(updatedSeats, ruleOverrides, treasureMasterState),
   };
 }

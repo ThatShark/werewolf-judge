@@ -28,6 +28,7 @@ const LOGIC_ENGINE_FILES = [
   'topFiveRoles.ts',
   'inspectionRoles.ts',
   'interferenceRoles.ts',
+  'combatRoles.ts',
   'victory.ts',
 ] as const;
 
@@ -100,12 +101,31 @@ const FULL_AUTOMATED_ROLE_CAPABILITIES: Record<string, string> = {
   awakened_witch: '1 瓶解藥＋3 瓶毒藥（互斥）；第 1／2／3 瓶毒藥須選 1／2／3 位不重複協助者全部同意方生效',
   white_cat: '任何原因死亡皆可翻牌免疫本次死亡，並延遲至下一次放逐階段結束後才正式出局',
   war_wolf: '隨狼隊刀人與自爆；免疫所有神職技能傷害（毒藥／獵人開槍／騎士決鬥等），僅能透過白天放逐投票出局',
+  demon_hunter: '免疫女巫毒藥；第二晚起每晚狩獵一人（狩狼殺狼、狩好人自死、狩夜僕抵消雙方不死）',
+  wolf_raven_claw: '不可自爆、開局不入隊；存活狼數 ≤ 2 入隊並獲得一次性無敵額外刀（無視未明之霧與守衛）',
+  assassin_wolf: '隨狼隊刀人與自爆；第二晚起於狼隊前猜測目標準確身分刺殺（猜中擊殺、猜錯狼隊空刀）',
+  big_bad_wolf: '隨狼隊刀人與自爆；全狼存活時每晚於女巫後可額外刀一人，任一狼死亡失去額外刀',
+  big_grey_wolf: '不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起整局限一次單獨擊殺（受占卜師限刀）',
+  wolf_brother: '隨狼隊刀人、不可自爆；首夜與狼弟互認，出局後觸發狼弟隔晚覺醒',
+  wolf_younger_brother: '可自爆、初始不入隊；狼兄死前預言家驗金水；狼兄死後第一晚覺醒無敵刀（不提前入隊），隔晚正式入隊',
+  bee_wild_hunt: '第二晚起每晚選任意兩人蜂刺（皆狼同出局、一狼一好無事、皆好永久失能）',
+  perseus: '免疫梅杜莎石化；第二晚起整局限一次處決一人（處決到石化者則一同出局）',
+  anubis: '不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起天平對比一死一活（神>民>狼>神，每人限一次）',
+  blood_moon_apostle: '白天自爆封印當晚所有好人技能；最後一狼被放逐翻牌免死並存活至下個天亮後出局',
+  pufferfish: '整局限一次，放逐投票翻牌炸死所有投河豚者；吃狼刀翻牌使當天狼美人魅惑失效',
+  awakened_wolf_king: '初始 2 槍，每晚可分 1 槍給小狼（小狼可持多槍，自爆／最後一狼不可開槍）',
+  awakened_wolf_beauty: '不可自刀自爆；每隔一晚魅惑一人，首次出局由被魅惑者替死（覺醒獵人夜槍無視替死）',
+  awakened_hunter: '無論何種方式死亡皆可選擇左／右方向開槍，擊殺該方向最近存活狼人',
+  scarlet_wolf_king: '不可自爆、初始不入隊（其餘狼滅入隊）；每晚附著猩紅之子（最多 3 人），被神職鎖定夜死，狼王出局全員連帶',
+  night_noble: '隨狼隊刀人與自爆；第二晚起選一人當夜僕隔天出局（現有夜僕未死不可重選；遇獵魔人狩獵抵消）',
+  awakened_idiot: '白天首次放逐翻牌免死失投票權；夜間秘密之身保護目標抵擋一次死亡（未受傷轉護自己，生效或翻牌後失效）',
+  old_rascal: '平民邊、免疫狼美人魅惑；被女巫毒殺或獵人射殺進入延遲死亡，隔天發言結束後才出局',
+  rusty_sword_knight: '被狼刀殺死的下一晚天亮，其左側最近第一位存活狼人直接出局',
+  warden_wolf: '隨狼隊刀人與自爆；第二晚起每晚選兩人交易（每人限一次：雙交易免疫、雙背叛互轉、單交易出局、自參特殊判定）',
 };
 
 /** 僅實作局部交互、尚未完成完整規則結算的角色註記（歸入清單 B） */
-const PARTIAL_AUTOMATION_NOTES: Record<string, string> = {
-  old_rascal: '部分實作（僅於 advancedRoles.ts 實作免疫狼美人魅惑；尚未實作被毒／被獵人射殺延遲至隔天發言後死亡）',
-};
+const PARTIAL_AUTOMATION_NOTES: Record<string, string> = {};
 
 interface RoleAuditInfo {
   role: RoleDefinition;

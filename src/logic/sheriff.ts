@@ -458,3 +458,57 @@ export function destroySheriffBadge(state: SheriffState): SheriffState {
     pendingBadgeTransferFrom: null,
   };
 }
+
+/**
+ * 記錄上警競選發言的原始順序（供平票 PK 依逆序發言使用）。
+ */
+export function setSheriffInitialSpeakingOrder(
+  state: SheriffState,
+  order: number[],
+): SheriffState {
+  return {
+    ...state,
+    initialSpeakingOrder: [...order],
+  };
+}
+
+/**
+ * 計算警長平票 PK 發言順序：
+ * 嚴格依「上警發言順序的逆序」排列平票候選人；
+ * 若尚未記錄原始順序，則依平票座號降序作為安全後備。
+ */
+export function getSheriffPkSpeakingOrder(
+  initialSpeakingOrder: number[] | undefined,
+  pkCandidates: number[],
+): number[] {
+  if (pkCandidates.length === 0) return [];
+  const pkSet = new Set(pkCandidates);
+  if (initialSpeakingOrder && initialSpeakingOrder.length > 0) {
+    const filtered = initialSpeakingOrder.filter((seat) => pkSet.has(seat));
+    const missing = pkCandidates.filter((seat) => !filtered.includes(seat)).sort((a, b) => a - b);
+    return [...filtered, ...missing].reverse();
+  }
+  return [...pkCandidates].sort((a, b) => b - a);
+}
+
+/**
+ * 從警上競選發言（speaking）推進至警下投票（voting）。
+ */
+export function advanceSheriffToVoting(state: SheriffState): SheriffState {
+  if (state.status !== 'speaking') return state;
+  return {
+    ...state,
+    status: 'voting',
+  };
+}
+
+/**
+ * 從平票 PK 逆序發言（pk_speaking）推進至 PK 投票（pk_voting）。
+ */
+export function advanceSheriffPkToVoting(state: SheriffState): SheriffState {
+  if (state.status !== 'pk_speaking') return state;
+  return {
+    ...state,
+    status: 'pk_voting',
+  };
+}

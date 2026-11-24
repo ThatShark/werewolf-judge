@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ambientAudioEngine } from '../../audio/ambientAudioEngine';
 import { ttsEngine } from '../../audio/ttsEngine';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
@@ -82,6 +83,7 @@ import {
 import type { ActionCheckResult } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { InfoFlashcardModal, type InfoFlashcardData } from '../common/InfoFlashcardModal';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SlideDrawer } from '../common/SlideDrawer';
 import {
@@ -144,6 +146,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const updateNightDraft = useGameStore((s) => s.updateNightDraft);
   const nextNightStep = useGameStore((s) => s.nextNightStep);
   const prevNightStep = useGameStore((s) => s.prevNightStep);
+  const checkEarlyNightVictory = useGameStore((s) => s.checkEarlyNightVictory);
   const finishNight = useGameStore((s) => s.finishNight);
 
   const isOnlineJudge = hostMode.judgeMode === 'online_judge';
@@ -190,9 +193,9 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   >(['trade', 'trade']);
   const [revealConfirmed, setRevealConfirmed] = useState(false);
 
-  // 實體發牌首夜認領狀態
+  // 實體發牌首夜認領狀態（支援同角色多席次一次多選）
   const [activeClaimRoleId, setActiveClaimRoleId] = useState<string | null>(null);
-  const [pendingClaimSeat, setPendingClaimSeat] = useState<number | null>(null);
+  const [pendingClaimSeats, setPendingClaimSeats] = useState<number[]>([]);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [forceEditClaims, setForceEditClaims] = useState(false);
 
@@ -202,12 +205,14 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const [confirmWitchPotionOpen, setConfirmWitchPotionOpen] = useState(false);
   const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
   const [scriptDrawerOpen, setScriptDrawerOpen] = useState(false);
+  const [flashcardData, setFlashcardData] = useState<InfoFlashcardData | null>(null);
 
-  // 線上法官防窺過渡狀態機
+  // 線上法官防窺過渡狀態機（使用 closeToOpenDelaySeconds 作為閉眼→睜眼靜音緩衝）
   const [onlinePhase, setOnlinePhase] = useState<'blackout' | 'active' | 'buffer' | 'dawn'>(() =>
     isOnlineJudge ? 'blackout' : 'active',
   );
-  const [bufferRemaining, setBufferRemaining] = useState(onlineJudgeSettings.stepBufferSeconds);
+  const closeToOpenDelay = onlineJudgeSettings.closeToOpenDelaySeconds ?? 3;
+  const [bufferRemaining, setBufferRemaining] = useState(closeToOpenDelay);
 
   const claimSummary = useMemo(() => {
     if (!board || !currentStep || !isPhysicalDealFirstNight) return null;
@@ -279,9 +284,10 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     );
     setPendingAwHelpersApproved(currentNightDraft.awakenedWitchHelpersApproved ?? true);
     setRevealConfirmed(false);
-    setPendingClaimSeat(null);
+    setPendingClaimSeats([]);
     setClaimError(null);
     setForceEditClaims(false);
+    setFlashcardData(null);
     setOnlinePhase(isOnlineJudge ? 'blackout' : 'active');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round, currentStepIndex, isOnlineJudge]);
@@ -369,10 +375,54 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   }, [currentStep, matchingActorSeats]);
 
   const showDeadActorWarning =
-    !isOnlineJudge &&
     !isClaimStage &&
     matchingActorSeats.length > 0 &&
     matchingActorSeats.every((seat) => !seat.isAlive);
+
+  // 血月使徒自爆：當晚所有好人神職技能全面封印（照常唸詞、操作鎖死）
+  const isGoodGodStep = useMemo(() => {
+    if (!currentStep || currentStep.actorRoleIds.length === 0) return false;
+    return currentStep.actorRoleIds.every((roleId) => {
+      const role = getRoleById(roleId);
+      return role?.faction === 'good' && role.category === 'god';
+    });
+  }, [currentStep]);
+
+  const isBloodMoonSealedStep = Boolean(
+    !isClaimStage && combatState.bloodMoonSealActiveTonight && isGoodGodStep,
+  );
+
+  // 已出局神職或血月封印中：台詞完整保留，但座位點擊與操作盤全面鎖死
+  const isSkillLocked = !isClaimStage && (showDeadActorWarning || isBloodMoonSealedStep);
+
+  // 線上語音模式：已出局神職或血月封印步驟，自動空等行動秒數後播報閉眼並進入靜音緩衝（防玩家聽出死訊）
+  useEffect(() => {
+    if (!isOnlineJudge || !isSkillLocked || onlinePhase !== 'active' || !currentStep) return;
+    const waitMs = Math.max(1, onlineJudgeSettings.stepBufferSeconds) * 1000;
+    const timer = window.setTimeout(() => {
+      ttsEngine.speak(currentStep.closePrompt, {
+        enabled: onlineJudgeSettings.ttsEnabled,
+        rate: onlineJudgeSettings.ttsRate,
+      });
+      if (closeToOpenDelay <= 0) {
+        completeBufferTransition();
+      } else {
+        setBufferRemaining(closeToOpenDelay);
+        setOnlinePhase('buffer');
+      }
+    }, waitMs);
+    return () => window.clearTimeout(timer);
+  }, [
+    isOnlineJudge,
+    isSkillLocked,
+    onlinePhase,
+    currentStep,
+    onlineJudgeSettings.stepBufferSeconds,
+    onlineJudgeSettings.ttsEnabled,
+    onlineJudgeSettings.ttsRate,
+    closeToOpenDelay,
+    completeBufferTransition,
+  ]);
 
   const relatedQAs = useMemo(() => {
     if (!board || !currentStep) return [];
@@ -440,7 +490,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   // 確認紀錄前的純規則檢核（一律呼叫 src/logic/）
   const pendingValidation: ActionCheckResult = (() => {
-    if (isClaimStage) return { allowed: true };
+    if (isClaimStage || isSkillLocked) return { allowed: true };
     switch (currentStep.actionType) {
       case 'wolf_kill':
         if (pendingSeedWolfInfect && pendingTarget !== null) {
@@ -641,13 +691,25 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       const isClaimedByOther =
         seat?.roleId !== null && seat?.roleId !== undefined && seat.roleId !== activeClaimRoleId;
       const activeRoleStatus = claimSummary?.roles.find((r) => r.roleId === activeClaimRoleId);
+      const isSelected = pendingClaimSeats.includes(seatNumber);
+      const isFlexibleCount =
+        board.isFlexibleComposition ||
+        Boolean(board.presetPlayerCounts?.length) ||
+        Boolean(board.playerCountRange);
+      const pendingNewClaimsCount = pendingClaimSeats.filter((sn) => {
+        const sObj = seats.find((x) => x.seatNumber === sn);
+        return sObj?.roleId !== activeClaimRoleId;
+      }).length;
+      const remainingAfterPending = Math.max(
+        0,
+        (activeRoleStatus?.remainingCount ?? 0) - pendingNewClaimsCount,
+      );
       const isRoleFull =
         !isClaimedByActive &&
+        !isSelected &&
+        !isFlexibleCount &&
         activeRoleStatus !== undefined &&
-        activeRoleStatus.remainingCount <= 0 &&
-        !board.isFlexibleComposition &&
-        !board.presetPlayerCounts?.length &&
-        !board.playerCountRange;
+        remainingAfterPending <= 0;
 
       const disabled = !activeClaimRoleId || isClaimedByOther || isRoleFull;
       const otherRoleName =
@@ -656,7 +718,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           : '已認領';
 
       return {
-        selected: pendingClaimSeat === seatNumber,
+        selected: isSelected,
         disabled,
         reason: isClaimedByOther
           ? isOnlineJudge
@@ -667,15 +729,30 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             : undefined,
         onSelect: () => {
           setClaimError(null);
-          setPendingClaimSeat((prev) => (prev === seatNumber ? null : seatNumber));
+          setPendingClaimSeats((prev) => {
+            if (prev.includes(seatNumber)) {
+              return prev.filter((n) => n !== seatNumber);
+            }
+            const allowMulti =
+              isFlexibleCount || (activeRoleStatus !== undefined && activeRoleStatus.expectedCount > 1);
+            if (!allowMulti) {
+              return [seatNumber];
+            }
+            return [...prev, seatNumber].sort((a, b) => a - b);
+          });
         },
       };
     }
 
-    if (!isSeatSelectableForSkill) {
+    if (!isSeatSelectableForSkill || isSkillLocked) {
       return {
         selected: pendingTarget === seatNumber,
         disabled: true,
+        reason: isBloodMoonSealedStep
+          ? '血月封印'
+          : showDeadActorWarning
+            ? '已出局鎖定'
+            : undefined,
         onSelect: () => {},
       };
     }
@@ -1704,17 +1781,30 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     }
   };
 
-  // 推進步驟（實體法官直接推進 / 線上法官進入閉眼緩衝＋語音）
+  // 推進步驟（夜晚中途提前達成勝負立即天亮；線上法官進入閉眼→睜眼靜音緩衝）
   const advanceAfterCommit = () => {
+    // 夜間任一步驟結算後若已達成陣營勝利條件（且後續已無救人步驟），立即結束剩餘夜間步驟並天亮結算
+    if (!isLastStep && checkEarlyNightVictory()) {
+      ambientAudioEngine.playSoftCue('dawn');
+      if (isOnlineJudge) {
+        ttsEngine.speakFromGesture('天亮了，請睜眼', {
+          enabled: onlineJudgeSettings.ttsEnabled,
+          rate: onlineJudgeSettings.ttsRate,
+        });
+      }
+      finishNight();
+      return;
+    }
+
     if (isOnlineJudge) {
       ttsEngine.speakFromGesture(currentStep.closePrompt, {
         enabled: onlineJudgeSettings.ttsEnabled,
         rate: onlineJudgeSettings.ttsRate,
       });
-      if (onlineJudgeSettings.stepBufferSeconds <= 0) {
+      if (closeToOpenDelay <= 0) {
         completeBufferTransition();
       } else {
-        setBufferRemaining(onlineJudgeSettings.stepBufferSeconds);
+        setBufferRemaining(closeToOpenDelay);
         setOnlinePhase('buffer');
       }
       return;
@@ -1727,19 +1817,21 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     }
   };
 
-  // 處理「認領階段」確認鍵
+  // 處理「認領階段」確認鍵（支援同角色多席次批次認領／解除）
   const handleConfirmClaimAction = () => {
     if (!activeClaimRoleId) return;
-    if (pendingClaimSeat !== null) {
-      const targetSeat = seats.find((s) => s.seatNumber === pendingClaimSeat);
-      const isUnclaiming = targetSeat?.roleId === activeClaimRoleId;
-      const res = claimSeatRole(pendingClaimSeat, isUnclaiming ? null : activeClaimRoleId);
-      if (!res.ok) {
-        setClaimError(res.reason ?? '認領失敗');
-        return;
+    if (pendingClaimSeats.length > 0) {
+      for (const seatNum of pendingClaimSeats) {
+        const targetSeat = seats.find((s) => s.seatNumber === seatNum);
+        const isUnclaiming = targetSeat?.roleId === activeClaimRoleId;
+        const res = claimSeatRole(seatNum, isUnclaiming ? null : activeClaimRoleId);
+        if (!res.ok) {
+          setClaimError(res.reason ?? '認領失敗');
+          return;
+        }
       }
       setClaimError(null);
-      setPendingClaimSeat(null);
+      setPendingClaimSeats([]);
       // 檢查認領後是否已全部達標，若是則自動退出編輯模式解鎖技能
       const updatedSeats = useGameStore.getState().seats;
       const nextSummary = getStepClaimSummary(board, updatedSeats, currentStep.actorRoleIds);
@@ -1756,6 +1848,10 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   // 處理「技能階段」確認紀錄鍵
   const handleConfirmSkillAction = () => {
+    if (isSkillLocked) {
+      advanceAfterCommit();
+      return;
+    }
     if (!pendingValidation.allowed) return;
 
     // 查驗類步驟：若有選擇目標且尚未揭曉，先寫入草稿並鎖定揭曉查驗結果
@@ -1820,10 +1916,10 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   };
 
   const handleCycleBufferSeconds = () => {
-    const cur = onlineJudgeSettings.stepBufferSeconds;
+    const cur = closeToOpenDelay;
     const nextIdx = BUFFER_PRESET_STEPS.findIndex((v) => v > cur);
     const nextVal = nextIdx === -1 ? BUFFER_PRESET_STEPS[0] : BUFFER_PRESET_STEPS[nextIdx];
-    updateOnlineJudgeSettings({ stepBufferSeconds: nextVal });
+    updateOnlineJudgeSettings({ closeToOpenDelaySeconds: nextVal });
   };
 
   // 夜間結算摘要（供實體法官最終確認彈窗）
@@ -1906,19 +2002,191 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const activeClaimRoleName = activeClaimRoleId
     ? (getRoleById(activeClaimRoleId)?.name ?? activeClaimRoleId)
     : '';
-  const pendingClaimSeatObj =
-    pendingClaimSeat !== null ? seats.find((s) => s.seatNumber === pendingClaimSeat) : undefined;
   const isPendingUnclaim =
-    pendingClaimSeatObj?.roleId !== null &&
-    pendingClaimSeatObj?.roleId === activeClaimRoleId &&
-    activeClaimRoleId !== null;
+    pendingClaimSeats.length > 0 &&
+    activeClaimRoleId !== null &&
+    pendingClaimSeats.every(
+      (sn) => seats.find((s) => s.seatNumber === sn)?.roleId === activeClaimRoleId,
+    );
+
+  // 產生「放大展示給玩家看」全屏遮罩卡資料（適用查驗結果、獵人開槍狀態、商人贈禮、女巫刀口、機械狼習得）
+  const currentFlashcardCandidate: InfoFlashcardData | null = useMemo(() => {
+    if (isClaimStage || isOnlineJudge) return null;
+    if (seerOutcome) {
+      return {
+        eyebrow: '預言家查驗結果',
+        headline: `${formatSeatNum(seerOutcome.targetSeat)} 號 · ${seerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        tone: seerOutcome.faction === 'wolf' ? 'wolf' : 'good',
+      };
+    }
+    if (psychicOutcome) {
+      const rName = getRoleById(psychicOutcome.perceivedRoleId)?.name ?? psychicOutcome.perceivedRoleId;
+      return {
+        eyebrow: '通靈師查驗底牌',
+        headline: `${formatSeatNum(psychicOutcome.targetSeat)} 號 · ${rName}`,
+        tone: 'third',
+      };
+    }
+    if (mechWolfPsychicOutcome) {
+      const rName =
+        getRoleById(mechWolfPsychicOutcome.perceivedRoleId)?.name ??
+        mechWolfPsychicOutcome.perceivedRoleId;
+      return {
+        eyebrow: '機械狼查驗底牌',
+        headline: `${formatSeatNum(mechWolfPsychicOutcome.targetSeat)} 號 · ${rName}`,
+        tone: 'third',
+      };
+    }
+    if (awakenedSeerOutcome) {
+      return {
+        eyebrow: '覺醒預言家雙驗',
+        headline:
+          awakenedSeerOutcome.result === 'double_good' ? '雙金水（皆好人）' : '疑似狼人（含狼）',
+        detail: `查驗對象：${formatSeatNum(awakenedSeerOutcome.targetSeats[0])} 號、${formatSeatNum(awakenedSeerOutcome.targetSeats[1])} 號`,
+        tone: awakenedSeerOutcome.result === 'double_good' ? 'good' : 'wolf',
+      };
+    }
+    if (lanternSeerOutcome) {
+      return {
+        eyebrow: '燈影預言家查驗',
+        headline: `${formatSeatNum(lanternSeerOutcome.targetSeat)} 號 · ${lanternSeerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        tone: lanternSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
+      };
+    }
+    if (drunkSeerOutcome) {
+      return {
+        eyebrow: '查驗結果',
+        headline: `${formatSeatNum(drunkSeerOutcome.targetSeat)} 號 · ${drunkSeerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        tone: drunkSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
+      };
+    }
+    if (foolSeerOutcome) {
+      return {
+        eyebrow: '愚言家查驗結果',
+        headline: `${formatSeatNum(foolSeerOutcome.targetSeat)} 號 · ${foolSeerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        tone: foolSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
+      };
+    }
+    if (foxOutcome) {
+      return {
+        eyebrow: '狐狸查驗結果',
+        headline: foxOutcome.hasWolf ? '含狼人（技能保留）' : '全好人（技能失效）',
+        detail: `範圍：${foxOutcome.checkedSeats.map(formatSeatNum).join('、')} 號`,
+        tone: foxOutcome.hasWolf ? 'wolf' : 'sheriff',
+      };
+    }
+    const exactCheck = gargoyleOutcome ?? wolfWitchOutcome ?? pureWhiteOutcome ?? pumpkinGhostOutcome;
+    if (exactCheck) {
+      const rName = getRoleById(exactCheck.perceivedRoleId)?.name ?? exactCheck.perceivedRoleId;
+      return {
+        eyebrow: `${currentStep.actorLabel} · 底牌查驗`,
+        headline: `${formatSeatNum(exactCheck.targetSeat)} 號 · ${rName}`,
+        tone: 'third',
+      };
+    }
+    if (demonWolfOutcome) {
+      return {
+        eyebrow: '惡魔查驗結果',
+        headline: `${formatSeatNum(demonWolfOutcome.targetSeat)} 號 · ${demonWolfOutcome.roleType === 'god' ? '神職' : '平民'}`,
+        tone: 'third',
+      };
+    }
+    if (
+      (currentStep.actionType === 'gravekeeper_check' ||
+        currentStep.actionType === 'super_gravekeeper_action' ||
+        currentStep.actionType === 'super_gravekeeper_heir_check') &&
+      gravekeeperOutcome
+    ) {
+      return {
+        eyebrow: '守墓人驗屍結果',
+        headline:
+          gravekeeperOutcome.exiledSeat !== null
+            ? `${formatSeatNum(gravekeeperOutcome.exiledSeat)} 號 · ${gravekeeperOutcome.faction === 'wolf' ? '狼人陣營' : '好人陣營'}`
+            : '昨日無放逐紀錄',
+        tone: gravekeeperOutcome.faction === 'wolf' ? 'wolf' : 'good',
+      };
+    }
+    if (currentStep.actionType === 'hunter_gesture' && hunterSeat?.isAlive) {
+      return {
+        eyebrow: '獵人開槍狀態',
+        headline: isHunterPoisonedTonight ? '不可開槍' : '可以開槍',
+        tone: isHunterPoisonedTonight ? 'wolf' : 'good',
+      };
+    }
+    if (currentStep.actionType === 'mech_wolf_reveal_skill' && mechLearnedTargetSeat?.roleId) {
+      const rName = getRoleById(mechLearnedTargetSeat.roleId)?.name ?? mechLearnedTargetSeat.roleId;
+      return {
+        eyebrow: '機械狼習得身分',
+        headline: rName,
+        detail: `對象：${formatSeatNum(mechLearnedTargetSeat.seatNumber)} 號`,
+        tone: 'sheriff',
+      };
+    }
+    if (currentStep.actionType === 'witch_action' && !witchAntidoteUsed && !isSkillLocked) {
+      return {
+        eyebrow: '今晚被刀對象',
+        headline: wolfTargetSeat ? `${formatSeatNum(wolfTargetSeat.seatNumber)} 號` : '今晚平安（空刀）',
+        tone: wolfTargetSeat ? 'wolf' : 'good',
+      };
+    }
+    if (
+      currentStep.actionType === 'miracle_merchant_gift' ||
+      currentStep.actionType === 'black_market_gift' ||
+      currentStep.actionType === 'super_black_market_gift' ||
+      currentStep.actionType === 'evil_merchant_gift'
+    ) {
+      const targetStr =
+        pendingTarget !== null
+          ? `${formatSeatNum(pendingTarget)} 號`
+          : pendingMultiTargets.length > 0
+            ? pendingMultiTargets.map(formatSeatNum).join('、') + ' 號'
+            : null;
+      if (targetStr) {
+        return {
+          eyebrow: `${currentStep.actorLabel} · 贈禮告知`,
+          headline: `幸運兒：${targetStr}`,
+          detail: '請向玩家展示所獲技能道具',
+          tone: 'sheriff',
+        };
+      }
+    }
+    return null;
+  }, [
+    isClaimStage,
+    isOnlineJudge,
+    seerOutcome,
+    psychicOutcome,
+    mechWolfPsychicOutcome,
+    awakenedSeerOutcome,
+    lanternSeerOutcome,
+    drunkSeerOutcome,
+    foolSeerOutcome,
+    foxOutcome,
+    gargoyleOutcome,
+    wolfWitchOutcome,
+    pureWhiteOutcome,
+    pumpkinGhostOutcome,
+    demonWolfOutcome,
+    gravekeeperOutcome,
+    currentStep.actionType,
+    currentStep.actorLabel,
+    hunterSeat,
+    isHunterPoisonedTonight,
+    mechLearnedTargetSeat,
+    witchAntidoteUsed,
+    isSkillLocked,
+    wolfTargetSeat,
+    pendingTarget,
+    pendingMultiTargets,
+  ]);
 
   const primaryButtonLabel = (() => {
     if (isClaimStage) {
-      if (pendingClaimSeat !== null) {
+      if (pendingClaimSeats.length > 0) {
+        const seatList = pendingClaimSeats.map(formatSeatNum).join('、');
         return isPendingUnclaim
-          ? `解除 ${pendingClaimSeat} 號的「${activeClaimRoleName}」認領`
-          : `確認登錄 ${pendingClaimSeat} 號為「${activeClaimRoleName}」`;
+          ? `解除 ${seatList} 號的「${activeClaimRoleName}」認領`
+          : `確認登錄 ${seatList} 號為「${activeClaimRoleName}」`;
       }
       if (claimSummary?.isComplete) {
         return '認領完成 ➜ 進入夜間技能';
@@ -1927,6 +2195,10 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         return '略過認領 ➜ 進入夜間技能';
       }
       return `請先點選座位認領「${activeClaimRoleName}」`;
+    }
+
+    if (isSkillLocked) {
+      return isLastStep ? '唸詞完畢 ➜ 天亮結算' : '唸詞完畢 ➜ 下一步';
     }
 
     if (isInfoRevealStep && pendingTarget !== null && !revealConfirmed) {
@@ -1946,8 +2218,10 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   })();
 
   const primaryButtonDisabled = isClaimStage
-    ? pendingClaimSeat === null && !claimSummary?.isComplete && !board.isFlexibleComposition
-    : !pendingValidation.allowed;
+    ? pendingClaimSeats.length === 0 && !claimSummary?.isComplete && !board.isFlexibleComposition
+    : isSkillLocked
+      ? false
+      : !pendingValidation.allowed;
 
   const { left: leftSeats, right: rightSeats } = splitSeatsIntoSymmetricColumns(seats);
 
@@ -2070,10 +2344,10 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
               <button
                 type="button"
                 onClick={handleCycleBufferSeconds}
-                title="點擊切換閉眼緩衝秒數"
+                title="點擊切換閉眼→睜眼間隔秒數"
                 className="min-h-10 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-semibold tabular-nums text-sheriff"
               >
-                {onlineJudgeSettings.stepBufferSeconds}s
+                {closeToOpenDelay}s
               </button>
             </>
           ) : (
@@ -2102,15 +2376,66 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         </div>
       </section>
 
+      {/* 1.5 台詞提詞區置頂放大（高對比純白字 16px–18px，方便關燈閱讀） */}
+      {!isOnlineJudge && (
+        <section className="shrink-0 space-y-1.5">
+          <div className="flex items-start justify-between gap-2 border-l-2 border-sheriff bg-surface px-3 py-2">
+            <p className="min-w-0 flex-1 text-[16px] font-semibold leading-6 text-primary sm:text-[18px]">
+              {currentStep.actionPrompt.replace(/\n+/g, ' ')}
+            </p>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {currentFlashcardCandidate && (
+                <button
+                  type="button"
+                  onClick={() => setFlashcardData(currentFlashcardCandidate)}
+                  className="min-h-10 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff hover:opacity-90"
+                >
+                  放大展示
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setScriptDrawerOpen(true)}
+                className="min-h-10 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+              >
+                台詞
+              </button>
+            </div>
+          </div>
+
+          {isBloodMoonSealedStep && (
+            <div
+              role="alert"
+              className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf"
+            >
+              血月封印中：今晚所有好人神職技能全面封印，請照常唸詞，操作已鎖死。
+            </div>
+          )}
+
+          {!isBloodMoonSealedStep && showDeadActorWarning && (
+            <div
+              role="alert"
+              className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf"
+            >
+              該角色已出局：請照常唸詞並停頓防暴露，技能操作已鎖死。
+            </div>
+          )}
+        </section>
+      )}
+
       {/* 2. 中央左右對稱雙欄座位網格（無多餘外框） */}
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
           <div className="truncate text-[12px] text-secondary">
             {isClaimStage
-              ? `點選座位認領「${activeClaimRoleName}」`
-              : isSeatSelectableForSkill
-                ? '點選目標座位，按下方確認'
-                : '檢視狀態後按下方確認'}
+              ? `點選座位認領「${activeClaimRoleName}」（多名可一次多選）`
+              : isSkillLocked
+                ? '技能已鎖死 · 唸詞完畢後直接按下一步'
+                : currentStep.actionType === 'witch_action'
+                  ? '點上方【解藥】救人 · 直接點下方座位＝【毒藥】'
+                  : isSeatSelectableForSkill
+                    ? '點選目標座位，按下方確認'
+                    : '檢視狀態後按下方確認'}
           </div>
           {!isOnlineJudge && (
             <button
@@ -2145,7 +2470,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
                     type="button"
                     onClick={() => {
                       setActiveClaimRoleId(r.roleId);
-                      setPendingClaimSeat(null);
+                      setPendingClaimSeats([]);
                       setClaimError(null);
                     }}
                     className={`min-h-10 rounded-md px-2.5 text-[12px] font-semibold tabular-nums transition ${
@@ -2170,33 +2495,8 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         )}
 
         {/* 技能階段精簡提示與 Bottom Action Sheet（限高避免擠壓雙欄座位） */}
-        {!isClaimStage && (
+        {!isClaimStage && !isSkillLocked && (
           <div className="max-h-[26dvh] space-y-1.5 overflow-y-auto pr-0.5">
-            {/* 實體法官專屬：已出局角色假裝操作紅字警告（保留，左側 2px 緋紅線） */}
-            {showDeadActorWarning && (
-              <div
-                role="alert"
-                className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf"
-              >
-                該角色已出局：請照常唸詞並默數 5 秒假裝操作，切勿跳過。
-              </div>
-            )}
-
-            {/* 極簡左側 2px 指示線提詞機（線上法官隱藏逐字稿，只顯示極簡操作指令） */}
-            {!isOnlineJudge && (
-              <div className="flex items-center justify-between gap-2 border-l-2 border-sheriff bg-surface px-3 py-1.5">
-                <p className="line-clamp-2 min-w-0 flex-1 text-[12px] leading-4 text-primary">
-                  {currentStep.actionPrompt.replace(/\n+/g, ' ')}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setScriptDrawerOpen(true)}
-                  className="min-h-10 shrink-0 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
-                >
-                  台詞
-                </button>
-              </div>
-            )}
 
             {/* 步驟專屬操作快捷項 */}
             {currentStep.actionType === 'wolf_kill' && (
@@ -2318,53 +2618,69 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
             {currentStep.actionType === 'witch_action' && (
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center justify-between gap-2 text-[12px]">
                   <span className="text-secondary">
                     今晚刀口：
-                    <strong className="text-wolf">
+                    <strong className="text-wolf tabular-nums">
                       {!witchAntidoteUsed
                         ? wolfTargetSeat
                           ? formatSeatShort(wolfTargetSeat)
                           : '空刀（平安）'
-                        : '解藥已用（無刀口資訊）'}
+                        : '解藥已耗盡（無刀口資訊）'}
                     </strong>
                   </span>
-                  <span className="text-[12px] font-bold">
-                    <span className={witchAntidoteUsed ? 'text-primary0 line-through' : 'text-good'}>
-                      解{witchAntidoteUsed ? '×0' : '×1'}
+                  <div className="flex shrink-0 items-center gap-1.5 font-semibold">
+                    <span
+                      className={`rounded border px-1.5 py-0.5 ${
+                        witchAntidoteUsed
+                          ? 'border-subtle bg-canvas text-muted line-through'
+                          : 'border-good-border bg-good-tint text-good'
+                      }`}
+                    >
+                      解藥：{witchAntidoteUsed ? '已耗盡' : '可用'}
                     </span>
-                    {' / '}
-                    <span className={witchPoisonUsed ? 'text-primary0 line-through' : 'text-wolf'}>
-                      毒{witchPoisonUsed ? '×0' : '×1'}
+                    <span
+                      className={`rounded border px-1.5 py-0.5 ${
+                        witchPoisonUsed
+                          ? 'border-subtle bg-canvas text-muted line-through'
+                          : 'border-wolf-border bg-wolf-tint text-wolf'
+                      }`}
+                    >
+                      毒藥：{witchPoisonUsed ? '已耗盡' : '可用'}
                     </span>
-                  </span>
+                  </div>
+                </div>
+                <div className="text-[12px] text-secondary">
+                  點擊下方【解藥按鈕】救人；直接點選上方座位＝【使用毒藥】（同晚不可雙開）
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={!antidoteCheck.allowed || antidoteBlockedByPoison}
+                    disabled={witchAntidoteUsed || !antidoteCheck.allowed || antidoteBlockedByPoison}
                     onClick={() => setPendingUseAntidote((prev) => !prev)}
-                    className={`min-h-12 flex-1 rounded-md border px-3 text-xs font-bold transition ${
+                    className={`min-h-12 flex-1 rounded-md border px-3 text-[13px] font-semibold transition ${
                       pendingUseAntidote
-                        ? 'border-good bg-good-tint text-good'
-                        : !antidoteCheck.allowed || antidoteBlockedByPoison
-                          ? 'cursor-not-allowed border-subtle bg-canvas text-primary0'
+                        ? 'border-selected-good bg-good-tint text-good'
+                        : witchAntidoteUsed || !antidoteCheck.allowed || antidoteBlockedByPoison
+                          ? 'cursor-not-allowed border-subtle bg-canvas text-muted'
                           : 'border-good-border bg-good-tint text-good hover:opacity-90'
                     }`}
                   >
-                    {pendingUseAntidote
-                      ? `✓ 預選解藥救 ${currentNightDraft.wolfTarget} 號（再點取消）`
-                      : antidoteBlockedByPoison
-                        ? '已預選毒藥，不可同晚用解藥'
-                        : !antidoteCheck.allowed
-                          ? `解藥不可用：${antidoteCheck.reason}`
-                          : `💊 預選解藥救 ${currentNightDraft.wolfTarget} 號`}
+                    {witchAntidoteUsed
+                      ? '解藥已耗盡（全場限用一次）'
+                      : pendingUseAntidote
+                        ? `✓ 已選解藥救 ${currentNightDraft.wolfTarget} 號（再點取消）`
+                        : antidoteBlockedByPoison
+                          ? '已選毒藥，同晚不可再使用解藥'
+                          : !antidoteCheck.allowed
+                            ? `解藥不可用：${antidoteCheck.reason}`
+                            : `使用解藥救 ${currentNightDraft.wolfTarget} 號`}
                   </button>
-                  {pendingTarget !== null && (
+                  {pendingTarget !== null && !witchPoisonUsed && (
                     <button
                       type="button"
                       onClick={() => setPendingTarget(null)}
-                      className="min-h-12 shrink-0 rounded-md border border-wolf-border bg-wolf-tint px-3 text-xs font-bold text-wolf"
+                      className="min-h-12 shrink-0 rounded-md border border-wolf-border bg-wolf-tint px-3 text-[12px] font-semibold text-wolf"
                     >
                       取消毒 {pendingTarget}號
                     </button>
@@ -3429,6 +3745,9 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           onClose={() => setSeatDrawerOpen(false)}
         />
       )}
+
+      {/* 放大展示給玩家看：全屏純黑防窺遮罩卡 */}
+      <InfoFlashcardModal data={flashcardData} onClose={() => setFlashcardData(null)} />
     </div>
   );
 }

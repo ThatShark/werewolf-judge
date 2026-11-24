@@ -60,14 +60,23 @@ export function HostPreSetupScreen() {
                   key={opt.value}
                   type="button"
                   onClick={() => updateHostMode({ judgeMode: opt.value })}
-                  className={`flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left transition ${
+                  className={`relative flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left transition ${
                     active
                       ? 'border-selected-sheriff bg-sheriff-tint text-primary'
                       : 'border border-subtle bg-canvas text-secondary hover:border-strong'
                   }`}
                 >
-                  <span className="text-[14px] font-semibold">{opt.label}</span>
-                  <span className="text-[11px] text-muted">{opt.sub}</span>
+                  <div className="flex w-full items-center justify-between gap-1">
+                    <span className={`text-[14px] font-semibold ${active ? 'text-sheriff' : 'text-primary'}`}>
+                      {opt.label}
+                    </span>
+                    {active && (
+                      <span className="shrink-0 rounded bg-sheriff px-1.5 py-0.5 text-[11px] font-semibold text-inverse">
+                        已選
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[12px] text-muted">{opt.sub}</span>
                 </button>
               );
             })}
@@ -90,14 +99,23 @@ export function HostPreSetupScreen() {
                   key={opt.value}
                   type="button"
                   onClick={() => updateHostMode({ dealMode: opt.value })}
-                  className={`flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left transition ${
+                  className={`relative flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left transition ${
                     active
                       ? 'border-selected-sheriff bg-sheriff-tint text-primary'
                       : 'border border-subtle bg-canvas text-secondary hover:border-strong'
                   }`}
                 >
-                  <span className="text-[14px] font-semibold">{opt.label}</span>
-                  <span className="text-[11px] text-muted">{opt.sub}</span>
+                  <div className="flex w-full items-center justify-between gap-1">
+                    <span className={`text-[14px] font-semibold ${active ? 'text-sheriff' : 'text-primary'}`}>
+                      {opt.label}
+                    </span>
+                    {active && (
+                      <span className="shrink-0 rounded bg-sheriff px-1.5 py-0.5 text-[11px] font-semibold text-inverse">
+                        已選
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[12px] text-muted">{opt.sub}</span>
                 </button>
               );
             })}
@@ -120,14 +138,23 @@ export function HostPreSetupScreen() {
                   key={opt.value}
                   type="button"
                   onClick={() => updateHostMode({ controlMode: opt.value })}
-                  className={`flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left transition ${
+                  className={`relative flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left transition ${
                     active
                       ? 'border-selected-sheriff bg-sheriff-tint text-primary'
                       : 'border border-subtle bg-canvas text-secondary hover:border-strong'
                   }`}
                 >
-                  <span className="text-[14px] font-semibold">{opt.label}</span>
-                  <span className="text-[11px] text-muted">{opt.sub}</span>
+                  <div className="flex w-full items-center justify-between gap-1">
+                    <span className={`text-[14px] font-semibold ${active ? 'text-sheriff' : 'text-primary'}`}>
+                      {opt.label}
+                    </span>
+                    {active && (
+                      <span className="shrink-0 rounded bg-sheriff px-1.5 py-0.5 text-[11px] font-semibold text-inverse">
+                        已選
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[12px] text-muted">{opt.sub}</span>
                 </button>
               );
             })}
@@ -167,29 +194,31 @@ export function HostPreSetupScreen() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
               <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-2.5 py-2">
-                <span className="text-[12px] text-secondary">緩衝</span>
+                <span className="text-[12px] text-secondary">閉眼 → 睜眼間隔</span>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() =>
                       updateOnlineJudgeSettings({
-                        stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds - 1,
+                        closeToOpenDelaySeconds:
+                          (onlineJudgeSettings.closeToOpenDelaySeconds ?? 3) - 1,
                       })
                     }
                     className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
                   >
                     −
                   </button>
-                  <span className="w-8 text-center text-[14px] font-semibold tabular-nums text-sheriff">
-                    {onlineJudgeSettings.stepBufferSeconds}s
+                  <span className="w-9 text-center text-[14px] font-semibold tabular-nums text-sheriff">
+                    {onlineJudgeSettings.closeToOpenDelaySeconds ?? 3}s
                   </span>
                   <button
                     type="button"
                     onClick={() =>
                       updateOnlineJudgeSettings({
-                        stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds + 1,
+                        closeToOpenDelaySeconds:
+                          (onlineJudgeSettings.closeToOpenDelaySeconds ?? 3) + 1,
                       })
                     }
                     className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
@@ -199,34 +228,67 @@ export function HostPreSetupScreen() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-2.5 py-2">
-                <span className="text-[12px] text-secondary">語速</span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateOnlineJudgeSettings({
-                        ttsRate: onlineJudgeSettings.ttsRate - 0.1,
-                      })
-                    }
-                    className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
-                  >
-                    −
-                  </button>
-                  <span className="w-9 text-center text-[14px] font-semibold tabular-nums text-primary">
-                    {onlineJudgeSettings.ttsRate.toFixed(1)}×
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateOnlineJudgeSettings({
-                        ttsRate: onlineJudgeSettings.ttsRate + 0.1,
-                      })
-                    }
-                    className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
-                  >
-                    +
-                  </button>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-2.5 py-2">
+                  <span className="text-[12px] text-secondary">行動秒數</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateOnlineJudgeSettings({
+                          stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds - 1,
+                        })
+                      }
+                      className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+                    >
+                      −
+                    </button>
+                    <span className="w-8 text-center text-[14px] font-semibold tabular-nums text-primary">
+                      {onlineJudgeSettings.stepBufferSeconds}s
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateOnlineJudgeSettings({
+                          stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds + 1,
+                        })
+                      }
+                      className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-2.5 py-2">
+                  <span className="text-[12px] text-secondary">語速</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateOnlineJudgeSettings({
+                          ttsRate: onlineJudgeSettings.ttsRate - 0.1,
+                        })
+                      }
+                      className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+                    >
+                      −
+                    </button>
+                    <span className="w-9 text-center text-[14px] font-semibold tabular-nums text-primary">
+                      {onlineJudgeSettings.ttsRate.toFixed(1)}×
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateOnlineJudgeSettings({
+                          ttsRate: onlineJudgeSettings.ttsRate + 0.1,
+                        })
+                      }
+                      className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -143,9 +143,9 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     useGameStore.getState().startGame();
     useGameStore.getState().updateNightDraft({ wolfTarget: 5 });
     useGameStore.getState().finishNight();
-    useGameStore.getState().proceedToDayVote();
+    useGameStore.getState().proceedToDaySpeaking();
 
-    // 1 號狼人白天自爆 -> 即刻標記死亡並直接進入第 2 晚
+    // 1 號狼人白天發言階段自爆 -> 即刻標記死亡並直接進入第 2 晚
     const explode = useGameStore.getState().selfExplode(1);
     expect(explode.allowed).toBe(true);
     expect(useGameStore.getState().phase).toBe('night');
@@ -441,6 +441,7 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
       ttsEnabled: false,
       ttsRate: 1.3,
       stepBufferSeconds: 6,
+      closeToOpenDelaySeconds: 3,
     });
 
     // 開局進入第一晚（所有座位 roleId 為 null）
@@ -474,6 +475,7 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
       ttsEnabled: false,
       ttsRate: 1.3,
       stepBufferSeconds: 6,
+      closeToOpenDelaySeconds: 3,
     });
   });
 
@@ -487,13 +489,13 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     useGameStore.getState().startGame();
     useGameStore.getState().updateNightDraft({ wolfTarget: null });
     useGameStore.getState().finishNight();
-    useGameStore.getState().proceedToDayVote();
+    expect(useGameStore.getState().dayStage).toBe('sheriff_election');
 
     // 切換投票模式為依候選人唱票並驗證持久化
     useGameStore.getState().setVoteInputMode('by_candidate');
     expect(useGameStore.getState().voteInputMode).toBe('by_candidate');
 
-    // 第一天警上：[1, 2, 9, 10] -> 1 號首次自爆入夜（不吞警徽，延後至隔天）
+    // 第一天階段一警上：[1, 2, 9, 10] -> 1 號首次自爆入夜（不吞警徽，延後至隔天）
     useGameStore.getState().startSheriffElection([1, 2, 9, 10]);
     const explode1 = useGameStore.getState().selfExplode(1);
     expect(explode1.allowed).toBe(true);
@@ -504,15 +506,15 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().phase).toBe('night');
     expect(useGameStore.getState().round).toBe(2);
 
-    // 第 2 晚結算（1 號自爆狼死亡）：自動跳過警上報名與發言，直接進入 voting（候選人剩 2, 9, 10）
+    // 第 2 晚結算（1 號自爆狼死亡）：自動進入階段一續選（跳過警上報名與發言，直接 voting，候選人剩 2, 9, 10）
     useGameStore.getState().updateNightDraft({ wolfTarget: null });
     useGameStore.getState().finishNight();
     expect(useGameStore.getState().phase).toBe('day_announcement');
+    expect(useGameStore.getState().dayStage).toBe('sheriff_election');
     expect(useGameStore.getState().sheriffState.status).toBe('voting');
     expect(useGameStore.getState().sheriffState.candidates).toEqual([2, 9, 10]);
 
-    // 第 2 天白天：2 號狼人於退水／投票前發動第二次自爆 -> 正式吞警徽
-    useGameStore.getState().proceedToDayVote();
+    // 第 2 天階段一警上續選：2 號狼人於退水／投票前發動第二次自爆 -> 正式吞警徽
     const explode2 = useGameStore.getState().selfExplode(2);
     expect(explode2.allowed).toBe(true);
     expect(explode2.swallowedBadge).toBe(true);
@@ -520,6 +522,13 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().sheriffState.status).toBe('swallowed');
     expect(useGameStore.getState().sheriffState.badgeStatus).toBe('swallowed');
     expect(useGameStore.getState().sheriffState.explodeCountDuringElection).toBe(2);
+
+    // 驗證進入階段四（放逐投票）後一般狼人不可自爆
+    useGameStore.getState().updateNightDraft({ wolfTarget: null });
+    useGameStore.getState().finishNight();
+    useGameStore.getState().proceedToDayVote();
+    const blockedExplode = useGameStore.getState().selfExplode(3);
+    expect(blockedExplode.allowed).toBe(false);
   });
 
   it('Phase A4：法官手動勝負覆蓋（強制繼續解除結束鎖定、好人交牌、狼人交牌、強制結束平局）', () => {

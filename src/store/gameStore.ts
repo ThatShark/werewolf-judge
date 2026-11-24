@@ -7,6 +7,8 @@ import {
   DEFAULT_ONLINE_JUDGE_SETTINGS,
   DEFAULT_RULE_OVERRIDES,
   DEFAULT_SPEAK_DURATION_SEC,
+  advanceSheriffPkToVoting as advanceSheriffPkToVotingLogic,
+  advanceSheriffToVoting as advanceSheriffToVotingLogic,
   applyPandoraGift,
   canWhiteNightEnvoyRewind,
   checkCanShoot,
@@ -39,6 +41,7 @@ import {
   generateSpeakingOrder as generateSpeakingOrderLogic,
   getDefaultRuleOverridesForBoard,
   getNightSteps,
+  getSheriffPkSpeakingOrder,
   handleSheriffElectionExplode,
   isValidPlayerCountForBoard,
   mergeRuleOverrides,
@@ -69,6 +72,8 @@ import {
   resolveWolfGirlExplode,
   resumeDeferredSheriffElection,
   setNotebookGridCell as setNotebookGridCellLogic,
+  setSheriffInitialSpeakingOrder,
+  shouldEndNightEarly,
   shouldTriggerAutoVictory,
   startSheriffElection as startSheriffElectionLogic,
   syncGargoyleTeamStatus,
@@ -87,6 +92,7 @@ import {
 import type { SheriffVoteResolution } from '../logic/sheriff';
 import type {
   AmbientAudioSettings,
+  DayStage,
   DayStructuredEvent,
   DeathReason,
   ExileVoteTallyResult,
@@ -125,6 +131,7 @@ export interface SubmitExileVotesOptions {
 export type UndoSnapshotData = Pick<
   GameState,
   | 'phase'
+  | 'dayStage'
   | 'round'
   | 'seats'
   | 'passRevealConfirmedSeats'
@@ -220,6 +227,7 @@ export interface GameStore extends GameState {
   updateNightDraft: (partial: Partial<NightActionDraft>) => void;
   nextNightStep: () => void;
   prevNightStep: () => void;
+  checkEarlyNightVictory: () => boolean;
   finishNight: () => void;
 
   /** 自動發言順序與單人倒數計時 */
@@ -232,14 +240,18 @@ export interface GameStore extends GameState {
 
   /** 警長競選與警徽交接 */
   startSheriffElection: (candidateSeats: number[]) => void;
+  advanceSheriffToVoting: () => void;
+  advanceSheriffPkToVoting: () => void;
   withdrawSheriffCandidate: (seatNumber: number) => void;
   submitSheriffVotes: (votes: Record<number, number | null>) => SheriffVoteResolution;
   transferSheriffBadge: (targetSeat: number) => void;
   destroySheriffBadge: () => void;
 
-  /** 天亮開槍與白天階段 */
+  /** 天亮開槍與白天四階段嚴格推進 */
   triggerShoot: (shooterSeat: number, targetSeat: number) => void;
   skipShoot: (shooterSeat: number) => void;
+  proceedToDeathAnnouncement: () => void;
+  proceedToDaySpeaking: () => void;
   proceedToDayVote: () => void;
 
   /** 白天放逐投票明細與突發技能 */
@@ -373,6 +385,7 @@ function createInitialGameState(): GameState & {
   return {
     activeView: 'home',
     phase: 'host_setup',
+    dayStage: 'death_announcement',
     round: 1,
     selectedBoardId: null,
     hostMode: { ...DEFAULT_HOST_MODE },
@@ -441,6 +454,7 @@ function createInitialGameState(): GameState & {
 function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
   const raw: UndoSnapshotData = {
     phase: state.phase,
+    dayStage: state.dayStage,
     round: state.round,
     seats: state.seats,
     passRevealConfirmedSeats: state.passRevealConfirmedSeats,
@@ -902,6 +916,58 @@ export const useGameStore = create<GameStore>()(
         }));
       },
 
+      checkEarlyNightVictory: () => {
+        const state = get();
+        if (state.phase !== 'night' || state.forceContinueAfterVictory) return false;
+        // 實體發牌第一晚需先完成所有角色認領，不於中途提前結束
+        if (state.round === 1 && state.hostMode.dealMode === 'physical_deal') return false;
+        const board = getBoardById(state.selectedBoardId);
+        if (!board) return false;
+        const steps = getNightSteps(board, state.round);
+        const remainingSteps = steps.slice(state.currentStepIndex + 1);
+        const seerIdx = steps.findIndex((s) => s.actionType === 'seer_check');
+        const witchIdx = steps.findIndex((s) => s.actionType === 'witch_action');
+        const seerActsBeforeWitch = seerIdx !== -1 && witchIdx !== -1 && seerIdx < witchIdx;
+
+        const check = shouldEndNightEarly(
+          {
+            seats: state.seats,
+            round: state.round,
+            draft: state.currentNightDraft,
+            ruleOverrides: state.ruleOverrides,
+            boardId: state.selectedBoardId ?? undefined,
+            witchAntidoteUsed: state.witchAntidoteUsed,
+            witchPoisonUsed: state.witchPoisonUsed,
+            lastGuardedSeat: state.lastGuardedSeat,
+            mechWolfState: state.mechWolfState,
+            pendingSelfExplodeSeat: state.pendingSelfExplodeSeat,
+            lastCharmedSeat: state.lastCharmedSeat,
+            lastDreamTarget: state.lastDreamTarget,
+            lastFearedSeat: state.lastFearedSeat ?? null,
+            evilKnightCounterUsed: state.evilKnightCounterUsed ?? false,
+            seerActsBeforeWitch,
+            hybridState: state.hybridState ?? createInitialHybridState(),
+            seedWolfState: state.seedWolfState ?? createInitialSeedWolfState(),
+            hiddenWolfState: state.hiddenWolfState ?? createInitialHiddenWolfState(),
+            gargoyleState: state.gargoyleState ?? createInitialGargoyleState(),
+            pumpkinGhostState: state.pumpkinGhostState ?? createInitialPumpkinGhostState(),
+            superGravekeeperState:
+              state.superGravekeeperState ?? createInitialSuperGravekeeperState(),
+            foxLostAbility: state.foxLostAbility ?? false,
+            exiledHistory: state.exiledHistory ?? [],
+            lastAwakenedDreamTarget: state.lastAwakenedDreamTarget ?? null,
+            interferenceState: state.interferenceState ?? createInitialInterferenceState(),
+            combatState: state.combatState ?? createInitialCombatState(),
+            conversionState: state.conversionState ?? createInitialConversionState(),
+            thirdPartySpecialState:
+              state.thirdPartySpecialState ?? createInitialThirdPartySpecialState(),
+            finalBatchState: state.finalBatchState ?? createInitialFinalBatchState(),
+          },
+          remainingSteps,
+        );
+        return check.shouldEndEarly;
+      },
+
       finishNight: () => {
         const state = get();
         const resolvedInputSeats =
@@ -993,6 +1059,15 @@ export const useGameStore = create<GameStore>()(
           state.forceContinueAfterVictory,
         );
 
+        const needsSheriffStage =
+          (state.round === 1 &&
+            state.ruleOverrides.enableSheriff &&
+            nextSheriffState.status === 'not_started') ||
+          (nextSheriffState.status === 'voting' && nextSheriffState.explodeCountDuringElection === 1);
+        const initialDayStage: DayStage = needsSheriffStage
+          ? 'sheriff_election'
+          : 'death_announcement';
+
         set({
           seats: result.seats,
           witchAntidoteUsed: result.witchAntidoteUsed,
@@ -1048,6 +1123,7 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? result.victory.winReason : null,
           preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : 'day_announcement',
+          dayStage: initialDayStage,
           undoStack: pushUndo(state, `結束第 ${state.round} 晚`),
         });
       },
@@ -1139,7 +1215,9 @@ export const useGameStore = create<GameStore>()(
 
       startSheriffElection: (candidateSeats) => {
         const state = get();
-        const nextSheriffState = startSheriffElectionLogic(state.seats, candidateSeats);
+        let nextSheriffState = startSheriffElectionLogic(state.seats, candidateSeats);
+        let nextSpeakingQueue = state.speakingQueue;
+        let nextSpeakingMeta = state.speakingMeta;
 
         let summary = '';
         let eventType: DayStructuredEvent['type'] = 'sheriff_signup';
@@ -1150,11 +1228,23 @@ export const useGameStore = create<GameStore>()(
           summary = `警長競選：僅 ${nextSheriffState.sheriffSeat} 號上警，自動當選警長`;
           eventType = 'sheriff_elected';
         } else {
+          // 步驟 B：自動隨機抽取上警發言順序並記錄，供平票 PK 逆序使用
+          const speakingOrder = generateSpeakingOrderLogic(state.seats, {
+            mode: 'random',
+            candidateSeats: nextSheriffState.candidates,
+          });
+          nextSheriffState = setSheriffInitialSpeakingOrder(nextSheriffState, speakingOrder.queue);
+          nextSpeakingQueue = speakingOrder.queue;
+          nextSpeakingMeta = speakingOrder;
           summary = `警長競選：上警名單為 ${nextSheriffState.candidates.join('、')} 號`;
         }
 
         set({
           sheriffState: nextSheriffState,
+          speakingQueue: nextSpeakingQueue,
+          currentSpeakerIndex: 0,
+          speakingMeta: nextSpeakingMeta,
+          remainingSeconds: state.defaultSpeakDurationSec,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: eventType,
             summary,
@@ -1162,6 +1252,20 @@ export const useGameStore = create<GameStore>()(
           }),
           undoStack: pushUndo(state, '警長上警報名'),
         });
+      },
+
+      advanceSheriffToVoting: () => {
+        set((state) => ({
+          sheriffState: advanceSheriffToVotingLogic(state.sheriffState),
+          undoStack: pushUndo(state, '進入警下投票'),
+        }));
+      },
+
+      advanceSheriffPkToVoting: () => {
+        set((state) => ({
+          sheriffState: advanceSheriffPkToVotingLogic(state.sheriffState),
+          undoStack: pushUndo(state, '進入警長 PK 投票'),
+        }));
       },
 
       withdrawSheriffCandidate: (seatNumber) => {
@@ -1205,13 +1309,29 @@ export const useGameStore = create<GameStore>()(
         const state = get();
         const resolution = resolveSheriffVoteRound(state.sheriffState, state.seats, votes);
 
+        let nextSpeakingQueue = state.speakingQueue;
+        let nextSpeakingMeta = state.speakingMeta;
+
         let summary = '';
         let eventType: DayStructuredEvent['type'] = 'sheriff_vote';
         if (resolution.outcome === 'elected') {
           summary = `警長投票結果：${resolution.record.electedSeat} 號當選警長`;
           eventType = 'sheriff_elected';
         } else if (resolution.outcome === 'pk') {
-          summary = `警長投票平票：${resolution.record.tiedSeats.join('、')} 號進入 PK`;
+          const pkOrder = getSheriffPkSpeakingOrder(
+            resolution.sheriffState.initialSpeakingOrder,
+            resolution.sheriffState.pkCandidates,
+          );
+          nextSpeakingQueue = pkOrder;
+          nextSpeakingMeta = {
+            mode: 'random',
+            direction: state.speakingMeta?.direction === 'clockwise' ? 'counterclockwise' : 'clockwise',
+            startSeat: pkOrder[0] ?? null,
+            anchorSeat: pkOrder[0] ?? null,
+            sheriffLastSeat: null,
+            queue: pkOrder,
+          };
+          summary = `警長投票平票：${resolution.record.tiedSeats.join('、')} 號進入 PK（逆序發言：${pkOrder.join(' → ')}）`;
           eventType = 'sheriff_vote';
         } else {
           summary = '警長投票流局：本局無警長';
@@ -1220,6 +1340,10 @@ export const useGameStore = create<GameStore>()(
 
         set({
           sheriffState: resolution.sheriffState,
+          speakingQueue: nextSpeakingQueue,
+          currentSpeakerIndex: 0,
+          speakingMeta: nextSpeakingMeta,
+          remainingSeconds: state.defaultSpeakDurationSec,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: eventType,
             summary,
@@ -1415,10 +1539,33 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
+      proceedToDeathAnnouncement: () => {
+        set((state) => ({
+          dayStage: 'death_announcement',
+          speakingQueue: [],
+          currentSpeakerIndex: 0,
+          speakingMeta: null,
+          remainingSeconds: state.defaultSpeakDurationSec,
+          undoStack: pushUndo(state, '進入死訊公告'),
+        }));
+      },
+
+      proceedToDaySpeaking: () => {
+        set((state) => ({
+          dayStage: 'speaking',
+          speakingQueue: [],
+          currentSpeakerIndex: 0,
+          speakingMeta: null,
+          remainingSeconds: state.defaultSpeakDurationSec,
+          undoStack: pushUndo(state, '進入白天發言'),
+        }));
+      },
+
       proceedToDayVote: () => {
         set((state) => ({
           phase: state.winner ? 'game_over' : 'day_vote',
-          undoStack: pushUndo(state, '進入白天討論與投票'),
+          dayStage: 'exile_vote',
+          undoStack: pushUndo(state, '進入放逐投票'),
         }));
       },
 
@@ -2214,6 +2361,7 @@ export const useGameStore = create<GameStore>()(
           ruleOverrides: state.ruleOverrides,
           mechWolfState: state.mechWolfState,
           treasureMasterState: state.treasureMasterState,
+          inExileVoteStage: state.dayStage === 'exile_vote' || state.phase === 'day_vote',
         });
         if (!result.allowed) {
           return { allowed: false, reason: result.reason };
@@ -2328,6 +2476,7 @@ export const useGameStore = create<GameStore>()(
           state.activeCharmedSeat,
           state.treasureMasterState,
           { thirdPartySpecialState: state.thirdPartySpecialState },
+          { inExileVoteStage: state.dayStage === 'exile_vote' || state.phase === 'day_vote' },
         );
 
         if (!result.allowed) {
@@ -2966,6 +3115,9 @@ export const useGameStore = create<GameStore>()(
           },
           ruleOverrides: mergeRuleOverrides(DEFAULT_RULE_OVERRIDES, persisted.ruleOverrides),
           dailyRandomDirection: persisted.dailyRandomDirection ?? 'clockwise',
+          dayStage:
+            persisted.dayStage ??
+            (persisted.phase === 'day_vote' ? 'exile_vote' : 'death_announcement'),
           enterNightAfterPendingShooters: persisted.enterNightAfterPendingShooters ?? false,
           sheriffState: {
             ...createInitialSheriffState(),

@@ -65,6 +65,7 @@ export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
   luckyFirstNightSkills: cloneLuckyFirstNightSkills(),
   idiotNeedsExtraKill: false,
   wolfKillPriority: true,
+  sheriffUseDeadSideOnDeath: false,
   hybridCountsAsVillager: false,
 };
 
@@ -129,7 +130,8 @@ export const DEFAULT_HOST_MODE: HostModeConfig = {
 export const DEFAULT_ONLINE_JUDGE_SETTINGS: OnlineJudgeSettings = {
   ttsEnabled: true,
   ttsRate: 1.0,
-  stepBufferSeconds: 3,
+  stepBufferSeconds: 5,
+  closeToOpenDelaySeconds: 3,
 };
 
 export function clampOnlineJudgeSettings(
@@ -144,13 +146,22 @@ export function clampOnlineJudgeSettings(
   const rawBuffer =
     partial.stepBufferSeconds !== undefined ? partial.stepBufferSeconds : current.stepBufferSeconds;
   const clampedBuffer = Number.isFinite(rawBuffer)
-    ? Math.round(Math.min(15, Math.max(0, rawBuffer)))
+    ? Math.round(Math.min(30, Math.max(0, rawBuffer)))
     : DEFAULT_ONLINE_JUDGE_SETTINGS.stepBufferSeconds;
+
+  const rawCloseToOpen =
+    partial.closeToOpenDelaySeconds !== undefined
+      ? partial.closeToOpenDelaySeconds
+      : (current.closeToOpenDelaySeconds ?? DEFAULT_ONLINE_JUDGE_SETTINGS.closeToOpenDelaySeconds);
+  const clampedCloseToOpen = Number.isFinite(rawCloseToOpen)
+    ? Math.round(Math.min(15, Math.max(0, rawCloseToOpen)))
+    : DEFAULT_ONLINE_JUDGE_SETTINGS.closeToOpenDelaySeconds;
 
   return {
     ttsEnabled: partial.ttsEnabled !== undefined ? partial.ttsEnabled : current.ttsEnabled,
     ttsRate: clampedRate,
     stepBufferSeconds: clampedBuffer,
+    closeToOpenDelaySeconds: clampedCloseToOpen,
   };
 }
 
@@ -265,6 +276,7 @@ export function createInitialSheriffState(): SheriffState {
     candidates: [],
     withdrawnSeats: [],
     pkCandidates: [],
+    initialSpeakingOrder: [],
     voteRounds: [],
     pendingBadgeTransferFrom: null,
     explodeCountDuringElection: 0,
@@ -319,6 +331,22 @@ export function getBoardExpectedRoleCounts(board: BoardDefinition): Record<strin
     expected[slot.roleId] = (expected[slot.roleId] ?? 0) + slot.count;
   }
   return expected;
+}
+
+/** 取得板子所有配置角色 ID 集合（供動態條件式房規判定使用） */
+export function getBoardRoleIdSet(board: BoardDefinition | null | undefined): Set<string> {
+  if (!board) return new Set();
+  const ids = new Set<string>();
+  for (const slot of [
+    ...board.composition.wolf,
+    ...board.composition.good,
+    ...(board.composition.thirdParty ?? []),
+  ]) {
+    if (slot.count > 0) {
+      ids.add(slot.roleId);
+    }
+  }
+  return ids;
 }
 
 export function isValidPlayerCountForBoard(board: BoardDefinition, count: number): boolean {

@@ -42,6 +42,7 @@ export function SpeakingTimerPanel() {
 
   const [timerRunning, setTimerRunning] = useState(false);
   const [selectedDeadAnchor, setSelectedDeadAnchor] = useState<number | null>(null);
+  const [manualStartSeat, setManualStartSeat] = useState<number | null>(null);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -98,6 +99,29 @@ export function SpeakingTimerPanel() {
   }, [selectedDeadAnchor, deadAnchorChoices, ruleRecommendation.defaultDeadAnchor]);
 
   const electionActive = isSheriffElectionActive(sheriffState);
+
+  // 無警長／警徽流失時：進入白天發言自動生成預設發言順序（有死者從死者身邊起，平安夜隨機存活者＋隨機方向）
+  useEffect(() => {
+    if (electionActive || activeSheriffSeat !== null || speakingQueue.length > 0) return;
+    if (nightDeadSeats.length > 0 && effectiveDeadAnchor !== null) {
+      const autoMode: SpeakingOrderMode =
+        dailyRandomDirection === 'clockwise' ? 'dead_left' : 'dead_right';
+      generateSpeakingOrder({ mode: autoMode, referenceDeadSeat: effectiveDeadAnchor });
+    } else if (seats.some((s) => s.isAlive)) {
+      generateSpeakingOrder({ mode: 'random' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [electionActive, activeSheriffSeat]);
+
+  const aliveSeatNumbers = useMemo(
+    () => seats.filter((s) => s.isAlive).map((s) => s.seatNumber),
+    [seats],
+  );
+  const allowSheriffDeadSide =
+    activeSheriffSeat !== null &&
+    nightDeadSeats.length === 1 &&
+    Boolean(ruleOverrides.sheriffUseDeadSideOnDeath);
+  const showDeadSideButtons = activeSheriffSeat === null || allowSheriffDeadSide;
   const currentSpeakerSeat =
     currentSpeakerIndex < speakingQueue.length ? speakingQueue[currentSpeakerIndex] : null;
   const currentSpeakerObj =
@@ -260,75 +284,132 @@ export function SpeakingTimerPanel() {
           </div>
         )}
 
-        <div className="grid grid-cols-5 gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleGenerate('random')}
-            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-              electionActive || isRecommended('random')
-                ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
-                : 'border border-subtle bg-surface text-secondary hover:border-strong'
-            }`}
-          >
-            {electionActive ? '抽警上' : '隨機'}
-          </button>
-          <button
-            type="button"
-            disabled={activeSheriffSeat === null}
-            onClick={() => handleGenerate('sheriff_left')}
-            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-              activeSheriffSeat === null
-                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
-                : isRecommended('sheriff_left')
+        {/* 有警長時顯示警左／警右（單死且房規允許時同步顯示死左／死右）；無警長時支援自動抽選與手動指定起點方向 */}
+        <div
+          className={`grid gap-1.5 ${
+            activeSheriffSeat !== null
+              ? showDeadSideButtons
+                ? 'grid-cols-4'
+                : 'grid-cols-2'
+              : 'grid-cols-3'
+          }`}
+        >
+          {activeSheriffSeat === null && (
+            <button
+              type="button"
+              onClick={() => handleGenerate('random')}
+              className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
+                electionActive || isRecommended('random')
                   ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
                   : 'border border-subtle bg-surface text-secondary hover:border-strong'
-            }`}
-          >
-            警左
-          </button>
-          <button
-            type="button"
-            disabled={activeSheriffSeat === null}
-            onClick={() => handleGenerate('sheriff_right')}
-            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-              activeSheriffSeat === null
-                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
-                : isRecommended('sheriff_right')
-                  ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
-                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
-            }`}
-          >
-            警右
-          </button>
-          <button
-            type="button"
-            disabled={effectiveDeadAnchor === null}
-            onClick={() => handleGenerate('dead_left')}
-            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-              effectiveDeadAnchor === null
-                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
-                : isRecommended('dead_left')
-                  ? 'border-selected-wolf bg-wolf-tint text-wolf'
-                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
-            }`}
-          >
-            死左
-          </button>
-          <button
-            type="button"
-            disabled={effectiveDeadAnchor === null}
-            onClick={() => handleGenerate('dead_right')}
-            className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-              effectiveDeadAnchor === null
-                ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
-                : isRecommended('dead_right')
-                  ? 'border-selected-wolf bg-wolf-tint text-wolf'
-                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
-            }`}
-          >
-            死右
-          </button>
+              }`}
+            >
+              隨機抽序
+            </button>
+          )}
+          {activeSheriffSeat !== null && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleGenerate('sheriff_left')}
+                className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
+                  speakingMeta?.mode === 'sheriff_left' || isRecommended('sheriff_left')
+                    ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                    : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                }`}
+              >
+                警左（順時針）
+              </button>
+              <button
+                type="button"
+                onClick={() => handleGenerate('sheriff_right')}
+                className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
+                  speakingMeta?.mode === 'sheriff_right' || isRecommended('sheriff_right')
+                    ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                    : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                }`}
+              >
+                警右（逆時針）
+              </button>
+            </>
+          )}
+          {showDeadSideButtons && (
+            <>
+              <button
+                type="button"
+                disabled={effectiveDeadAnchor === null}
+                onClick={() => handleGenerate('dead_left')}
+                className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
+                  effectiveDeadAnchor === null
+                    ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
+                    : speakingMeta?.mode === 'dead_left' || isRecommended('dead_left')
+                      ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                      : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                }`}
+              >
+                死左
+              </button>
+              <button
+                type="button"
+                disabled={effectiveDeadAnchor === null}
+                onClick={() => handleGenerate('dead_right')}
+                className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
+                  effectiveDeadAnchor === null
+                    ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
+                    : speakingMeta?.mode === 'dead_right' || isRecommended('dead_right')
+                      ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                      : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                }`}
+              >
+                死右
+              </button>
+            </>
+          )}
         </div>
+
+        {/* 無警長時允許法官手動指定起點與方向 */}
+        {activeSheriffSeat === null && aliveSeatNumbers.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-subtle bg-surface px-2.5 py-2 text-[12px]">
+            <span className="text-secondary">手動起點</span>
+            <select
+              aria-label="手動指定發言起點座位"
+              value={manualStartSeat ?? aliveSeatNumbers[0]}
+              onChange={(e) => setManualStartSeat(Number(e.target.value))}
+              className="min-h-9 rounded-md border border-subtle bg-canvas px-2 text-[12px] font-semibold tabular-nums text-primary"
+            >
+              {aliveSeatNumbers.map((sn) => (
+                <option key={sn} value={sn}>
+                  {formatSeatNum(sn)} 號
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => {
+                const start = manualStartSeat ?? aliveSeatNumbers[0];
+                const idx = aliveSeatNumbers.indexOf(start);
+                const prevSeat =
+                  aliveSeatNumbers[(idx - 1 + aliveSeatNumbers.length) % aliveSeatNumbers.length];
+                generateSpeakingOrder({ mode: 'dead_left', referenceDeadSeat: prevSeat });
+              }}
+              className="min-h-9 rounded-md border border-subtle bg-canvas px-2.5 font-semibold text-primary hover:border-strong"
+            >
+              順時針
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const start = manualStartSeat ?? aliveSeatNumbers[0];
+                const idx = aliveSeatNumbers.indexOf(start);
+                const nextSeat = aliveSeatNumbers[(idx + 1) % aliveSeatNumbers.length];
+                generateSpeakingOrder({ mode: 'dead_right', referenceDeadSeat: nextSeat });
+              }}
+              className="min-h-9 rounded-md border border-subtle bg-canvas px-2.5 font-semibold text-primary hover:border-strong"
+            >
+              逆時針
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 發言佇列 */}

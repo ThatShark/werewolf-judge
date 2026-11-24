@@ -247,8 +247,10 @@ export interface OnlineJudgeSettings {
   ttsEnabled: boolean;
   /** 語速（預設 1.0，範圍 0.5 ~ 2.0） */
   ttsRate: number;
-  /** 閉眼到下一角色睜眼緩衝秒數（預設 3，範圍 0 ~ 15） */
+  /** 角色行動／已出局假裝等待秒數（預設 5，範圍 0 ~ 30） */
   stepBufferSeconds: number;
+  /** 閉眼後等待下一角色睜眼的靜音間隔秒數（預設 3，範圍 0 ~ 15） */
+  closeToOpenDelaySeconds: number;
 }
 
 /** [V2.0 新增] 夜間白噪音播放器設定 */
@@ -333,6 +335,13 @@ export type GamePhase =
   | 'day_announcement'
   | 'day_vote'
   | 'game_over';
+
+/** 白天嚴格四階段（警長競選 → 死訊與遺言技能 → 白天發言 → 放逐投票） */
+export type DayStage =
+  | 'sheriff_election'
+  | 'death_announcement'
+  | 'speaking'
+  | 'exile_vote';
 
 export type DeathReason =
   | 'wolf_kill'
@@ -1032,6 +1041,8 @@ export interface SheriffState {
   candidates: number[];
   withdrawnSeats: number[];
   pkCandidates: number[];
+  /** 上警競選發言的原始順序（供平票 PK 依逆序發言使用） */
+  initialSpeakingOrder?: number[];
   voteRounds: VoteRoundRecord[];
   pendingBadgeTransferFrom: number | null;
   /** 警上累計自爆次數（搭配 badgeSwallowRule 判定單爆／雙爆吞警徽） */
@@ -1101,6 +1112,8 @@ export interface DayHistoryEntry {
 
 export interface GameState {
   phase: GamePhase;
+  /** 白天嚴格四階段狀態（持久化於 localStorage） */
+  dayStage: DayStage;
   round: number;
   selectedBoardId: string | null;
   hostMode: HostModeConfig;

@@ -288,28 +288,33 @@ describe('MVP 板子靜態資料與發牌驗證', () => {
     expect(DEFAULT_ONLINE_JUDGE_SETTINGS).toEqual({
       ttsEnabled: true,
       ttsRate: 1.0,
-      stepBufferSeconds: 3,
+      stepBufferSeconds: 5,
+      closeToOpenDelaySeconds: 3,
     });
 
     const clampedLow = clampOnlineJudgeSettings(DEFAULT_ONLINE_JUDGE_SETTINGS, {
       ttsEnabled: false,
       ttsRate: 0.1,
       stepBufferSeconds: -5,
+      closeToOpenDelaySeconds: -3,
     });
     expect(clampedLow).toEqual({
       ttsEnabled: false,
       ttsRate: 0.5,
       stepBufferSeconds: 0,
+      closeToOpenDelaySeconds: 0,
     });
 
     const clampedHigh = clampOnlineJudgeSettings(clampedLow, {
       ttsRate: 3.45,
       stepBufferSeconds: 99.6,
+      closeToOpenDelaySeconds: 99,
     });
     expect(clampedHigh).toEqual({
       ttsEnabled: false,
       ttsRate: 2.0,
-      stepBufferSeconds: 15,
+      stepBufferSeconds: 30,
+      closeToOpenDelaySeconds: 15,
     });
   });
 

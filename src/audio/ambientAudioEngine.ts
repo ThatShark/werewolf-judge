@@ -56,10 +56,10 @@ class AmbientAudioEngine {
     const clamped = Math.max(0, Math.min(1, volume));
     this.currentVolume = clamped;
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setTargetAtTime(clamped * 0.6, this.ctx.currentTime, 0.05);
+      this.masterGain.gain.setTargetAtTime(clamped * 0.35, this.ctx.currentTime, 0.08);
     }
     if (this.customAudioEl) {
-      this.customAudioEl.volume = clamped;
+      this.customAudioEl.volume = clamped * 0.8;
     }
   }
 
@@ -147,7 +147,9 @@ class AmbientAudioEngine {
 
     const ctx = this.ctx;
     const masterGain = ctx.createGain();
-    masterGain.gain.value = this.currentVolume * 0.6;
+    const targetGain = this.currentVolume * 0.35;
+    masterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(Math.max(0.0001, targetGain), ctx.currentTime + 0.25);
     masterGain.connect(ctx.destination);
     this.masterGain = masterGain;
     this.activeNodes.push(masterGain);
@@ -200,10 +202,70 @@ class AmbientAudioEngine {
     return buffer;
   }
 
+  /**
+   * 溫和低頻正弦波提示音（淡入淡出、低增益、無刺耳高頻）。
+   */
+  playSoftCue(type: 'step' | 'dawn' | 'timer' = 'step'): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!this.ctx) {
+        this.ctx = new AudioCtx();
+      }
+      if (this.ctx.state === 'suspended') {
+        void this.ctx.resume().catch(() => {});
+      }
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(
+        type === 'dawn' ? 392 : type === 'timer' ? 330 : 293.66,
+        now,
+      );
+      if (type === 'dawn') {
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.22);
+      }
+
+      filter.type = 'lowpass';
+      filter.frequency.value = 650;
+
+      const peak = Math.min(0.11, Math.max(0.03, this.currentVolume * 0.18));
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.45);
+    } catch {
+      // ignore audio context errors
+    }
+  }
+
   private buildWhiteNoise(ctx: AudioContext, output: GainNode) {
-    const buffer = this.createNoiseBuffer(ctx, 3, (data) => {
+    // 改為溫和粉紅／棕噪音混合並串接低通濾波，徹底消除刺耳高頻白噪
+    const buffer = this.createNoiseBuffer(ctx, 4, (data) => {
+      let b0 = 0;
+      let b1 = 0;
+      let b2 = 0;
+      let brown = 0;
       for (let i = 0; i < data.length; i += 1) {
-        data[i] = (Math.random() * 2 - 1) * 0.45;
+        const white = Math.random() * 2 - 1;
+        b0 = 0.997 * b0 + white * 0.05;
+        b1 = 0.985 * b1 + white * 0.08;
+        b2 = 0.95 * b2 + white * 0.12;
+        brown = (brown + 0.02 * white) / 1.02;
+        data[i] = ((b0 + b1 + b2) * 0.18 + brown * 1.4) * 0.55;
       }
     });
     const source = ctx.createBufferSource();
@@ -212,7 +274,8 @@ class AmbientAudioEngine {
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 3200;
+    filter.frequency.value = 900;
+    filter.Q.value = 0.5;
 
     source.connect(filter);
     filter.connect(output);
@@ -239,7 +302,7 @@ class AmbientAudioEngine {
         b3 = 0.8665 * b3 + white * 0.3104856;
         b4 = 0.55 * b4 + white * 0.5329522;
         b5 = -0.7616 * b5 - white * 0.016898;
-        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.09;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.35) * 0.065;
         b6 = white * 0.115926;
       }
     });
@@ -247,10 +310,18 @@ class AmbientAudioEngine {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
-    source.connect(output);
+
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 1100;
+    lowpass.Q.value = 0.5;
+
+    source.connect(lowpass);
+    lowpass.connect(output);
     source.start();
 
     this.activeSources.push(source);
+    this.activeNodes.push(lowpass);
   }
 
   private buildRain(ctx: AudioContext, output: GainNode) {
@@ -260,10 +331,10 @@ class AmbientAudioEngine {
       let b2 = 0;
       for (let i = 0; i < data.length; i += 1) {
         const white = Math.random() * 2 - 1;
-        b0 = 0.997 * b0 + white * 0.06;
-        b1 = 0.985 * b1 + white * 0.09;
-        b2 = 0.95 * b2 + white * 0.16;
-        data[i] = (b0 + b1 + b2 + white * 0.25) * 0.18;
+        b0 = 0.997 * b0 + white * 0.055;
+        b1 = 0.985 * b1 + white * 0.08;
+        b2 = 0.95 * b2 + white * 0.13;
+        data[i] = (b0 + b1 + b2 + white * 0.12) * 0.15;
       }
     });
 
@@ -271,32 +342,32 @@ class AmbientAudioEngine {
     source.buffer = buffer;
     source.loop = true;
 
-    const bandpass = ctx.createBiquadFilter();
-    bandpass.type = 'bandpass';
-    bandpass.frequency.value = 1100;
-    bandpass.Q.value = 0.45;
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 780;
+    lowpass.Q.value = 0.45;
 
     const swellGain = ctx.createGain();
-    swellGain.gain.value = 0.85;
+    swellGain.gain.value = 0.8;
 
     const lfo = ctx.createOscillator();
     lfo.type = 'sine';
-    lfo.frequency.value = 0.14;
+    lfo.frequency.value = 0.12;
     const lfoDepth = ctx.createGain();
-    lfoDepth.gain.value = 0.15;
+    lfoDepth.gain.value = 0.1;
 
     lfo.connect(lfoDepth);
     lfoDepth.connect(swellGain.gain);
 
-    source.connect(bandpass);
-    bandpass.connect(swellGain);
+    source.connect(lowpass);
+    lowpass.connect(swellGain);
     swellGain.connect(output);
 
     source.start();
     lfo.start();
 
     this.activeSources.push(source, lfo);
-    this.activeNodes.push(bandpass, swellGain, lfoDepth);
+    this.activeNodes.push(lowpass, swellGain, lfoDepth);
   }
 
   private buildCampfire(ctx: AudioContext, output: GainNode) {
@@ -306,7 +377,7 @@ class AmbientAudioEngine {
       for (let i = 0; i < data.length; i += 1) {
         const white = Math.random() * 2 - 1;
         lastOut = (lastOut + 0.02 * white) / 1.02;
-        data[i] = lastOut * 2.8;
+        data[i] = lastOut * 2.2;
       }
     });
     const rumbleSource = ctx.createBufferSource();
@@ -315,17 +386,17 @@ class AmbientAudioEngine {
 
     const lowpass = ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.value = 260;
+    lowpass.frequency.value = 220;
 
     rumbleSource.connect(lowpass);
     lowpass.connect(output);
     rumbleSource.start();
 
-    // 2. 隨機柴火劈啪聲（稀疏短脈衝 + 高通）
+    // 2. 柔和柴火聲（極低增益帶通柔化，避免刺耳爆裂）
     const crackleBuffer = this.createNoiseBuffer(ctx, 4, (data) => {
       for (let i = 0; i < data.length; i += 1) {
-        if (Math.random() < 0.0018) {
-          data[i] = (Math.random() * 2 - 1) * 0.9;
+        if (Math.random() < 0.0009) {
+          data[i] = (Math.random() * 2 - 1) * 0.45;
         } else {
           data[i] = 0;
         }
@@ -335,20 +406,21 @@ class AmbientAudioEngine {
     crackleSource.buffer = crackleBuffer;
     crackleSource.loop = true;
 
-    const highpass = ctx.createBiquadFilter();
-    highpass.type = 'highpass';
-    highpass.frequency.value = 1800;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.value = 900;
+    bandpass.Q.value = 1.2;
 
     const crackleGain = ctx.createGain();
-    crackleGain.gain.value = 0.45;
+    crackleGain.gain.value = 0.16;
 
-    crackleSource.connect(highpass);
-    highpass.connect(crackleGain);
+    crackleSource.connect(bandpass);
+    bandpass.connect(crackleGain);
     crackleGain.connect(output);
     crackleSource.start();
 
     this.activeSources.push(rumbleSource, crackleSource);
-    this.activeNodes.push(lowpass, highpass, crackleGain);
+    this.activeNodes.push(lowpass, bandpass, crackleGain);
   }
 }
 

@@ -123,13 +123,13 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const handleToggleVoter = (voterSeat: number) => {
     if (disabled || activeCandidateForTally === null) return;
     setVotesDraft((prev) =>
-      toggleVoterForCandidate(prev, voterSeat, activeCandidateForTally),
+      toggleVoterForCandidate(prev, activeCandidateForTally, voterSeat),
     );
   };
 
   const handleConfirmBallot = () => {
     setConfirmBallotOpen(false);
-    const res = submitExileVotes(normalizedVotes, normalizedExtraVotes);
+    const res = submitExileVotes(normalizedVotes, { extraVotes: normalizedExtraVotes });
     setVotesDraft({});
     setExtraVotes({});
     if (res.outcome === 'exile' && res.record.electedSeat !== null) {
@@ -142,6 +142,18 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
       setLastTallyNotice('已結算放逐結果');
     }
   };
+
+  const ineligibleAliveSeats = useMemo(
+    () =>
+      aliveSeats.filter(
+        (s) => (s.roleId === 'idiot' && s.idiotRevealed) || Boolean(s.petrified),
+      ),
+    [aliveSeats],
+  );
+  const abstainerCount = useMemo(
+    () => eligibleVoters.filter((v) => normalizedVotes[v] === null).length,
+    [eligibleVoters, normalizedVotes],
+  );
 
   const renderTargetRow = (seat: (typeof seats)[number]) => {
     const isActive = activeCandidateForTally === seat.seatNumber;
@@ -221,6 +233,29 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
       </div>
 
       {/* 投給當前焦點候選人的投票人點選區 */}
+      {ineligibleAliveSeats.length > 0 && (
+        <div className="text-[12px] text-muted tabular-nums">
+          無投票權（已排除）：
+          {ineligibleAliveSeats
+            .map(
+              (s) =>
+                `${formatSeatNum(s.seatNumber)}號(${s.petrified ? '石化' : '白痴已翻牌'})`,
+            )
+            .join('、')}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-[12px] text-secondary tabular-nums">
+        <span>
+          已投 {eligibleVoters.length - abstainerCount} 人 · 棄票 {abstainerCount} 人
+        </span>
+        {activeSheriffSeat !== null && (
+          <span className="font-semibold text-sheriff">
+            警長 {formatSeatNum(activeSheriffSeat)} 號（1.5 票）
+          </span>
+        )}
+      </div>
+
       {voteInputMode === 'by_candidate' && activeCandidateForTally !== null && (
         <div className="space-y-1.5 border-t border-subtle pt-2">
           <div className="flex items-center justify-between text-[12px] text-secondary tabular-nums">
@@ -272,6 +307,23 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
                   {formatSeatNum(voterSeat)}
                 </span>
                 <div className="flex flex-1 flex-wrap justify-end gap-1">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                      setVotesDraft((prev) => ({
+                        ...prev,
+                        [voterSeat]: null,
+                      }))
+                    }
+                    className={`min-h-9 rounded-md px-2 text-[12px] font-semibold ${
+                      picked === null
+                        ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                        : 'border border-subtle bg-canvas text-muted'
+                    }`}
+                  >
+                    棄票
+                  </button>
                   {targetSeats.map((target) => (
                     <button
                       key={target}

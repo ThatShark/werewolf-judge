@@ -240,6 +240,70 @@ export function AmbientAudioPlayer() {
             </button>
           </div>
         </div>
+
+        <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-3 py-2">
+          <span className="text-[12px] text-secondary">行動／空等秒數</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                updateOnlineJudgeSettings({
+                  stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds - 1,
+                })
+              }
+              className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+            >
+              −
+            </button>
+            <span className="w-10 text-center text-[14px] font-semibold tabular-nums text-primary">
+              {onlineJudgeSettings.stepBufferSeconds}s
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                updateOnlineJudgeSettings({
+                  stepBufferSeconds: onlineJudgeSettings.stepBufferSeconds + 1,
+                })
+              }
+              className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-md border border-subtle bg-canvas px-3 py-2">
+          <span className="text-[12px] text-secondary">閉眼 → 睜眼間隔</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                updateOnlineJudgeSettings({
+                  closeToOpenDelaySeconds:
+                    (onlineJudgeSettings.closeToOpenDelaySeconds ?? 3) - 1,
+                })
+              }
+              className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+            >
+              −
+            </button>
+            <span className="w-10 text-center text-[14px] font-semibold tabular-nums text-sheriff">
+              {onlineJudgeSettings.closeToOpenDelaySeconds ?? 3}s
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                updateOnlineJudgeSettings({
+                  closeToOpenDelaySeconds:
+                    (onlineJudgeSettings.closeToOpenDelaySeconds ?? 3) + 1,
+                })
+              }
+              className="min-h-9 min-w-9 rounded-md border border-subtle bg-surface text-[14px] font-semibold text-primary"
+            >
+              +
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

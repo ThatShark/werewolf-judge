@@ -14,9 +14,14 @@ import { ExtraDaySkillsSection } from './ExtraDaySkillsSection';
 
 interface DayBurstSkillsPanelProps {
   disabled?: boolean;
+  /** 若已進入階段四（放逐投票），徹底禁用一般狼人與白狼王自爆（僅狼女孩 wolf_girl 除外） */
+  inExileVoteStage?: boolean;
 }
 
-export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelProps) {
+export function DayBurstSkillsPanel({
+  disabled = false,
+  inExileVoteStage = false,
+}: DayBurstSkillsPanelProps) {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
@@ -83,7 +88,7 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
   const availableSkillCount = useMemo(() => {
     let count = 0;
     if (!isOnlineJudge && aliveKnight && !knightDuelUsed) count += 1;
-    if (!isOnlineJudge && aliveWhiteWolfKing) count += 1;
+    if (!isOnlineJudge && !inExileVoteStage && aliveWhiteWolfKing) count += 1;
     if (!isOnlineJudge && aliveGoodExploders.length > 0) count += 1;
     if (isJackSecondIdentityBoard(seats, selectedBoardId ?? undefined)) count += 1;
     if (
@@ -97,6 +102,7 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
     return count;
   }, [
     isOnlineJudge,
+    inExileVoteStage,
     aliveKnight,
     knightDuelUsed,
     aliveWhiteWolfKing,
@@ -145,68 +151,74 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
         </div>
       )}
 
-      {/* 狼人自爆 */}
-      <div className="space-y-2">
-        <div className="text-[14px] font-semibold text-wolf">狼人自爆</div>
-
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-          {aliveSeats.map((seat) => {
-            const explodeCheck = resolveSelfExplode(seats, seat.seatNumber);
-            const active = selectedExplodeSeat === seat.seatNumber;
-            const role = !isOnlineJudge ? getRoleById(seat.roleId) : undefined;
-            const seatDisabled = isOnlineJudge ? disabled : !explodeCheck.allowed || disabled;
-
-            return (
-              <button
-                key={seat.seatNumber}
-                type="button"
-                disabled={seatDisabled}
-                onClick={() => {
-                  setExplodeError(null);
-                  setSelectedExplodeSeat((prev) =>
-                    prev === seat.seatNumber ? null : seat.seatNumber,
-                  );
-                }}
-                className={`min-h-12 rounded-md px-2.5 py-1.5 text-left transition ${
-                  active
-                    ? 'border-selected-wolf bg-wolf-tint text-primary'
-                    : seatDisabled
-                      ? 'cursor-not-allowed border border-subtle bg-canvas opacity-45'
-                      : 'border border-subtle bg-surface hover:border-strong'
-                }`}
-              >
-                <div className="text-[14px] font-semibold tabular-nums text-primary">
-                  {formatSeatNum(seat.seatNumber)}
-                </div>
-                <div className="truncate text-[12px] text-secondary">
-                  {role ? role.name : seat.nickname.trim() || `${seat.seatNumber}號`}
-                </div>
-              </button>
-            );
-          })}
+      {/* 狼人自爆（階段四：放逐投票徹底禁用，僅狼女孩例外） */}
+      {inExileVoteStage ? (
+        <div className="border-l-2 border-subtle bg-surface px-3 py-2 text-[12px] text-secondary">
+          已進入放逐投票階段，一般狼人不可自爆（僅狼女孩可於上方技能抽屜發動自爆）。
         </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="text-[14px] font-semibold text-wolf">狼人自爆</div>
 
-        {explodeError && (
-          <div className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] text-wolf">
-            {explodeError}
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+            {aliveSeats.map((seat) => {
+              const explodeCheck = resolveSelfExplode(seats, seat.seatNumber);
+              const active = selectedExplodeSeat === seat.seatNumber;
+              const role = !isOnlineJudge ? getRoleById(seat.roleId) : undefined;
+              const seatDisabled = isOnlineJudge ? disabled : !explodeCheck.allowed || disabled;
+
+              return (
+                <button
+                  key={seat.seatNumber}
+                  type="button"
+                  disabled={seatDisabled}
+                  onClick={() => {
+                    setExplodeError(null);
+                    setSelectedExplodeSeat((prev) =>
+                      prev === seat.seatNumber ? null : seat.seatNumber,
+                    );
+                  }}
+                  className={`min-h-12 rounded-md px-2.5 py-1.5 text-left transition ${
+                    active
+                      ? 'border-selected-wolf bg-wolf-tint text-primary'
+                      : seatDisabled
+                        ? 'cursor-not-allowed border border-subtle bg-canvas opacity-45'
+                        : 'border border-subtle bg-surface hover:border-strong'
+                  }`}
+                >
+                  <div className="text-[14px] font-semibold tabular-nums text-primary">
+                    {formatSeatNum(seat.seatNumber)}
+                  </div>
+                  <div className="truncate text-[12px] text-secondary">
+                    {role ? role.name : seat.nickname.trim() || `${seat.seatNumber}號`}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        )}
 
-        <button
-          type="button"
-          disabled={selectedExplodeSeat === null || disabled}
-          onClick={() => setConfirmExplodeOpen(true)}
-          className={`min-h-12 w-full rounded-md px-4 text-[14px] font-semibold transition ${
-            selectedExplodeSeat !== null && !disabled
-              ? 'bg-wolf text-primary hover:opacity-90'
-              : 'cursor-not-allowed bg-elevated text-muted'
-          }`}
-        >
-          {selectedExplodeObj
-            ? `宣告 ${formatSeatNum(selectedExplodeObj.seatNumber)} 號自爆入夜`
-            : '選擇自爆狼人'}
-        </button>
-      </div>
+          {explodeError && (
+            <div className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] text-wolf">
+              {explodeError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            disabled={selectedExplodeSeat === null || disabled}
+            onClick={() => setConfirmExplodeOpen(true)}
+            className={`min-h-12 w-full rounded-md px-4 text-[14px] font-semibold transition ${
+              selectedExplodeSeat !== null && !disabled
+                ? 'bg-wolf text-primary hover:opacity-90'
+                : 'cursor-not-allowed bg-elevated text-muted'
+            }`}
+          >
+            {selectedExplodeObj
+              ? `宣告 ${formatSeatNum(selectedExplodeObj.seatNumber)} 號自爆入夜`
+              : '選擇自爆狼人'}
+          </button>
+        </div>
+      )}
 
       {/* 整合技能抽屜 */}
       <SlideDrawer
@@ -264,8 +276,8 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
             </div>
           )}
 
-          {/* 白狼王自爆帶人 */}
-          {!isOnlineJudge && aliveWhiteWolfKing && (
+          {/* 白狼王自爆帶人（投票階段禁用） */}
+          {!isOnlineJudge && !inExileVoteStage && aliveWhiteWolfKing && (
             <div className="space-y-2 py-3">
               <div className="flex items-center justify-between">
                 <span className="text-[14px] font-semibold text-wolf">白狼王自爆帶人</span>

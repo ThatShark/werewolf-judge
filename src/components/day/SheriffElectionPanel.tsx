@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   getEligibleSheriffVoters,
+  getSheriffPkSpeakingOrder,
   isSheriffElectionActive,
   toggleVoterForCandidate,
   votesByVoterToByCandidate,
@@ -11,24 +12,23 @@ import { formatSeatNum } from '../common/displayHelpers';
 
 interface SheriffElectionPanelProps {
   disabled?: boolean;
-  onSwitchToSpeaking?: () => void;
 }
 
-export function SheriffElectionPanel({
-  disabled = false,
-  onSwitchToSpeaking,
-}: SheriffElectionPanelProps) {
+export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelProps) {
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const sheriffState = useGameStore((s) => s.sheriffState);
+  const speakingQueue = useGameStore((s) => s.speakingQueue);
+  const speakingMeta = useGameStore((s) => s.speakingMeta);
   const voteInputMode = useGameStore((s) => s.voteInputMode);
 
   const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
   const startSheriffElection = useGameStore((s) => s.startSheriffElection);
+  const advanceSheriffToVoting = useGameStore((s) => s.advanceSheriffToVoting);
+  const advanceSheriffPkToVoting = useGameStore((s) => s.advanceSheriffPkToVoting);
   const withdrawSheriffCandidate = useGameStore((s) => s.withdrawSheriffCandidate);
   const submitSheriffVotes = useGameStore((s) => s.submitSheriffVotes);
-  const generateSpeakingOrder = useGameStore((s) => s.generateSpeakingOrder);
 
   const [selectedSignupSeats, setSelectedSignupSeats] = useState<number[]>([]);
   const [votesDraft, setVotesDraft] = useState<Record<number, number | null>>({});
@@ -50,6 +50,14 @@ export function SheriffElectionPanel({
     () => (electionActive ? getEligibleSheriffVoters(sheriffState, seats) : []),
     [electionActive, sheriffState, seats],
   );
+
+  const lockedOutVoters = useMemo(() => {
+    const excluded = new Set([...sheriffState.candidates, ...sheriffState.withdrawnSeats]);
+    return aliveSeats
+      .filter((s) => excluded.has(s.seatNumber))
+      .map((s) => s.seatNumber)
+      .sort((a, b) => a - b);
+  }, [aliveSeats, sheriffState.candidates, sheriffState.withdrawnSeats]);
 
   const normalizedVotes = useMemo(() => {
     const validTargets = new Set(activeCandidates);
@@ -83,6 +91,7 @@ export function SheriffElectionPanel({
     return <div className="py-6 text-center text-[14px] text-secondary">本局無警長</div>;
   }
 
+  // 警長競選已結束（當選／吞警徽／流失）
   if (
     sheriffState.status === 'elected' ||
     sheriffState.status === 'swallowed' ||
@@ -91,7 +100,7 @@ export function SheriffElectionPanel({
     return (
       <section className="space-y-2 rounded-lg border border-subtle bg-surface p-3.5">
         <div className="flex items-center justify-between text-[14px]">
-          <span className="text-secondary">警徽狀態</span>
+          <span className="text-secondary">警長競選結果</span>
           {sheriffState.badgeStatus === 'active' && sheriffState.sheriffSeat !== null ? (
             <span className="font-semibold tabular-nums text-sheriff">
               警長 {formatSeatNum(sheriffState.sheriffSeat)} 號（1.5 票）
@@ -101,7 +110,7 @@ export function SheriffElectionPanel({
           ) : sheriffState.badgeStatus === 'destroyed' ? (
             <span className="text-muted">警徽已撕毀</span>
           ) : (
-            <span className="text-muted">本局無警長</span>
+            <span className="text-muted">警徽流失（本局無警長）</span>
           )}
         </div>
         {lastOutcomeNotice && (
@@ -111,7 +120,7 @@ export function SheriffElectionPanel({
     );
   }
 
-  // 第一天勾選上警名單
+  // 步驟 A：上警報名
   if (sheriffState.status === 'not_started') {
     const toggleCandidate = (seatNumber: number) => {
       setSelectedSignupSeats((prev) =>
@@ -124,7 +133,7 @@ export function SheriffElectionPanel({
     return (
       <section className="space-y-3">
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-[14px] font-semibold text-primary">勾選上警名單</span>
+          <span className="text-[14px] font-semibold text-primary">步驟 A · 勾選上警名單</span>
           <span className="text-secondary">
             {ruleOverrides.badgeSwallowRule === 'double_explode' ? '雙爆吞徽' : '單爆吞徽'}
           </span>
@@ -167,17 +176,136 @@ export function SheriffElectionPanel({
           className="min-h-12 w-full rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
         >
           {selectedSignupSeats.length === 0
-            ? '無人上警（無警長）'
+            ? '無人上警（警徽流失）'
             : selectedSignupSeats.length === 1
               ? `${formatSeatNum(selectedSignupSeats[0])} 號自動當選`
-              : `確認上警（${selectedSignupSeats.length} 人）`}
+              : `確認上警（${selectedSignupSeats.length} 人）→ 開始發言`}
         </button>
       </section>
     );
   }
 
-  // 競選中：候選人退水 ＋ 警下投票
-  const isPk = sheriffState.pkCandidates.length > 0;
+  // 步驟 B：競選發言與退水
+  if (sheriffState.status === 'speaking') {
+    const order =
+      sheriffState.initialSpeakingOrder && sheriffState.initialSpeakingOrder.length > 0
+        ? sheriffState.initialSpeakingOrder.filter((sn) => sheriffState.candidates.includes(sn))
+        : speakingQueue.filter((sn) => sheriffState.candidates.includes(sn));
+    const dirLabel = speakingMeta?.direction === 'counterclockwise' ? '逆時針' : '順時針';
+
+    return (
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[14px] font-semibold text-primary">步驟 B · 上警競選發言</span>
+          <span className="text-[12px] font-semibold text-sheriff">{dirLabel}</span>
+        </div>
+
+        <div className="space-y-2 rounded-lg border border-subtle bg-surface p-3">
+          <div className="text-[12px] text-secondary">
+            發言順序（點擊候選人可隨時「退水」）：
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {order.map((seatNum, idx) => (
+              <div
+                key={seatNum}
+                className="flex items-center gap-1.5 rounded-md border border-subtle bg-canvas px-2.5 py-1.5"
+              >
+                <span className="text-[12px] text-muted tabular-nums">{idx + 1}.</span>
+                <span className="text-[14px] font-semibold tabular-nums text-primary">
+                  {formatSeatNum(seatNum)} 號
+                </span>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setPendingWithdrawSeat(seatNum)}
+                  className="min-h-8 rounded border border-subtle bg-surface px-2 text-[12px] text-secondary hover:border-wolf-border hover:text-wolf"
+                >
+                  退水
+                </button>
+              </div>
+            ))}
+          </div>
+          {sheriffState.withdrawnSeats.length > 0 && (
+            <div className="border-t border-subtle pt-2 text-[12px] text-muted tabular-nums">
+              已退水（無投票權）：{sheriffState.withdrawnSeats.map(formatSeatNum).join('、')} 號
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={advanceSheriffToVoting}
+          className="min-h-12 w-full rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
+        >
+          發言完畢 → 進入警下投票
+        </button>
+
+        <ConfirmModal
+          open={pendingWithdrawSeat !== null}
+          title="確認退水"
+          description={
+            pendingWithdrawSeat !== null
+              ? `${formatSeatNum(pendingWithdrawSeat)} 號退出警長競選（失去警下投票權）。`
+              : undefined
+          }
+          confirmLabel="確認退水"
+          tone="warning"
+          onConfirm={() => {
+            if (pendingWithdrawSeat !== null) {
+              withdrawSheriffCandidate(pendingWithdrawSeat);
+            }
+            setPendingWithdrawSeat(null);
+          }}
+          onCancel={() => setPendingWithdrawSeat(null)}
+        />
+      </section>
+    );
+  }
+
+  // 步驟 D-1：平票 PK 逆序發言
+  if (sheriffState.status === 'pk_speaking') {
+    const pkOrder = getSheriffPkSpeakingOrder(
+      sheriffState.initialSpeakingOrder,
+      sheriffState.pkCandidates,
+    );
+
+    return (
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[14px] font-semibold text-sheriff">步驟 D · 警長平票 PK 發言</span>
+          <span className="text-[12px] text-secondary">依上警發言逆序</span>
+        </div>
+
+        <div className="space-y-2 rounded-lg border border-sheriff-border bg-surface p-3">
+          <div className="text-[12px] text-secondary">PK 逆序發言名單：</div>
+          <div className="flex flex-wrap gap-1.5">
+            {pkOrder.map((seatNum, idx) => (
+              <span
+                key={seatNum}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-sheriff-border bg-sheriff-tint px-3 text-[14px] font-semibold tabular-nums text-sheriff"
+              >
+                <span className="text-[12px] text-secondary">{idx + 1}.</span>
+                {formatSeatNum(seatNum)} 號
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={advanceSheriffPkToVoting}
+          className="min-h-12 w-full rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
+        >
+          PK 發言完畢 → 進入 PK 投票
+        </button>
+      </section>
+    );
+  }
+
+  // 步驟 C（警下投票）與步驟 D-2（PK 投票）
+  const isPk = sheriffState.status === 'pk_voting' || sheriffState.pkCandidates.length > 0;
   const isDeferredContinuation =
     sheriffState.status === 'voting' && sheriffState.explodeCountDuringElection === 1;
 
@@ -198,36 +326,22 @@ export function SheriffElectionPanel({
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[14px] font-semibold text-primary">
-          {isPk ? '警長平票 PK' : '警長投票'}
+          {isPk ? '步驟 D · 警長 PK 投票' : '步驟 C · 警下投票'}
         </span>
-        <div className="flex items-center gap-1.5">
-          {!isDeferredContinuation && (
-            <button
-              type="button"
-              onClick={() => {
-                generateSpeakingOrder({ mode: 'random', candidateSeats: activeCandidates });
-                onSwitchToSpeaking?.();
-              }}
-              className="min-h-9 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
-            >
-              抽發言序
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() =>
-              setVoteInputMode(voteInputMode === 'by_candidate' ? 'by_voter' : 'by_candidate')
-            }
-            className="min-h-9 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
-          >
-            {voteInputMode === 'by_candidate' ? '逐號模式' : '候選模式'}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setVoteInputMode(voteInputMode === 'by_candidate' ? 'by_voter' : 'by_candidate')
+          }
+          className="min-h-9 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+        >
+          {voteInputMode === 'by_candidate' ? '逐號模式' : '候選模式'}
+        </button>
       </div>
 
       {isDeferredContinuation && (
         <div className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf">
-          首爆續選：跳過發言直接退水與投票
+          雙爆首爆續選：跳過發言直接退水與投票
         </div>
       )}
 
@@ -272,15 +386,21 @@ export function SheriffElectionPanel({
         })}
       </div>
 
-      {/* 警下投票人點選 */}
+      {lockedOutVoters.length > 0 && (
+        <div className="text-[12px] text-muted tabular-nums">
+          無投票權（上警／退水已鎖定）：{lockedOutVoters.map(formatSeatNum).join('、')} 號
+        </div>
+      )}
+
+      {/* 警下投票人點選（僅警下且未退水玩家） */}
       {eligibleVoters.length === 0 ? (
         <div className="border-l-2 border-subtle pl-3 text-[12px] text-muted">
-          全員上警，無警下投票人。
+          全員上警或退水，無警下投票人（結算將警徽流失）。
         </div>
       ) : voteInputMode === 'by_candidate' && activeCandidateForTally !== null ? (
         <div className="space-y-1.5 border-t border-subtle pt-2">
           <div className="text-[12px] text-secondary tabular-nums">
-            投給 <strong className="text-sheriff">{formatSeatNum(activeCandidateForTally)} 號</strong>
+            點選投給 <strong className="text-sheriff">{formatSeatNum(activeCandidateForTally)} 號</strong> 的警下座位
           </div>
           <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
             {eligibleVoters.map((voterSeat) => {
@@ -294,7 +414,7 @@ export function SheriffElectionPanel({
                   disabled={disabled}
                   onClick={() =>
                     setVotesDraft((prev) =>
-                      toggleVoterForCandidate(prev, voterSeat, activeCandidateForTally),
+                      toggleVoterForCandidate(prev, activeCandidateForTally, voterSeat),
                     )
                   }
                   className={`min-h-11 rounded-md text-[14px] font-semibold tabular-nums transition ${
@@ -321,6 +441,23 @@ export function SheriffElectionPanel({
                   {formatSeatNum(voterSeat)}
                 </span>
                 <div className="flex flex-1 flex-wrap justify-end gap-1">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() =>
+                      setVotesDraft((prev) => ({
+                        ...prev,
+                        [voterSeat]: null,
+                      }))
+                    }
+                    className={`min-h-9 rounded-md px-2 text-[12px] font-semibold ${
+                      picked === null
+                        ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                        : 'border border-subtle bg-canvas text-muted'
+                    }`}
+                  >
+                    棄票
+                  </button>
                   {activeCandidates.map((cand) => (
                     <button
                       key={cand}
@@ -354,12 +491,12 @@ export function SheriffElectionPanel({
         onClick={() => setConfirmSubmitOpen(true)}
         className="min-h-12 w-full rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
       >
-        確認警長投票結果
+        {isPk ? '確認 PK 投票結果' : '確認警長投票結果'}
       </button>
 
       <ConfirmModal
         open={confirmSubmitOpen}
-        title="確認警長投票結果"
+        title={isPk ? '確認警長 PK 投票結果' : '確認警長投票結果'}
         confirmLabel="確認結算"
         tone="warning"
         onConfirm={handleConfirmSubmit}

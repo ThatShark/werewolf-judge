@@ -105,38 +105,33 @@ export function BoardSelectScreen() {
             </button>
           </div>
         ) : (
-          <div className="min-h-0 flex-1 divide-y divide-subtle overflow-y-auto">
+          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
             {filteredBoards.map((board) => {
               const isSelected = activeBoard?.id === board.id;
-              const countLabel = board.playerCountRange
-                ? `${board.playerCountRange[0]}~${board.playerCountRange[1]}人`
-                : `${board.playerCount}人`;
               return (
                 <button
                   key={board.id}
                   type="button"
                   onClick={() => setPreviewBoardId(board.id)}
-                  className={`flex min-h-14 w-full flex-col gap-1 px-3 py-2.5 text-left transition ${
+                  className={`flex min-h-14 w-full flex-col gap-1 rounded-md px-3 py-2.5 text-left transition ${
                     isSelected
-                      ? 'border-l-2 border-sheriff bg-elevated'
-                      : 'hover:bg-elevated/50'
+                      ? 'border-selected-sheriff bg-sheriff-tint'
+                      : 'border border-subtle bg-canvas hover:border-strong hover:bg-elevated/50'
                   }`}
                 >
                   <div className="flex w-full items-center justify-between gap-2">
                     <span
                       className={`truncate text-[14px] font-semibold ${
-                        isSelected ? 'text-primary' : 'text-primary/90'
+                        isSelected ? 'text-sheriff' : 'text-primary'
                       }`}
                     >
                       {board.name}
                     </span>
-                    <span
-                      className={`shrink-0 text-[12px] font-semibold tabular-nums ${
-                        isSelected ? 'text-sheriff' : 'text-muted'
-                      }`}
-                    >
-                      {countLabel}
-                    </span>
+                    {isSelected && (
+                      <span className="shrink-0 rounded bg-sheriff px-1.5 py-0.5 text-[11px] font-semibold text-inverse">
+                        已選
+                      </span>
+                    )}
                   </div>
                   <div className="line-clamp-2 text-[12px] leading-4 text-secondary">
                     {formatBoardRoleList(board)}

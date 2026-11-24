@@ -190,6 +190,7 @@ import type {
   RuleOverrides,
   ShootEligibility,
   TreasureMasterRuntimeState,
+  VictoryResult,
 } from './types';
 import { checkVictory } from './victory';
 import {
@@ -3501,4 +3502,65 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     shootEligibilities,
     victory,
   };
+}
+
+/** 夜間可逆轉死亡（救人／守護／保護）之步驟 actionType 集合 */
+const LIFE_SAVING_NIGHT_ACTION_TYPES: ReadonlySet<string> = new Set([
+  'witch_action',
+  'awakened_witch_action',
+  'guard_protect',
+  'dream_catcher_dream',
+  'awakened_dream_catcher_dream',
+  'radiant_earl_shield',
+  'black_bat_shield',
+  'dark_night_envoy_shield',
+  'alchemy_witch_snake',
+  'twins_guard',
+  'happy_sheep_action',
+  'awakened_idiot_shield',
+  'magician_swap',
+]);
+
+/**
+ * 夜間中途提前勝負檢核：
+ * 在夜間任一步驟結算後預演當前草稿，若已達成陣營勝利條件（victory.winner !== null）
+ * 且剩餘未執行的夜間步驟中已無任何存活且仍可逆轉死亡的救人／守護步驟，
+ * 則立即結束剩餘夜間步驟並直接進入天亮結算。
+ */
+export function shouldEndNightEarly(
+  input: NightResolutionInput,
+  remainingSteps: Array<{ actionType: string; actorRoleIds: string[] }>,
+): { shouldEndEarly: boolean; victory: VictoryResult } {
+  // 若當晚仍有尚未執行的存活救人／守護步驟（且未被血月封印），不可提前結束，避免剝奪女巫救人或守衛守護機會
+  const bloodMoonSealed = Boolean(input.combatState?.bloodMoonSealActiveTonight);
+  const hasPendingLifeSavingStep = remainingSteps.some((step) => {
+    if (!LIFE_SAVING_NIGHT_ACTION_TYPES.has(step.actionType)) return false;
+    if (bloodMoonSealed) return false;
+    if (step.actionType === 'witch_action' && input.witchAntidoteUsed) return false;
+    if (
+      step.actionType === 'awakened_witch_action' &&
+      input.interferenceState?.awakenedWitchAntidoteUsed
+    ) {
+      return false;
+    }
+    if (step.actorRoleIds.length === 0) return true;
+    return input.seats.some(
+      (s) => s.isAlive && s.roleId !== null && step.actorRoleIds.includes(s.roleId),
+    );
+  });
+
+  if (hasPendingLifeSavingStep) {
+    return { shouldEndEarly: false, victory: { winner: null, winReason: null } };
+  }
+
+  try {
+    const preview = resolveNight(input);
+    if (preview.victory.winner !== null) {
+      return { shouldEndEarly: true, victory: preview.victory };
+    }
+  } catch {
+    // 草稿尚未完整填寫某些必選欄位時，安全不提前結束
+  }
+
+  return { shouldEndEarly: false, victory: { winner: null, winReason: null } };
 }

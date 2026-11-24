@@ -593,6 +593,8 @@ export function resolveSelfExplode(
     mechWolfState?: MechWolfRuntimeState;
     treasureMasterState?: TreasureMasterRuntimeState;
     victoryOptions?: VictoryCheckOptions;
+    /** 若已進入白天「階段四：放逐投票」，禁用一般狼人自爆（僅狼女孩 wolf_girl 例外） */
+    inExileVoteStage?: boolean;
   },
 ): SelfExplodeResult {
   const player = seats.find((seat) => seat.seatNumber === wolfSeat);
@@ -600,6 +602,14 @@ export function resolveSelfExplode(
     return {
       allowed: false,
       reason: '該玩家不存在或已出局',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (options?.inExileVoteStage && player.roleId !== 'wolf_girl') {
+    return {
+      allowed: false,
+      reason: '已進入放逐投票階段，狼人不可自爆（僅狼女孩除外）',
       pendingSelfExplodeSeat: null,
     };
   }
@@ -817,7 +827,22 @@ export function resolveWhiteWolfKingExplode(
   activeCharmedSeat: number | null = null,
   treasureMasterState?: TreasureMasterRuntimeState,
   victoryOptions?: VictoryCheckOptions,
+  options?: { inExileVoteStage?: boolean },
 ): WhiteWolfKingExplodeResult {
+  if (options?.inExileVoteStage) {
+    return {
+      allowed: false,
+      reason: '已進入放逐投票階段，白狼王不可自爆',
+      seats,
+      wolfSeat,
+      targetSeat,
+      charmedDeathSeat: null,
+      pendingSelfExplodeSeat: null,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
   const wolf = seats.find((seat) => seat.seatNumber === wolfSeat);
   if (!wolf || !wolf.isAlive) {
     return {

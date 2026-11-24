@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ttsEngine } from '../../audio/ttsEngine';
 import { getBoardById } from '../../data/boards';
-import { getHostModeDescriptor } from '../../logic';
+import { getBoardRoleIdSet, getHostModeDescriptor } from '../../logic';
 import type { BadgeSwallowRule, WitchSelfSaveRule } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { AmbientAudioPlayer } from '../common/AmbientAudioPlayer';
@@ -80,6 +80,15 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
     board.id === '12p-jack-the-ripper' || board.id === '12p-jack-the-ripper-2';
   const isJackSecondIdBoard = board.id === '12p-jack-the-ripper-2';
   const { left: leftSeats, right: rightSeats } = splitSeatsIntoSymmetricColumns(seats);
+
+  const boardRoleIds = useMemo(() => getBoardRoleIdSet(board), [board]);
+  const hasWitchRole = boardRoleIds.has('witch') || boardRoleIds.has('awakened_witch');
+  const hasMechWolfRole = boardRoleIds.has('mech_wolf');
+  const hasBlackMarketMerchant = boardRoleIds.has('black_market_merchant');
+  const hasMiracleMerchant = boardRoleIds.has('miracle_merchant');
+  const hasSuperBlackMarketMerchant = boardRoleIds.has('super_black_market_merchant');
+  const hasAnyMerchant =
+    hasBlackMarketMerchant || hasMiracleMerchant || hasSuperBlackMarketMerchant;
 
   const handleStartGame = () => {
     if (hostMode.judgeMode === 'online_judge') {
@@ -341,33 +350,9 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
 
           {settingsTab === 'rules' && (
             <div className="divide-y divide-subtle">
-              {/* 1. 女巫可否自救 */}
+              {/* 永遠顯示 1：是否有警長 */}
               <div className="space-y-1.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">1. 女巫可否自救</div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {WITCH_SELF_SAVE_OPTIONS.map((opt) => {
-                    const active = ruleOverrides.witchSelfSave === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => updateRuleOverrides({ witchSelfSave: opt.value })}
-                        className={`min-h-11 rounded-md px-2 text-[12px] font-semibold transition ${
-                          active
-                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. 是否有警長 */}
-              <div className="space-y-1.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">2. 是否有警長</div>
+                <div className="text-[14px] font-medium text-primary">是否有警長</div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(
                     [
@@ -394,9 +379,9 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
                 </div>
               </div>
 
-              {/* 3. 吞警徽規則 */}
+              {/* 永遠顯示 2：吞警徽規則 */}
               <div className="space-y-1.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">3. 吞警徽規則</div>
+                <div className="text-[14px] font-medium text-primary">吞警徽規則</div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {BADGE_SWALLOW_OPTIONS.map((opt) => {
                     const active = ruleOverrides.badgeSwallowRule === opt.value;
@@ -418,9 +403,9 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
                 </div>
               </div>
 
-              {/* 4. 勝利條件 */}
+              {/* 永遠顯示 3：勝利條件 */}
               <div className="space-y-1.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">4. 勝利條件</div>
+                <div className="text-[14px] font-medium text-primary">勝利條件</div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(
                     [
@@ -447,25 +432,25 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
                 </div>
               </div>
 
-              {/* 5. 機械狼是否第一晚強制學習 */}
+              {/* 永遠顯示 4：警長安排發言規則 */}
               <div className="space-y-1.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">
-                  5. 機械狼是否第一晚強制學習
-                </div>
+                <div className="text-[14px] font-medium text-primary">警長安排發言規則</div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(
                     [
-                      { value: true, label: '是' },
-                      { value: false, label: '否' },
+                      { value: false, label: '警左／警右' },
+                      { value: true, label: '單死時死左／死右' },
                     ] as const
                   ).map((opt) => {
-                    const active = ruleOverrides.mechWolfForceLearnNight1 === opt.value;
+                    const active = Boolean(ruleOverrides.sheriffUseDeadSideOnDeath) === opt.value;
                     return (
                       <button
                         key={String(opt.value)}
                         type="button"
-                        onClick={() => updateRuleOverrides({ mechWolfForceLearnNight1: opt.value })}
-                        className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                        onClick={() =>
+                          updateRuleOverrides({ sheriffUseDeadSideOnDeath: opt.value })
+                        }
+                        className={`min-h-11 rounded-md px-2 text-[12px] font-semibold transition ${
                           active
                             ? 'border-selected-sheriff bg-sheriff-tint text-primary'
                             : 'border border-subtle bg-canvas text-secondary hover:border-strong'
@@ -478,114 +463,180 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
                 </div>
               </div>
 
-              {/* 6. 幸運兒第一晚是否就能使用技能（多選勾選框） */}
-              <div className="space-y-2.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">
-                  6. 幸運兒第一晚是否就能使用技能
-                </div>
-
-                {/* 黑市商人 */}
-                <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
-                  <div className="text-[12px] font-semibold text-secondary">黑市商人</div>
+              {/* 條件顯示：僅含女巫／覺醒女巫時顯示 */}
+              {hasWitchRole && (
+                <div className="space-y-1.5 py-2.5">
+                  <div className="text-[14px] font-medium text-primary">女巫可否自救</div>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {(
-                      [
-                        { key: 'seer_check', label: '查驗' },
-                        { key: 'witch_poison', label: '毒' },
-                        { key: 'hunter_gun', label: '槍' },
-                      ] as const
-                    ).map((item) => {
-                      const checked = luckyCfg.blackMarket[item.key];
+                    {WITCH_SELF_SAVE_OPTIONS.map((opt) => {
+                      const active = ruleOverrides.witchSelfSave === opt.value;
                       return (
-                        <label
-                          key={item.key}
-                          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
-                            checked
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => updateRuleOverrides({ witchSelfSave: opt.value })}
+                          className={`min-h-11 rounded-md px-2 text-[12px] font-semibold transition ${
+                            active
                               ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                              : 'border-subtle bg-surface text-secondary'
+                              : 'border border-subtle bg-canvas text-secondary hover:border-strong'
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleLuckySkill('blackMarket', item.key)}
-                            className="h-4 w-4 accent-sheriff"
-                          />
-                          <span>{item.label}</span>
-                        </label>
+                          {opt.label}
+                        </button>
                       );
                     })}
                   </div>
                 </div>
+              )}
 
-                {/* 奇蹟商人 */}
-                <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
-                  <div className="text-[12px] font-semibold text-secondary">奇蹟商人</div>
-                  <div className="grid grid-cols-3 gap-1.5">
+              {/* 條件顯示：僅含機械狼時顯示 */}
+              {hasMechWolfRole && (
+                <div className="space-y-1.5 py-2.5">
+                  <div className="text-[14px] font-medium text-primary">
+                    機械狼是否第一晚強制學習
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
                     {(
                       [
-                        { key: 'seer_check', label: '查驗' },
-                        { key: 'witch_poison', label: '毒' },
-                        { key: 'guard_shield', label: '盾' },
+                        { value: true, label: '是' },
+                        { value: false, label: '否' },
                       ] as const
-                    ).map((item) => {
-                      const checked = luckyCfg.miracle[item.key];
+                    ).map((opt) => {
+                      const active = ruleOverrides.mechWolfForceLearnNight1 === opt.value;
                       return (
-                        <label
-                          key={item.key}
-                          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
-                            checked
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() =>
+                            updateRuleOverrides({ mechWolfForceLearnNight1: opt.value })
+                          }
+                          className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                            active
                               ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                              : 'border-subtle bg-surface text-secondary'
+                              : 'border border-subtle bg-canvas text-secondary hover:border-strong'
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleLuckySkill('miracle', item.key)}
-                            className="h-4 w-4 accent-sheriff"
-                          />
-                          <span>{item.label}</span>
-                        </label>
+                          {opt.label}
+                        </button>
                       );
                     })}
                   </div>
                 </div>
+              )}
 
-                {/* 超級黑市商人 */}
-                <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
-                  <div className="text-[12px] font-semibold text-secondary">超級黑市商人</div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(
-                      [
-                        { key: 'seer_check', label: '查驗' },
-                        { key: 'witch_poison', label: '毒' },
-                        { key: 'hunter_gun', label: '槍' },
-                      ] as const
-                    ).map((item) => {
-                      const checked = luckyCfg.superBlackMarket[item.key];
-                      return (
-                        <label
-                          key={item.key}
-                          className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
-                            checked
-                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                              : 'border-subtle bg-surface text-secondary'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleLuckySkill('superBlackMarket', item.key)}
-                            className="h-4 w-4 accent-sheriff"
-                          />
-                          <span>{item.label}</span>
-                        </label>
-                      );
-                    })}
+              {/* 條件顯示：僅含黑市／奇蹟／超級黑市商人時顯示對應勾選框 */}
+              {hasAnyMerchant && (
+                <div className="space-y-2.5 py-2.5">
+                  <div className="text-[14px] font-medium text-primary">
+                    幸運兒第一晚是否就能使用技能
                   </div>
+
+                  {hasBlackMarketMerchant && (
+                    <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
+                      <div className="text-[12px] font-semibold text-secondary">黑市商人</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(
+                          [
+                            { key: 'seer_check', label: '查驗' },
+                            { key: 'witch_poison', label: '毒' },
+                            { key: 'hunter_gun', label: '槍' },
+                          ] as const
+                        ).map((item) => {
+                          const checked = luckyCfg.blackMarket[item.key];
+                          return (
+                            <label
+                              key={item.key}
+                              className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
+                                checked
+                                  ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                                  : 'border-subtle bg-surface text-secondary'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleLuckySkill('blackMarket', item.key)}
+                                className="h-4 w-4 accent-sheriff"
+                              />
+                              <span>{item.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {hasMiracleMerchant && (
+                    <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
+                      <div className="text-[12px] font-semibold text-secondary">奇蹟商人</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(
+                          [
+                            { key: 'seer_check', label: '查驗' },
+                            { key: 'witch_poison', label: '毒' },
+                            { key: 'guard_shield', label: '盾' },
+                          ] as const
+                        ).map((item) => {
+                          const checked = luckyCfg.miracle[item.key];
+                          return (
+                            <label
+                              key={item.key}
+                              className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
+                                checked
+                                  ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                                  : 'border-subtle bg-surface text-secondary'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleLuckySkill('miracle', item.key)}
+                                className="h-4 w-4 accent-sheriff"
+                              />
+                              <span>{item.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {hasSuperBlackMarketMerchant && (
+                    <div className="space-y-1.5 rounded-md border border-subtle bg-canvas p-2.5">
+                      <div className="text-[12px] font-semibold text-secondary">超級黑市商人</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(
+                          [
+                            { key: 'seer_check', label: '查驗' },
+                            { key: 'witch_poison', label: '毒' },
+                            { key: 'hunter_gun', label: '槍' },
+                          ] as const
+                        ).map((item) => {
+                          const checked = luckyCfg.superBlackMarket[item.key];
+                          return (
+                            <label
+                              key={item.key}
+                              className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-semibold transition ${
+                                checked
+                                  ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                                  : 'border-subtle bg-surface text-secondary'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleLuckySkill('superBlackMarket', item.key)}
+                                className="h-4 w-4 accent-sheriff"
+                              />
+                              <span>{item.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 

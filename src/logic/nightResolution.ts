@@ -6,6 +6,41 @@ import {
 } from './advancedRoles';
 import { checkCanShoot } from './dayResolution';
 import {
+  canAwakenedDreamCatcherDream,
+  canDemonWolfCheck,
+  canSuperGravekeeperChooseHeir,
+  createInitialGargoyleState,
+  createInitialPumpkinGhostState,
+  createInitialSuperGravekeeperState,
+  doesPureWhiteKillTarget,
+  doesWolfWitchKillTarget,
+  evaluateAwakenedDreamTargetActed,
+  evaluateMoonSpiritHowl,
+  evaluateNineTailedFoxTails,
+  evaluateSeniorVillagerReveal,
+  findAwakenedDreamCatcherSeat,
+  findDemonWolfSeat,
+  findGargoyleSeat,
+  findGravekeeperSeat,
+  findPumpkinGhostSeat,
+  findSuperGravekeeperSeat,
+  getAwakenedSeerCheckResult,
+  getDemonWolfCheckResult,
+  getDrunkSeerCheckResult,
+  getFoolSeerCheckResult,
+  getFoxCheckResult,
+  getGargoyleCheckResult,
+  getGravekeeperExileResult,
+  getLanternSeerCheckResult,
+  getPumpkinGhostCheckResult,
+  getPureWhiteCheckResult,
+  getWolfWitchCheckResult,
+  isCursedFoxSeat,
+  syncGargoyleTeamStatus,
+  syncPumpkinGhostInheritance,
+  syncSuperGravekeeperInheritance,
+} from './inspectionRoles';
+import {
   applyMechWolfLearn,
   canMechWolfLearn,
   canMechWolfUseLearnedSkill,
@@ -241,6 +276,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     hybridState = createInitialHybridState(),
     seedWolfState = createInitialSeedWolfState(),
     hiddenWolfState = createInitialHiddenWolfState(),
+    gargoyleState = createInitialGargoyleState(),
+    pumpkinGhostState = createInitialPumpkinGhostState(),
+    superGravekeeperState = createInitialSuperGravekeeperState(),
+    foxLostAbility = false,
+    exiledHistory = [],
+    lastAwakenedDreamTarget = null,
+    rng,
   } = input;
 
   if (firstNightNoWolfKill && round === 1 && draft.wolfTarget !== null) {
@@ -257,6 +299,17 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let nextHybridState = { ...hybridState };
   let nextSeedWolfState = { ...seedWolfState };
   let nextHiddenWolfState = { ...hiddenWolfState };
+  let nextGargoyleState = {
+    ...gargoyleState,
+    checkHistory: [...gargoyleState.checkHistory],
+  };
+  let nextPumpkinGhostState = {
+    ...pumpkinGhostState,
+    inheritedHistory: [...pumpkinGhostState.inheritedHistory],
+  };
+  let nextSuperGravekeeperState = { ...superGravekeeperState };
+  let nextFoxLostAbility = foxLostAbility;
+  let nextLastAwakenedDreamTarget: number | null = lastAwakenedDreamTarget;
   let nextWitchAntidoteUsed = witchAntidoteUsed;
   let nextWitchPoisonUsed = witchPoisonUsed;
   let nextPoisonerPoisonUsed = poisonerPoisonUsed;
@@ -268,6 +321,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let nextEvilKnightCounterUsed = evilKnightCounterUsed;
   const deaths: NightDeathRecord[] = [];
   const maskedDelayedSeats: number[] = [];
+
+  // 入夜前同步前一日白天出局觸發的繼承狀態（石像鬼→南瓜鬼、超級守墓人→繼承者）
+  nextGargoyleState = syncGargoyleTeamStatus(updatedSeats, nextGargoyleState);
+  nextPumpkinGhostState = syncPumpkinGhostInheritance(
+    updatedSeats,
+    nextGargoyleState,
+    nextPumpkinGhostState,
+  );
+  nextSuperGravekeeperState = syncSuperGravekeeperInheritance(
+    updatedSeats,
+    nextSuperGravekeeperState,
+  );
 
   // 0. 夢魘每晚優先睜眼恐懼（首夜可誤恐狼隊友導致整晚空刀；次夜起不可恐懼狼隊友）
   let fearedSeat: number | null = null;
@@ -396,6 +461,39 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextLastDreamTarget = dreamTarget;
   }
 
+  // 2.55 覺醒攝夢人行動檢核（不可連選、不可選自己、免疫夜間傷害、不奶穿；被夢魘恐懼則重置）
+  const aliveAwakenedDreamCatcher = findAwakenedDreamCatcherSeat(updatedSeats);
+  const awakenedDreamActive = Boolean(
+    aliveAwakenedDreamCatcher &&
+      aliveAwakenedDreamCatcher.isAlive &&
+      !aliveAwakenedDreamCatcher.infectedBySeedWolf,
+  );
+  const awakenedDreamFeared = Boolean(
+    awakenedDreamActive &&
+      aliveAwakenedDreamCatcher &&
+      fearedSeat === aliveAwakenedDreamCatcher.seatNumber,
+  );
+  let awakenedDreamTarget: number | null = null;
+  if (awakenedDreamFeared) {
+    nextLastAwakenedDreamTarget = null;
+  } else if (awakenedDreamActive && draft.awakenedDreamTarget !== undefined) {
+    const reqAwakenedDream = draft.awakenedDreamTarget ?? null;
+    const adcCheck = canAwakenedDreamCatcherDream(
+      updatedSeats,
+      lastAwakenedDreamTarget,
+      reqAwakenedDream,
+      { allowSkip: true },
+    );
+    if (!adcCheck.allowed) {
+      throw new Error(adcCheck.reason);
+    }
+    awakenedDreamTarget = reqAwakenedDream;
+    nextLastAwakenedDreamTarget = awakenedDreamTarget;
+  }
+
+  // 月靈狼每晚狼隊行動前感知左右存活鄰居是否含神職
+  const moonSpiritHowl = evaluateMoonSpiritHowl(updatedSeats, fearedSeat);
+
   // 2.6 狼美人行動檢核（不可自刀、不可連魅；被恐懼則無法魅惑）
   const aliveWolfBeauty = updatedSeats.find(
     (seat) => seat.roleId === 'wolf_beauty' && seat.isAlive,
@@ -420,7 +518,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   const isDreamProtected = (seatNumber: number): boolean =>
-    dreamTarget !== null && seatNumber === dreamTarget;
+    (dreamTarget !== null && seatNumber === dreamTarget) ||
+    (awakenedDreamTarget !== null && seatNumber === awakenedDreamTarget);
 
   // 3. 機械狼第二晚起學習技能檢核
   let mechGuardTarget: number | null = null;
@@ -463,7 +562,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 3.5 惡靈騎士不可自刀 & 種狼感染（於狼刀階段執行：女巫顯示空刀、守衛可擋感染、被感染者當晚即失能）
+  // 3.5 惡靈騎士／惡魔不可自刀 & 種狼感染（於狼刀階段執行：女巫顯示空刀、守衛可擋感染、被感染者當晚即失能）
   let effectiveWolfTarget: number | null = wolfTeamFeared ? null : draft.wolfTarget;
   const aliveEvilKnight = findEvilKnightSeat(updatedSeats);
   if (
@@ -472,6 +571,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     effectiveWolfTarget === aliveEvilKnight.seatNumber
   ) {
     throw new Error('惡靈騎士不可自刀');
+  }
+  const aliveDemonWolf = findDemonWolfSeat(updatedSeats);
+  if (
+    aliveDemonWolf?.isAlive &&
+    effectiveWolfTarget !== null &&
+    effectiveWolfTarget === aliveDemonWolf.seatNumber
+  ) {
+    throw new Error('惡魔不可自刀');
   }
 
   const requestedSeedInfectTarget = wolfTeamFeared ? null : (draft.seedWolfInfectTarget ?? null);
@@ -562,8 +669,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextPoisonerPoisonUsed = true;
   }
 
-  // 5. 狼刀階段結算（含夢遊者免疫夜間傷害、同守同救奶穿、機械狼雙刀、自爆狼點刀後死亡、盜寶蒙面狼放逐免死隔夜點刀後死亡）
-  if (effectiveWolfTarget !== null && !isDreamProtected(effectiveWolfTarget)) {
+  // 5. 狼刀階段結算（含夢遊者／咒狐免疫狼刀、同守同救奶穿、機械狼雙刀、自爆狼點刀後死亡、盜寶蒙面狼放逐免死隔夜點刀後死亡）
+  const wolfTargetSeatObj =
+    effectiveWolfTarget !== null
+      ? updatedSeats.find((s) => s.seatNumber === effectiveWolfTarget)
+      : undefined;
+  const wolfTargetIsCursedFox = isCursedFoxSeat(wolfTargetSeatObj);
+
+  if (
+    effectiveWolfTarget !== null &&
+    !isDreamProtected(effectiveWolfTarget) &&
+    !wolfTargetIsCursedFox
+  ) {
     const guardedByNormal = hasAliveGuard && effectiveGuardTarget === effectiveWolfTarget;
     const guardedByMech = mechGuardTarget === effectiveWolfTarget;
     const isGuarded = guardedByNormal || guardedByMech;
@@ -675,14 +792,201 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         )
       : null;
 
+  // 6.5 第 1 批查驗與資訊感知類角色結算
+  const isRoleBlocked = (roleId: string): { seat: PlayerSeat | undefined; blocked: boolean } => {
+    const seatObj = initialSeats.find(
+      (s) => s.roleId === roleId && s.isAlive && !s.infectedBySeedWolf,
+    );
+    const infectedTonight = Boolean(
+      seatObj && updatedSeats.find((s) => s.seatNumber === seatObj.seatNumber)?.infectedBySeedWolf,
+    );
+    return {
+      seat: seatObj,
+      blocked: !seatObj || fearedSeat === seatObj.seatNumber || infectedTonight,
+    };
+  };
+
+  // 覺醒預言家（雙目標陣營查驗）
+  const awakenedSeerCheck = isRoleBlocked('awakened_seer');
+  const rawAwakenedTargets = draft.awakenedSeerTargets;
+  const effectiveAwakenedSeerTargets: [number, number] | null =
+    !awakenedSeerCheck.blocked &&
+    rawAwakenedTargets &&
+    rawAwakenedTargets[0] !== null &&
+    rawAwakenedTargets[1] !== null
+      ? [rawAwakenedTargets[0], rawAwakenedTargets[1]]
+      : null;
+  const awakenedSeerResult = effectiveAwakenedSeerTargets
+    ? getAwakenedSeerCheckResult(updatedSeats, effectiveAwakenedSeerTargets)
+    : null;
+
+  // 燈影預言家（相反結果陣營查驗）
+  const lanternSeerCheck = isRoleBlocked('lantern_seer');
+  const effectiveLanternTarget = lanternSeerCheck.blocked
+    ? null
+    : (draft.lanternSeerCheckTarget ?? null);
+  const lanternSeerResult =
+    effectiveLanternTarget !== null
+      ? getLanternSeerCheckResult(updatedSeats, effectiveLanternTarget)
+      : null;
+
+  // 酒鬼預言家（隨機或法官手動覆寫結果）
+  const drunkSeerCheck = isRoleBlocked('drunk_seer');
+  const effectiveDrunkTarget = drunkSeerCheck.blocked
+    ? null
+    : (draft.drunkSeerCheckTarget ?? null);
+  const drunkSeerResult =
+    effectiveDrunkTarget !== null
+      ? getDrunkSeerCheckResult(updatedSeats, effectiveDrunkTarget, {
+          manualOverride: draft.drunkSeerManualResult ?? null,
+          rng,
+        })
+      : null;
+
+  // 愚言家（標準陣營查驗）
+  const foolSeerCheck = isRoleBlocked('fool_seer');
+  const effectiveFoolTarget = foolSeerCheck.blocked ? null : (draft.foolSeerCheckTarget ?? null);
+  const foolSeerResult =
+    effectiveFoolTarget !== null ? getFoolSeerCheckResult(updatedSeats, effectiveFoolTarget) : null;
+
+  // 狐狸（目標＋左右鄰居 3 人查驗，全好人永久失能）
+  const foxCheck = isRoleBlocked('fox');
+  const effectiveFoxTarget =
+    foxCheck.blocked || nextFoxLostAbility ? null : (draft.foxCheckTarget ?? null);
+  const foxResult =
+    effectiveFoxTarget !== null
+      ? getFoxCheckResult(updatedSeats, effectiveFoxTarget, nextFoxLostAbility)
+      : null;
+  if (foxResult?.lostAbility) {
+    nextFoxLostAbility = true;
+  }
+
+  // 石像鬼（具體底牌查驗＋歷史紀錄保存供南瓜鬼繼承）
+  const gargoyleSeatObj = findGargoyleSeat(initialSeats);
+  const gargoyleBlocked =
+    !gargoyleSeatObj || !gargoyleSeatObj.isAlive || fearedSeat === gargoyleSeatObj.seatNumber;
+  const effectiveGargoyleTarget = gargoyleBlocked ? null : (draft.gargoyleCheckTarget ?? null);
+  const gargoyleResult =
+    effectiveGargoyleTarget !== null
+      ? getGargoyleCheckResult(
+          updatedSeats,
+          nextMechWolfState,
+          effectiveGargoyleTarget,
+          nextTreasureMasterState,
+        )
+      : null;
+  if (gargoyleResult) {
+    nextGargoyleState.checkHistory.push({
+      round,
+      targetSeat: gargoyleResult.targetSeat,
+      perceivedRoleId: gargoyleResult.perceivedRoleId,
+    });
+  }
+
+  // 狼巫（具體底牌查驗，第 2 晚起驗純白之女致死）
+  const wolfWitchSeatObj = initialSeats.find((s) => s.roleId === 'wolf_witch' && s.isAlive);
+  const wolfWitchBlocked = !wolfWitchSeatObj || fearedSeat === wolfWitchSeatObj.seatNumber;
+  const effectiveWolfWitchTarget = wolfWitchBlocked ? null : (draft.wolfWitchCheckTarget ?? null);
+  const wolfWitchResult =
+    effectiveWolfWitchTarget !== null
+      ? getWolfWitchCheckResult(
+          updatedSeats,
+          nextMechWolfState,
+          effectiveWolfWitchTarget,
+          nextTreasureMasterState,
+        )
+      : null;
+
+  // 純白之女（具體底牌查驗，第 2 晚起驗狼人致死）
+  const pureWhiteCheck = isRoleBlocked('pure_white_maiden');
+  const effectivePureWhiteTarget = pureWhiteCheck.blocked
+    ? null
+    : (draft.pureWhiteCheckTarget ?? null);
+  const pureWhiteResult =
+    effectivePureWhiteTarget !== null
+      ? getPureWhiteCheckResult(
+          updatedSeats,
+          nextMechWolfState,
+          effectivePureWhiteTarget,
+          nextTreasureMasterState,
+        )
+      : null;
+
+  // 惡魔（非狼目標神職／平民查驗）
+  const demonWolfBlocked =
+    !aliveDemonWolf || !aliveDemonWolf.isAlive || fearedSeat === aliveDemonWolf.seatNumber;
+  const effectiveDemonWolfTarget = demonWolfBlocked ? null : (draft.demonWolfCheckTarget ?? null);
+  let demonWolfResult = null;
+  if (effectiveDemonWolfTarget !== null) {
+    const demonCheck = canDemonWolfCheck(updatedSeats, effectiveDemonWolfTarget);
+    if (!demonCheck.allowed) {
+      throw new Error(demonCheck.reason);
+    }
+    demonWolfResult = getDemonWolfCheckResult(updatedSeats, effectiveDemonWolfTarget);
+  }
+
+  // 南瓜鬼（石像鬼出局繼承後可查驗具體底牌）
+  const pumpkinGhostSeatObj = findPumpkinGhostSeat(initialSeats);
+  const pumpkinGhostBlocked =
+    !pumpkinGhostSeatObj ||
+    !pumpkinGhostSeatObj.isAlive ||
+    !nextPumpkinGhostState.hasInherited ||
+    fearedSeat === pumpkinGhostSeatObj.seatNumber;
+  const effectivePumpkinGhostTarget = pumpkinGhostBlocked
+    ? null
+    : (draft.pumpkinGhostCheckTarget ?? null);
+  const pumpkinGhostResult =
+    effectivePumpkinGhostTarget !== null
+      ? getPumpkinGhostCheckResult(
+          updatedSeats,
+          nextPumpkinGhostState,
+          nextMechWolfState,
+          effectivePumpkinGhostTarget,
+          nextTreasureMasterState,
+        )
+      : null;
+
+  // 守墓人／超級守墓人（墓地放逐陣營資訊＋超級守墓人選繼承者）
+  const hasGravekeeperRole = Boolean(
+    findGravekeeperSeat(initialSeats) || findSuperGravekeeperSeat(initialSeats),
+  );
+  const gravekeeperResult = hasGravekeeperRole
+    ? getGravekeeperExileResult(exiledHistory, round)
+    : null;
+
+  const superGravekeeperCheck = isRoleBlocked('super_gravekeeper');
+  if (!superGravekeeperCheck.blocked && draft.superGravekeeperHeirTarget !== undefined) {
+    const heirCheck = canSuperGravekeeperChooseHeir(
+      updatedSeats,
+      draft.superGravekeeperHeirTarget ?? null,
+    );
+    if (!heirCheck.allowed) {
+      throw new Error(heirCheck.reason);
+    }
+    nextSuperGravekeeperState.heirSeat = draft.superGravekeeperHeirTarget ?? null;
+    if (superGravekeeperCheck.seat) {
+      nextSuperGravekeeperState.superGravekeeperSeat = superGravekeeperCheck.seat.seatNumber;
+    }
+  }
+
   // 7. 狼刀在先判定：若狼刀階段（含種狼感染轉化）已達狼人勝利條件，直接判狼人勝利（優先於女巫與毒師毒藥）
   if (ruleOverrides.wolfKillPriority) {
     const wolfPhaseVictory = checkVictory(updatedSeats, ruleOverrides, nextTreasureMasterState);
-    if (wolfPhaseVictory.winner === 'wolf') {
+    if (wolfPhaseVictory.winner === 'wolf' || wolfPhaseVictory.winner === 'third_party') {
       nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
       nextTreasureMasterState = syncTreasureMasterTeamStatus(updatedSeats, nextTreasureMasterState);
       nextHiddenWolfState = syncHiddenWolfTeamStatus(updatedSeats, nextHiddenWolfState);
       nextHybridState = syncHybridAffiliation(nextHybridState, updatedSeats);
+      nextGargoyleState = syncGargoyleTeamStatus(updatedSeats, nextGargoyleState);
+      nextPumpkinGhostState = syncPumpkinGhostInheritance(
+        updatedSeats,
+        nextGargoyleState,
+        nextPumpkinGhostState,
+      );
+      nextSuperGravekeeperState = syncSuperGravekeeperInheritance(
+        updatedSeats,
+        nextSuperGravekeeperState,
+      );
       return {
         seats: updatedSeats,
         deaths,
@@ -702,20 +1006,42 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         hybridState: nextHybridState,
         seedWolfState: nextSeedWolfState,
         hiddenWolfState: nextHiddenWolfState,
+        gargoyleState: nextGargoyleState,
+        pumpkinGhostState: nextPumpkinGhostState,
+        superGravekeeperState: nextSuperGravekeeperState,
+        foxLostAbility: nextFoxLostAbility,
+        lastAwakenedDreamTarget: nextLastAwakenedDreamTarget,
         maskedDelayedSeats,
         bearRoar: evaluateBearRoar(updatedSeats, nextMechWolfState, fearedSeat),
+        moonSpiritHowl,
+        nineTailedFoxResult: evaluateNineTailedFoxTails(updatedSeats, round),
+        seniorVillagerReveal: evaluateSeniorVillagerReveal(updatedSeats, round),
         seerResult,
         psychicResult,
         mechWolfPsychicResult,
+        awakenedSeerResult,
+        lanternSeerResult,
+        drunkSeerResult,
+        foolSeerResult,
+        foxResult,
+        gargoyleResult,
+        wolfWitchResult,
+        pureWhiteResult,
+        demonWolfResult,
+        pumpkinGhostResult,
+        gravekeeperResult,
+        awakenedDreamResult: null,
         shootEligibilities: [],
         victory: wolfPhaseVictory,
       };
     }
   }
 
-  // 8. 毒藥階段結算（普通守衛不防毒；機械狼學守衛之機械盾可防毒藥；夢遊者與惡靈騎士免疫夜間毒藥）
+  // 8. 毒藥階段結算（普通守衛不防毒；機械狼學守衛之機械盾可防毒藥；夢遊者、惡靈騎士與惡魔免疫夜間毒藥）
   const isEvilKnightSeat = (seatNumber: number): boolean =>
     Boolean(aliveEvilKnight?.isAlive && seatNumber === aliveEvilKnight.seatNumber);
+  const isDemonWolfSeat = (seatNumber: number): boolean =>
+    Boolean(aliveDemonWolf?.isAlive && seatNumber === aliveDemonWolf.seatNumber);
 
   const witchTargetedEvilKnight =
     effectiveWitchPoisonTarget !== null && isEvilKnightSeat(effectiveWitchPoisonTarget);
@@ -725,7 +1051,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (
     effectiveWitchPoisonTarget !== null &&
     !isDreamProtected(effectiveWitchPoisonTarget) &&
-    !witchTargetedEvilKnight
+    !witchTargetedEvilKnight &&
+    !isDemonWolfSeat(effectiveWitchPoisonTarget)
   ) {
     const blockedByMechShield = mechGuardTarget === effectiveWitchPoisonTarget;
     if (!blockedByMechShield) {
@@ -744,7 +1071,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (
     requestedPoisonerTarget !== null &&
     !isDreamProtected(requestedPoisonerTarget) &&
-    !isEvilKnightSeat(requestedPoisonerTarget)
+    !isEvilKnightSeat(requestedPoisonerTarget) &&
+    !isDemonWolfSeat(requestedPoisonerTarget)
   ) {
     const blockedByMechShield = mechGuardTarget === requestedPoisonerTarget;
     if (!blockedByMechShield) {
@@ -762,7 +1090,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   if (mechPoisonTarget !== null) {
     nextMechWolfState.usedLearnedOneShotSkill = true;
-    if (!isDreamProtected(mechPoisonTarget) && !isEvilKnightSeat(mechPoisonTarget)) {
+    if (
+      !isDreamProtected(mechPoisonTarget) &&
+      !isEvilKnightSeat(mechPoisonTarget) &&
+      !isDemonWolfSeat(mechPoisonTarget)
+    ) {
       updatedSeats = killSeat(
         updatedSeats,
         deaths,
@@ -799,6 +1131,102 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         deaths,
         counterVictimSeat,
         'evil_knight_counter',
+        round,
+        maskedDelayedSeats,
+        nextTreasureMasterState,
+      );
+    }
+  }
+
+  // 8.3 第 1 批查驗致死與被動結算（狼巫驗殺純白之女、純白之女驗殺狼人、咒狐被陣營驗死、九尾狐無尾死、覺醒攝夢人夢語出局）
+  let cursedFoxDiedTonight = false;
+
+  if (
+    effectiveWolfWitchTarget !== null &&
+    doesWolfWitchKillTarget(updatedSeats, effectiveWolfWitchTarget, round) &&
+    !isDreamProtected(effectiveWolfWitchTarget)
+  ) {
+    updatedSeats = killSeat(
+      updatedSeats,
+      deaths,
+      effectiveWolfWitchTarget,
+      'wolf_witch_check_kill',
+      round,
+      maskedDelayedSeats,
+      nextTreasureMasterState,
+    );
+  }
+
+  if (
+    effectivePureWhiteTarget !== null &&
+    doesPureWhiteKillTarget(updatedSeats, nextMechWolfState, effectivePureWhiteTarget, round) &&
+    !isDreamProtected(effectivePureWhiteTarget)
+  ) {
+    updatedSeats = killSeat(
+      updatedSeats,
+      deaths,
+      effectivePureWhiteTarget,
+      'pure_white_check_kill',
+      round,
+      maskedDelayedSeats,
+      nextTreasureMasterState,
+    );
+  }
+
+  // 咒狐被預言家／覺醒預言家／愚言家查驗致死（被攝夢／覺醒攝夢保護者不死）
+  const factionCheckedSeats = new Set<number>();
+  if (effectiveSeerTarget !== null) factionCheckedSeats.add(effectiveSeerTarget);
+  if (effectiveFoolTarget !== null) factionCheckedSeats.add(effectiveFoolTarget);
+  if (effectiveAwakenedSeerTargets) {
+    factionCheckedSeats.add(effectiveAwakenedSeerTargets[0]);
+    factionCheckedSeats.add(effectiveAwakenedSeerTargets[1]);
+  }
+  for (const checkedSeatNum of factionCheckedSeats) {
+    const seatObj = updatedSeats.find((s) => s.seatNumber === checkedSeatNum);
+    if (seatObj?.isAlive && isCursedFoxSeat(seatObj) && !isDreamProtected(checkedSeatNum)) {
+      updatedSeats = killSeat(
+        updatedSeats,
+        deaths,
+        checkedSeatNum,
+        'cursed_fox_checked',
+        round,
+        maskedDelayedSeats,
+        nextTreasureMasterState,
+      );
+      cursedFoxDiedTonight = true;
+    }
+  }
+
+  // 九尾狐當晚最後檢查剩餘尾巴（僅計算前幾回合已公布死亡，不含當晚尚未公布之死訊）
+  const nineTailedFoxResult = evaluateNineTailedFoxTails(updatedSeats, round);
+  if (nineTailedFoxResult.diedFromNoTails && nineTailedFoxResult.seatNumber !== null) {
+    updatedSeats = killSeat(
+      updatedSeats,
+      deaths,
+      nineTailedFoxResult.seatNumber,
+      'nine_tailed_fox_no_tails',
+      round,
+      maskedDelayedSeats,
+      nextTreasureMasterState,
+    );
+  }
+
+  // 覺醒攝夢人當晚最後判定夢語者是否行動，第二晚起可選擇使其出局（無法發動技能）
+  let awakenedDreamResult = null;
+  if (awakenedDreamActive && !awakenedDreamFeared && awakenedDreamTarget !== null) {
+    awakenedDreamResult = evaluateAwakenedDreamTargetActed(
+      initialSeats,
+      awakenedDreamTarget,
+      draft,
+      round,
+      fearedSeat,
+    );
+    if (awakenedDreamResult.killedByDream) {
+      updatedSeats = killSeat(
+        updatedSeats,
+        deaths,
+        awakenedDreamTarget,
+        'awakened_dream_catcher_kill',
         round,
         maskedDelayedSeats,
         nextTreasureMasterState,
@@ -858,11 +1286,21 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 9. 更新機械狼／盜寶大師／隱狼入隊狀態、混血兒榜樣同步、開槍資格、熊咆哮判定與最終勝負
+  // 9. 更新機械狼／盜寶大師／隱狼／石像鬼入隊狀態、南瓜鬼／超級守墓人繼承、混血兒榜樣同步、開槍資格、熊咆哮與最終勝負
   nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
   nextTreasureMasterState = syncTreasureMasterTeamStatus(updatedSeats, nextTreasureMasterState);
   nextHiddenWolfState = syncHiddenWolfTeamStatus(updatedSeats, nextHiddenWolfState);
   nextHybridState = syncHybridAffiliation(nextHybridState, updatedSeats);
+  nextGargoyleState = syncGargoyleTeamStatus(updatedSeats, nextGargoyleState);
+  nextPumpkinGhostState = syncPumpkinGhostInheritance(
+    updatedSeats,
+    nextGargoyleState,
+    nextPumpkinGhostState,
+  );
+  nextSuperGravekeeperState = syncSuperGravekeeperInheritance(
+    updatedSeats,
+    nextSuperGravekeeperState,
+  );
 
   const shootEligibilities: ShootEligibility[] = [];
   for (const record of deaths) {
@@ -873,10 +1311,12 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   const bearRoar = evaluateBearRoar(updatedSeats, nextMechWolfState, fearedSeat);
+  const seniorVillagerReveal = evaluateSeniorVillagerReveal(updatedSeats, round);
   const victory = checkVictory(
     updatedSeats,
     hadWolfBeautyCharmDeath ? { ...ruleOverrides, wolfKillPriority: true } : ruleOverrides,
     nextTreasureMasterState,
+    { cursedFoxDiedThisResolution: cursedFoxDiedTonight },
   );
 
   return {
@@ -898,11 +1338,31 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     hybridState: nextHybridState,
     seedWolfState: nextSeedWolfState,
     hiddenWolfState: nextHiddenWolfState,
+    gargoyleState: nextGargoyleState,
+    pumpkinGhostState: nextPumpkinGhostState,
+    superGravekeeperState: nextSuperGravekeeperState,
+    foxLostAbility: nextFoxLostAbility,
+    lastAwakenedDreamTarget: nextLastAwakenedDreamTarget,
     maskedDelayedSeats,
     bearRoar,
+    moonSpiritHowl,
+    nineTailedFoxResult,
+    seniorVillagerReveal,
     seerResult,
     psychicResult,
     mechWolfPsychicResult,
+    awakenedSeerResult,
+    lanternSeerResult,
+    drunkSeerResult,
+    foolSeerResult,
+    foxResult,
+    gargoyleResult,
+    wolfWitchResult,
+    pureWhiteResult,
+    demonWolfResult,
+    pumpkinGhostResult,
+    gravekeeperResult,
+    awakenedDreamResult,
     shootEligibilities,
     victory,
   };

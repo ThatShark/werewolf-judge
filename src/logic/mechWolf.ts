@@ -105,11 +105,25 @@ export function getSeerCheckResult(
     };
   }
 
-  // 隱狼與混血兒被預言家查驗恆為好人（金水）
-  if (target.roleId === 'hidden_wolf' || target.roleId === 'hybrid') {
+  // 隱狼、雪狼、混血兒與咒狐被預言家查驗恆為好人（金水）
+  if (
+    target.roleId === 'hidden_wolf' ||
+    target.roleId === 'snow_wolf' ||
+    target.roleId === 'hybrid' ||
+    target.roleId === 'cursed_fox'
+  ) {
     return {
       targetSeat,
       faction: 'good',
+    };
+  }
+
+  // 南瓜鬼在石像鬼死前被預言家查驗為金水，石像鬼死後轉為查殺
+  if (target.roleId === 'pumpkin_ghost') {
+    const gargoyle = seats.find((s) => s.roleId === 'gargoyle');
+    return {
+      targetSeat,
+      faction: gargoyle && gargoyle.isAlive ? 'good' : 'wolf',
     };
   }
 

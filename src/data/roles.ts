@@ -769,7 +769,7 @@ export const ROLES_BY_ID: Record<string, RoleDefinition> = {
     "name": "燈影預言家",
     "aliases": [],
     "faction": "good",
-    "category": "god",
+    "category": "villager",
     "description": "平民陣營。每晚可以查驗一位存活玩家的所屬陣營，但是得到的結果是相反的，即查驗好人顯示為狼人陣營，查驗狼人顯示為好人陣營。燈影預言家不會知道自己是預言家還是燈影預言家。"
   },
   "drunk_seer": {
@@ -777,7 +777,7 @@ export const ROLES_BY_ID: Record<string, RoleDefinition> = {
     "name": "酒鬼預言家",
     "aliases": [],
     "faction": "good",
-    "category": "god",
+    "category": "villager",
     "description": "平民陣營。每晚可以查驗一位存活玩家的所屬陣營，但是得到的結果是隨機的，即查驗結果依照法官心情 (法官可以先決定哪四個號碼要當查殺或是真的隨機告訴結果)。酒鬼預言家不會知道自己是預言家還是酒鬼預言家。"
   },
   "iron_good": {

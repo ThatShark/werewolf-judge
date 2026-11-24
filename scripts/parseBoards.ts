@@ -173,6 +173,8 @@ const ROLE_META_OVERRIDE: Record<
   villager: { faction: 'good', category: 'villager', extraAliases: ['村民'] },
   senior_villager: { faction: 'good', category: 'villager', extraAliases: ['高級村民'] },
   iron_good: { faction: 'good', category: 'villager' },
+  lantern_seer: { faction: 'good', category: 'villager' },
+  drunk_seer: { faction: 'good', category: 'villager' },
   old_rascal: { faction: 'good', category: 'villager' },
   // 特殊／變形機制角色歸入 third_party 或對應陣營
   fanatic: { faction: 'third_party', category: 'third_party' },
@@ -793,7 +795,7 @@ const MVP_BOARD_DEFINITIONS: Record<string, BoardDefinition> = {
   },
 };
 
-/** 完整支援自動結算的 24 個核心與進階角色 */
+/** 完整支援自動結算的核心與進階角色（含第 1 批查驗與資訊感知類 19 角色，共 43 個） */
 const AUTOMATED_ROLE_IDS = new Set([
   'wolf',
   'wolf_king',
@@ -819,6 +821,26 @@ const AUTOMATED_ROLE_IDS = new Set([
   'hybrid',
   'seed_wolf',
   'hidden_wolf',
+  // 第 1 批：查驗與資訊感知類（19 角色）
+  'awakened_seer',
+  'lantern_seer',
+  'drunk_seer',
+  'fool_seer',
+  'iron_good',
+  'fox',
+  'snow_wolf',
+  'cursed_fox',
+  'gargoyle',
+  'wolf_witch',
+  'pure_white_maiden',
+  'demon_wolf',
+  'pumpkin_ghost',
+  'gravekeeper',
+  'super_gravekeeper',
+  'moon_spirit_wolf',
+  'nine_tailed_fox',
+  'senior_villager',
+  'awakened_dream_catcher',
 ]);
 
 function stripMarkdownFormatting(input: string): string {
@@ -1006,6 +1028,28 @@ function resolveRoleIdsFromLabel(
 ): string[] {
   const matched = new Set<string>();
   const normalized = label.replace(/[（()）\s]/g, '');
+
+  // 盲叫預言家 A／B（燈影預言家／酒鬼預言家板子：保持盲叫台詞但精準分派 actorRoleIds）
+  if (normalized === '預言家B') {
+    if (boardRoleIds.includes('lantern_seer')) return ['lantern_seer'];
+    if (boardRoleIds.includes('drunk_seer')) return ['drunk_seer'];
+  }
+  if (normalized === '預言家A' && boardRoleIds.includes('seer')) {
+    return ['seer'];
+  }
+
+  // 精準匹配複合角色名，避免子字串誤掛基礎角色（如「覺醒預言家」誤掛 seer、「高級平民」誤掛 villager）
+  const exactSingleOverrides: Array<[string, string]> = [
+    ['覺醒預言家', 'awakened_seer'],
+    ['覺醒攝夢人', 'awakened_dream_catcher'],
+    ['超級守墓人', 'super_gravekeeper'],
+    ['高級平民', 'senior_villager'],
+  ];
+  for (const [exactLabel, rId] of exactSingleOverrides) {
+    if (normalized === exactLabel && boardRoleIds.includes(rId)) {
+      return [rId];
+    }
+  }
 
   // 「狼人」步驟：優先包含板子中會睜眼刀人的狼人陣營角色
   if (normalized.includes('狼人') || normalized === '狼') {
@@ -1213,6 +1257,99 @@ function inferNightActionType(
     (combined.includes('混的玩家') || combined.includes('榜樣'))
   ) {
     return 'hybrid_choose';
+  }
+
+  // === 第 1 批：查驗與資訊感知類角色 ===
+  if (
+    actorRoleIds.includes('awakened_seer') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('查驗')
+  ) {
+    return 'awakened_seer_check';
+  }
+  if (
+    actorRoleIds.includes('lantern_seer') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('查驗')
+  ) {
+    return 'lantern_seer_check';
+  }
+  if (
+    actorRoleIds.includes('drunk_seer') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('查驗')
+  ) {
+    return 'drunk_seer_check';
+  }
+  if (
+    actorRoleIds.includes('fool_seer') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('查驗')
+  ) {
+    return 'fool_seer_check';
+  }
+  if (actorRoleIds.includes('fox') && actorRoleIds.length === 1 && combined.includes('查驗')) {
+    return 'fox_check';
+  }
+  if (actorRoleIds.includes('gargoyle') && actorRoleIds.length === 1) {
+    if (actionPrompt.includes('入隊手勢')) return 'gargoyle_team_status';
+    if (combined.includes('查驗')) return 'gargoyle_check';
+  }
+  if (
+    actorRoleIds.includes('wolf_witch') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('查驗')
+  ) {
+    return 'wolf_witch_check';
+  }
+  if (
+    actorRoleIds.includes('pure_white_maiden') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('查驗')
+  ) {
+    return 'pure_white_check';
+  }
+  if (
+    actorRoleIds.includes('demon_wolf') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('查驗')
+  ) {
+    return 'demon_wolf_check';
+  }
+  if (
+    actorRoleIds.includes('pumpkin_ghost') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('查驗') || combined.includes('繼承手勢'))
+  ) {
+    return 'pumpkin_ghost_check';
+  }
+  if (
+    actorRoleIds.includes('gravekeeper') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('放逐')
+  ) {
+    return 'gravekeeper_check';
+  }
+  if (
+    actorRoleIds.includes('super_gravekeeper') &&
+    actorRoleIds.length === 1 &&
+    (combined.includes('繼承者') || combined.includes('放逐'))
+  ) {
+    return 'super_gravekeeper_action';
+  }
+  if (actorLabel.includes('繼承者') && combined.includes('放逐')) {
+    return 'super_gravekeeper_heir_check';
+  }
+  if (
+    actorRoleIds.includes('nine_tailed_fox') &&
+    actorRoleIds.length === 1 &&
+    combined.includes('尾巴')
+  ) {
+    return 'nine_tailed_fox_check';
+  }
+  if (actorRoleIds.includes('awakened_dream_catcher') && actorRoleIds.length === 1) {
+    if (combined.includes('是否有行動')) return 'awakened_dream_catcher_judge';
+    if (combined.includes('夢語')) return 'awakened_dream_catcher_dream';
   }
 
   return 'confirm_only';

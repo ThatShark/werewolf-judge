@@ -35,6 +35,12 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   masked_delayed_death: '蒙面人負傷延遲出局',
   treasure_master_exile_delayed: '盜寶蒙面狼隔夜刀後出局',
   evil_knight_counter: '惡靈騎士反傷出局',
+  cursed_fox_checked: '咒狐被查驗出局',
+  pure_white_check_kill: '純白之女查驗出局',
+  wolf_witch_check_kill: '狼巫查驗出局',
+  nine_tailed_fox_no_tails: '九尾狐失尾歸零出局',
+  awakened_dream_catcher_kill: '覺醒攝夢人夢語出局',
+  good_self_explode: '好人翻牌自曝出局',
   manual_judge: '法官手動標記出局',
 };
 

@@ -10,13 +10,16 @@ import {
   claimSeatRole as claimSeatRoleLogic,
   clampOnlineJudgeSettings,
   createEmptyNightDraft,
+  createInitialGargoyleState,
   createInitialHiddenWolfState,
   createInitialHybridState,
   createInitialMechWolfState,
   createInitialNotebookState,
+  createInitialPumpkinGhostState,
   createInitialSeats,
   createInitialSeedWolfState,
   createInitialSheriffState,
+  createInitialSuperGravekeeperState,
   createManualVictoryResult,
   dealRandomRoles,
   destroySheriffBadge as destroySheriffBadgeLogic,
@@ -26,6 +29,7 @@ import {
   handleSheriffElectionExplode,
   isValidPlayerCountForBoard,
   resolveDayExile,
+  resolveGoodSelfExplode,
   resolveKnightDuel,
   resolveNight,
   resolveSelfExplode,
@@ -36,7 +40,10 @@ import {
   setNotebookGridCell as setNotebookGridCellLogic,
   shouldTriggerAutoVictory,
   startSheriffElection as startSheriffElectionLogic,
+  syncGargoyleTeamStatus,
+  syncPumpkinGhostInheritance,
   syncSheriffBadgeOnDeaths,
+  syncSuperGravekeeperInheritance,
   tallyExileVotes,
   toggleSeatAliveManually,
   transferSheriffBadge as transferSheriffBadgeLogic,
@@ -52,6 +59,7 @@ import type {
   ExileVoteTallyResult,
   GameState,
   GameWinner,
+  GoodSelfExplodeResult,
   HostModeConfig,
   KnightDuelResult,
   ManualVictoryOverrideKind,
@@ -103,6 +111,15 @@ export type UndoSnapshotData = Pick<
   | 'hybridState'
   | 'seedWolfState'
   | 'hiddenWolfState'
+  | 'gargoyleState'
+  | 'pumpkinGhostState'
+  | 'superGravekeeperState'
+  | 'foxLostAbility'
+  | 'exiledHistory'
+  | 'lastAwakenedDreamTarget'
+  | 'lastMoonSpiritHowl'
+  | 'lastNineTailedFoxResult'
+  | 'lastSeniorVillagerReveal'
   | 'speakingQueue'
   | 'currentSpeakerIndex'
   | 'speakingMeta'
@@ -189,6 +206,10 @@ export interface GameStore extends GameState {
     swallowedBadge?: boolean;
     deferredBadge?: boolean;
   };
+  goodSelfExplode: (actorSeat: number) => GoodSelfExplodeResult & {
+    swallowedBadge?: boolean;
+    deferredBadge?: boolean;
+  };
   whiteWolfKingExplode: (
     wolfSeat: number,
     targetSeat: number | null,
@@ -245,6 +266,15 @@ function createInitialGameState(): GameState & {
     hybridState: createInitialHybridState(),
     seedWolfState: createInitialSeedWolfState(),
     hiddenWolfState: createInitialHiddenWolfState(),
+    gargoyleState: createInitialGargoyleState(),
+    pumpkinGhostState: createInitialPumpkinGhostState(),
+    superGravekeeperState: createInitialSuperGravekeeperState(),
+    foxLostAbility: false,
+    exiledHistory: [],
+    lastAwakenedDreamTarget: null,
+    lastMoonSpiritHowl: null,
+    lastNineTailedFoxResult: null,
+    lastSeniorVillagerReveal: null,
     speakingQueue: [],
     currentSpeakerIndex: 0,
     speakingMeta: null,
@@ -288,6 +318,15 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     hybridState: state.hybridState,
     seedWolfState: state.seedWolfState,
     hiddenWolfState: state.hiddenWolfState,
+    gargoyleState: state.gargoyleState,
+    pumpkinGhostState: state.pumpkinGhostState,
+    superGravekeeperState: state.superGravekeeperState,
+    foxLostAbility: state.foxLostAbility,
+    exiledHistory: state.exiledHistory,
+    lastAwakenedDreamTarget: state.lastAwakenedDreamTarget,
+    lastMoonSpiritHowl: state.lastMoonSpiritHowl,
+    lastNineTailedFoxResult: state.lastNineTailedFoxResult,
+    lastSeniorVillagerReveal: state.lastSeniorVillagerReveal,
     speakingQueue: state.speakingQueue,
     currentSpeakerIndex: state.currentSpeakerIndex,
     speakingMeta: state.speakingMeta,
@@ -688,6 +727,13 @@ export const useGameStore = create<GameStore>()(
           hybridState: state.hybridState ?? createInitialHybridState(),
           seedWolfState: state.seedWolfState ?? createInitialSeedWolfState(),
           hiddenWolfState: state.hiddenWolfState ?? createInitialHiddenWolfState(),
+          gargoyleState: state.gargoyleState ?? createInitialGargoyleState(),
+          pumpkinGhostState: state.pumpkinGhostState ?? createInitialPumpkinGhostState(),
+          superGravekeeperState:
+            state.superGravekeeperState ?? createInitialSuperGravekeeperState(),
+          foxLostAbility: state.foxLostAbility ?? false,
+          exiledHistory: state.exiledHistory ?? [],
+          lastAwakenedDreamTarget: state.lastAwakenedDreamTarget ?? null,
         });
 
         const deathMap = new Map(result.deaths.map((d) => [d.seat, d.reason]));
@@ -750,6 +796,14 @@ export const useGameStore = create<GameStore>()(
           hybridState: result.hybridState,
           seedWolfState: result.seedWolfState,
           hiddenWolfState: result.hiddenWolfState,
+          gargoyleState: result.gargoyleState,
+          pumpkinGhostState: result.pumpkinGhostState,
+          superGravekeeperState: result.superGravekeeperState,
+          foxLostAbility: result.foxLostAbility,
+          lastAwakenedDreamTarget: result.lastAwakenedDreamTarget,
+          lastMoonSpiritHowl: result.moonSpiritHowl,
+          lastNineTailedFoxResult: result.nineTailedFoxResult,
+          lastSeniorVillagerReveal: result.seniorVillagerReveal,
           sheriffState: nextSheriffState,
           speakingQueue: [],
           currentSpeakerIndex: 0,
@@ -763,6 +817,9 @@ export const useGameStore = create<GameStore>()(
               draft: { ...state.currentNightDraft },
               deaths: result.deaths,
               bearRoar: result.bearRoar,
+              moonSpiritHowl: result.moonSpiritHowl,
+              nineTailedFoxResult: result.nineTailedFoxResult,
+              seniorVillagerReveal: result.seniorVillagerReveal,
             },
           ],
           dayHistory: nextDayHistory,
@@ -1245,10 +1302,40 @@ export const useGameStore = create<GameStore>()(
             : [];
 
         const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, result.seats);
+        const exiledSeatObj = state.seats.find((s) => s.seatNumber === targetSeat);
+        const nextExiledHistory =
+          !result.idiotRevealed && !result.treasureMasterMaskedSurvived && exiledSeatObj
+            ? [
+                ...(state.exiledHistory ?? []),
+                {
+                  round: state.round,
+                  seatNumber: targetSeat,
+                  roleId: exiledSeatObj.roleId,
+                  infectedBySeedWolf: exiledSeatObj.infectedBySeedWolf,
+                },
+              ]
+            : (state.exiledHistory ?? []);
+        const nextGargoyleState = syncGargoyleTeamStatus(
+          result.seats,
+          state.gargoyleState ?? createInitialGargoyleState(),
+        );
+        const nextPumpkinGhostState = syncPumpkinGhostInheritance(
+          result.seats,
+          nextGargoyleState,
+          state.pumpkinGhostState ?? createInitialPumpkinGhostState(),
+        );
+        const nextSuperGravekeeperState = syncSuperGravekeeperInheritance(
+          result.seats,
+          state.superGravekeeperState ?? createInitialSuperGravekeeperState(),
+        );
 
         set({
           seats: result.seats,
           mechWolfState: result.mechWolfState,
+          gargoyleState: nextGargoyleState,
+          pumpkinGhostState: nextPumpkinGhostState,
+          superGravekeeperState: nextSuperGravekeeperState,
+          exiledHistory: nextExiledHistory,
           activeCharmedSeat:
             result.charmedDeathSeat !== null ? null : state.activeCharmedSeat,
           sheriffState: nextSheriffState,
@@ -1261,6 +1348,70 @@ export const useGameStore = create<GameStore>()(
           phase: triggerGameOver ? 'game_over' : state.phase,
           undoStack: pushUndo(state, `放逐 ${targetSeat} 號`),
         });
+      },
+
+      goodSelfExplode: (actorSeat) => {
+        const state = get();
+        const result = resolveGoodSelfExplode(
+          state.seats,
+          actorSeat,
+          state.round,
+          state.ruleOverrides,
+          state.mechWolfState,
+        );
+        if (!result.allowed) {
+          return result;
+        }
+
+        const explodeBadge = handleSheriffElectionExplode(
+          state.sheriffState,
+          state.ruleOverrides.badgeSwallowRule,
+        );
+        const swallowedBadge = explodeBadge.swallowed;
+        const deferredBadge = explodeBadge.deferred;
+        const nextSheriffState = syncSheriffBadgeOnDeaths(explodeBadge.sheriffState, result.seats);
+
+        const triggerGameOver = shouldTriggerAutoVictory(
+          result.victory,
+          state.forceContinueAfterVictory,
+        );
+        const nextRound = state.round + 1;
+        const badgeNote = swallowedBadge
+          ? '（警上自曝吞警徽）'
+          : deferredBadge
+            ? '（雙爆吞警徽首爆，隔天續選）'
+            : '';
+        const summary = `${actorSeat} 號翻牌自曝出局並強制進入第 ${nextRound} 晚${badgeNote}`;
+        const nextDayHistory = appendDayEvent(state.dayHistory, state.round, summary, {
+          type: 'good_self_explode',
+          summary,
+          actorSeat,
+        });
+
+        set({
+          seats: result.seats,
+          mechWolfState: result.mechWolfState,
+          sheriffState: nextSheriffState,
+          dayHistory: nextDayHistory,
+          exilePkCandidates: [],
+          pendingShooters: [],
+          round: triggerGameOver ? state.round : nextRound,
+          currentStepIndex: 0,
+          currentNightDraft: triggerGameOver
+            ? state.currentNightDraft
+            : createEmptyNightDraft(nextRound),
+          winner: triggerGameOver ? result.victory.winner : state.winner,
+          winReason: triggerGameOver ? result.victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : 'night',
+          undoStack: pushUndo(state, `${actorSeat} 號好人自曝`),
+        });
+
+        return {
+          ...result,
+          swallowedBadge,
+          deferredBadge,
+        };
       },
 
       selfExplode: (wolfSeat) => {

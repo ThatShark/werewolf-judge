@@ -1,5 +1,6 @@
 import { getRoleById } from '../data/roles';
 import { applyWolfBeautyCharmDeath } from './advancedRoles';
+import { canGoodSelfExplode, isDemonWolfNightShootImmune } from './inspectionRoles';
 import { syncMechWolfTeamStatus } from './mechWolf';
 import {
   isEvilKnightNightShootImmune,
@@ -12,6 +13,7 @@ import {
 import type {
   DayExileResult,
   DeathReason,
+  GoodSelfExplodeResult,
   KnightDuelResult,
   MechWolfRuntimeState,
   PlayerSeat,
@@ -189,8 +191,11 @@ export function resolveShoot(
   const shootReason: 'hunter_shoot' | 'wolf_king_shoot' =
     eligibility.roleId === 'hunter' ? 'hunter_shoot' : 'wolf_king_shoot';
 
-  // 惡靈騎士免疫夜間傷害：晚上倒牌的獵人對惡靈騎士開槍無效（白天放逐開槍則有效）
-  if (isEvilKnightNightShootImmune(target, eligibility.roleId, shooterDeathReason)) {
+  // 惡靈騎士／惡魔免疫夜間傷害：晚上倒牌的獵人對其開槍無效（白天放逐開槍則有效）
+  if (
+    isEvilKnightNightShootImmune(target, eligibility.roleId, shooterDeathReason) ||
+    isDemonWolfNightShootImmune(target, eligibility.roleId, shooterDeathReason)
+  ) {
     const victory = checkVictory(seats, ruleOverrides);
     return {
       seats: seats.map((seat) => ({ ...seat })),
@@ -410,6 +415,22 @@ export function resolveSelfExplode(
     };
   }
 
+  if (player.roleId === 'gargoyle') {
+    return {
+      allowed: false,
+      reason: '石像鬼不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (player.roleId === 'demon_wolf') {
+    return {
+      allowed: false,
+      reason: '惡魔不可自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
   if (!isSeatWolfFaction(player)) {
     return {
       allowed: false,
@@ -421,6 +442,54 @@ export function resolveSelfExplode(
   return {
     allowed: true,
     pendingSelfExplodeSeat: wolfSeat,
+  };
+}
+
+/**
+ * 愚言家／鐵好人白天翻牌自曝：立即淘汰自己並強制進入夜晚（上警期間會計入吞警徽）。
+ */
+export function resolveGoodSelfExplode(
+  seats: PlayerSeat[],
+  actorSeat: number,
+  round: number,
+  ruleOverrides: RuleOverrides,
+  mechWolfState: MechWolfRuntimeState,
+  treasureMasterState?: TreasureMasterRuntimeState,
+): GoodSelfExplodeResult {
+  const check = canGoodSelfExplode(seats, actorSeat);
+  if (!check.allowed) {
+    return {
+      allowed: false,
+      reason: check.reason,
+      seats: seats.map((s) => ({ ...s })),
+      actorSeat,
+      enterNightImmediately: false,
+      mechWolfState,
+      victory: { winner: null, winReason: null },
+    };
+  }
+
+  const updatedSeats = seats.map((seat) =>
+    seat.seatNumber === actorSeat
+      ? {
+          ...seat,
+          isAlive: false,
+          deathReason: 'good_self_explode' as const,
+          deathRound: round,
+        }
+      : seat,
+  );
+
+  const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
+  const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState);
+
+  return {
+    allowed: true,
+    seats: updatedSeats,
+    actorSeat,
+    enterNightImmediately: victory.winner === null,
+    mechWolfState: nextMechWolfState,
+    victory,
   };
 }
 

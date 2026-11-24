@@ -21,6 +21,8 @@ export function DayAnnouncementScreen() {
   const hostMode = useGameStore((s) => s.hostMode);
   const nightHistory = useGameStore((s) => s.nightHistory);
   const lastBearRoar = useGameStore((s) => s.lastBearRoar);
+  const lastMoonSpiritHowl = useGameStore((s) => s.lastMoonSpiritHowl ?? null);
+  const lastSeniorVillagerReveal = useGameStore((s) => s.lastSeniorVillagerReveal ?? null);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const pendingShooters = useGameStore((s) => s.pendingShooters);
   const forceContinueAfterVictory = useGameStore((s) => s.forceContinueAfterVictory);
@@ -157,6 +159,54 @@ export function DayAnnouncementScreen() {
           <section className="rounded-2xl border border-amber-400/50 bg-amber-950/35 p-3 text-xs font-bold text-amber-100">
             👮 雙爆吞警徽續選：進入白天後將自動跳過「上警報名與警上發言」，直接由候選人（
             {sheriffState.candidates.join('、')} 號）進入退水與警下投票。
+          </section>
+        )}
+
+        {/* 高級平民首日死訊後自動公布卡 */}
+        {lastSeniorVillagerReveal && lastSeniorVillagerReveal.seatNumber !== null && round === 1 && (
+          <section
+            className={`rounded-2xl border p-3.5 ${
+              lastSeniorVillagerReveal.revealed
+                ? 'border-sky-400/60 bg-sky-950/35'
+                : 'border-slate-700 bg-slate-900/70'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="rounded-lg bg-sky-500/20 px-2 py-0.5 text-[11px] font-extrabold text-sky-200">
+                高級平民首日公布
+              </span>
+            </div>
+            <div className="mt-1.5 text-sm font-extrabold text-slate-50">
+              {lastSeniorVillagerReveal.revealed
+                ? `🪪 請公開宣布：${lastSeniorVillagerReveal.seatNumber} 號為高級平民`
+                : '🔇 本日不公布高級平民身分'}
+            </div>
+            {!isOnlineJudge && (
+              <p className="mt-1 text-xs text-slate-300">{lastSeniorVillagerReveal.reason}</p>
+            )}
+          </section>
+        )}
+
+        {/* 月靈狼嗥叫提示卡 */}
+        {lastMoonSpiritHowl && lastMoonSpiritHowl.moonSpiritSeat !== null && (
+          <section
+            className={`rounded-2xl border p-3.5 ${
+              lastMoonSpiritHowl.howled
+                ? 'border-purple-400/60 bg-purple-950/35'
+                : 'border-slate-700 bg-slate-900/70'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="rounded-lg bg-purple-500/20 px-2 py-0.5 text-[11px] font-extrabold text-purple-200">
+                月靈狼嗥叫狀態
+              </span>
+            </div>
+            <div className="mt-1.5 text-sm font-extrabold text-slate-50">
+              {lastMoonSpiritHowl.howled ? '🌕 昨夜月靈狼嗥叫了！' : '🌑 昨夜月靈狼沒有嗥叫'}
+            </div>
+            {!isOnlineJudge && (
+              <p className="mt-1 text-xs text-slate-300">{lastMoonSpiritHowl.reason}</p>
+            )}
           </section>
         )}
 

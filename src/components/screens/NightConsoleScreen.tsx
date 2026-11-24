@@ -4,6 +4,8 @@ import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import {
   applyMechWolfLearn,
+  canAwakenedDreamCatcherDream,
+  canDemonWolfCheck,
   canDreamCatcherDream,
   canGuardTarget,
   canHybridChooseIdol,
@@ -11,16 +13,35 @@ import {
   canMechWolfUseLearnedSkill,
   canNightmareFear,
   canSeedWolfInfect,
+  canSuperGravekeeperChooseHeir,
   canWitchUseAntidote,
   canWitchUsePoison,
   canWolfBeautyCharm,
+  createInitialGargoyleState,
+  createInitialPumpkinGhostState,
   createInitialSeedWolfState,
+  createInitialSuperGravekeeperState,
+  evaluateAwakenedDreamTargetActed,
+  evaluateMoonSpiritHowl,
+  evaluateNineTailedFoxTails,
   findMechWolfSeat,
+  getAwakenedSeerCheckResult,
+  getDemonWolfCheckResult,
+  getDrunkSeerCheckResult,
+  getFoolSeerCheckResult,
+  getFoxCheckResult,
+  getGargoyleCheckResult,
+  getGravekeeperExileResult,
+  getGravekeeperFactionForRecord,
+  getLanternSeerCheckResult,
   getNightSteps,
   getPsychicCheckResult,
+  getPumpkinGhostCheckResult,
+  getPureWhiteCheckResult,
   getSeerCheckResult,
   getStepClaimSummary,
   getUnclaimedSeatNumbers,
+  getWolfWitchCheckResult,
   isSeatWolfFaction,
 } from '../../logic';
 import type { ActionCheckResult, NightActionDraft, NightActionType } from '../../logic/types';
@@ -72,6 +93,28 @@ function getInitialTargetForStep(
       return draft.nightmareFearTarget ?? null;
     case 'hybrid_choose':
       return draft.hybridIdolTarget ?? null;
+    case 'lantern_seer_check':
+      return draft.lanternSeerCheckTarget ?? null;
+    case 'drunk_seer_check':
+      return draft.drunkSeerCheckTarget ?? null;
+    case 'fool_seer_check':
+      return draft.foolSeerCheckTarget ?? null;
+    case 'fox_check':
+      return draft.foxCheckTarget ?? null;
+    case 'gargoyle_check':
+      return draft.gargoyleCheckTarget ?? null;
+    case 'wolf_witch_check':
+      return draft.wolfWitchCheckTarget ?? null;
+    case 'pure_white_check':
+      return draft.pureWhiteCheckTarget ?? null;
+    case 'demon_wolf_check':
+      return draft.demonWolfCheckTarget ?? null;
+    case 'pumpkin_ghost_check':
+      return draft.pumpkinGhostCheckTarget ?? null;
+    case 'super_gravekeeper_action':
+      return draft.superGravekeeperHeirTarget ?? null;
+    case 'awakened_dream_catcher_dream':
+      return draft.awakenedDreamTarget ?? null;
     default:
       return null;
   }
@@ -134,6 +177,16 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const lastDreamTarget = useGameStore((s) => s.lastDreamTarget);
   const lastFearedSeat = useGameStore((s) => s.lastFearedSeat ?? null);
   const seedWolfState = useGameStore((s) => s.seedWolfState ?? createInitialSeedWolfState());
+  const gargoyleState = useGameStore((s) => s.gargoyleState ?? createInitialGargoyleState());
+  const pumpkinGhostState = useGameStore(
+    (s) => s.pumpkinGhostState ?? createInitialPumpkinGhostState(),
+  );
+  const superGravekeeperState = useGameStore(
+    (s) => s.superGravekeeperState ?? createInitialSuperGravekeeperState(),
+  );
+  const foxLostAbility = useGameStore((s) => s.foxLostAbility ?? false);
+  const exiledHistory = useGameStore((s) => s.exiledHistory ?? []);
+  const lastAwakenedDreamTarget = useGameStore((s) => s.lastAwakenedDreamTarget ?? null);
 
   const claimSeatRole = useGameStore((s) => s.claimSeatRole);
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
@@ -159,6 +212,15 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   );
   const [pendingSeedWolfInfect, setPendingSeedWolfInfect] = useState<boolean>(
     () => currentNightDraft.seedWolfInfectTarget != null,
+  );
+  const [pendingDualTargets, setPendingDualTargets] = useState<[number | null, number | null]>(
+    () => currentNightDraft.awakenedSeerTargets ?? [null, null],
+  );
+  const [pendingDrunkManual, setPendingDrunkManual] = useState<'good' | 'wolf' | null>(
+    () => currentNightDraft.drunkSeerManualResult ?? null,
+  );
+  const [pendingAwakenedDreamKill, setPendingAwakenedDreamKill] = useState<boolean>(
+    () => Boolean(currentNightDraft.awakenedDreamKillTarget),
   );
   const [revealConfirmed, setRevealConfirmed] = useState(false);
 
@@ -199,6 +261,9 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     setPendingTarget(getInitialTargetForStep(currentStep.actionType, currentNightDraft));
     setPendingUseAntidote(currentNightDraft.witchUseAntidote);
     setPendingSeedWolfInfect(currentNightDraft.seedWolfInfectTarget != null);
+    setPendingDualTargets(currentNightDraft.awakenedSeerTargets ?? [null, null]);
+    setPendingDrunkManual(currentNightDraft.drunkSeerManualResult ?? null);
+    setPendingAwakenedDreamKill(Boolean(currentNightDraft.awakenedDreamKillTarget));
     setRevealConfirmed(false);
     setPendingClaimSeat(null);
     setClaimError(null);
@@ -323,6 +388,16 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const isInfoRevealStep =
     currentStep.actionType === 'seer_check' ||
     currentStep.actionType === 'psychic_check' ||
+    currentStep.actionType === 'awakened_seer_check' ||
+    currentStep.actionType === 'lantern_seer_check' ||
+    currentStep.actionType === 'drunk_seer_check' ||
+    currentStep.actionType === 'fool_seer_check' ||
+    currentStep.actionType === 'fox_check' ||
+    currentStep.actionType === 'gargoyle_check' ||
+    currentStep.actionType === 'wolf_witch_check' ||
+    currentStep.actionType === 'pure_white_check' ||
+    currentStep.actionType === 'demon_wolf_check' ||
+    currentStep.actionType === 'pumpkin_ghost_check' ||
     (currentStep.actionType === 'mech_wolf_night_action' &&
       mechWolfState.learnedRoleId === 'psychic');
 
@@ -421,6 +496,92 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       ? getPsychicCheckResult(seats, mechWolfState, pendingTarget)
       : null;
 
+  // 第 1 批查驗與資訊感知即時結果
+  const awakenedSeerOutcome =
+    currentStep.actionType === 'awakened_seer_check' &&
+    revealConfirmed &&
+    pendingDualTargets[0] !== null &&
+    pendingDualTargets[1] !== null
+      ? getAwakenedSeerCheckResult(seats, [pendingDualTargets[0], pendingDualTargets[1]])
+      : null;
+
+  const lanternSeerOutcome =
+    currentStep.actionType === 'lantern_seer_check' && revealConfirmed && pendingTarget !== null
+      ? getLanternSeerCheckResult(seats, pendingTarget)
+      : null;
+
+  const drunkSeerOutcome =
+    currentStep.actionType === 'drunk_seer_check' && revealConfirmed && pendingTarget !== null
+      ? getDrunkSeerCheckResult(seats, pendingTarget, { manualOverride: pendingDrunkManual })
+      : null;
+
+  const foolSeerOutcome =
+    currentStep.actionType === 'fool_seer_check' && revealConfirmed && pendingTarget !== null
+      ? getFoolSeerCheckResult(seats, pendingTarget)
+      : null;
+
+  const foxOutcome =
+    currentStep.actionType === 'fox_check' && revealConfirmed && pendingTarget !== null
+      ? getFoxCheckResult(seats, pendingTarget, foxLostAbility)
+      : null;
+
+  const gargoyleOutcome =
+    currentStep.actionType === 'gargoyle_check' && revealConfirmed && pendingTarget !== null
+      ? getGargoyleCheckResult(seats, effectiveMechWolfForPreview, pendingTarget)
+      : null;
+
+  const wolfWitchOutcome =
+    currentStep.actionType === 'wolf_witch_check' && revealConfirmed && pendingTarget !== null
+      ? getWolfWitchCheckResult(seats, effectiveMechWolfForPreview, pendingTarget)
+      : null;
+
+  const pureWhiteOutcome =
+    currentStep.actionType === 'pure_white_check' && revealConfirmed && pendingTarget !== null
+      ? getPureWhiteCheckResult(seats, effectiveMechWolfForPreview, pendingTarget)
+      : null;
+
+  const demonWolfOutcome =
+    currentStep.actionType === 'demon_wolf_check' && revealConfirmed && pendingTarget !== null
+      ? getDemonWolfCheckResult(seats, pendingTarget)
+      : null;
+
+  const pumpkinGhostOutcome =
+    currentStep.actionType === 'pumpkin_ghost_check' &&
+    revealConfirmed &&
+    pendingTarget !== null &&
+    pumpkinGhostState.hasInherited
+      ? getPumpkinGhostCheckResult(seats, pumpkinGhostState, effectiveMechWolfForPreview, pendingTarget)
+      : null;
+
+  const gravekeeperOutcome =
+    currentStep.actionType === 'gravekeeper_check' ||
+    currentStep.actionType === 'super_gravekeeper_action' ||
+    currentStep.actionType === 'super_gravekeeper_heir_check'
+      ? getGravekeeperExileResult(exiledHistory, round)
+      : null;
+
+  const nineTailedFoxOutcome =
+    currentStep.actionType === 'nine_tailed_fox_check'
+      ? evaluateNineTailedFoxTails(seats, round)
+      : null;
+
+  const moonSpiritHowlPreview =
+    currentStep.actionType === 'wolf_kill' && seats.some((s) => s.roleId === 'moon_spirit_wolf')
+      ? evaluateMoonSpiritHowl(seats, currentNightDraft.nightmareFearTarget ?? null)
+      : null;
+
+  const awakenedDreamJudgeOutcome =
+    currentStep.actionType === 'awakened_dream_catcher_judge' &&
+    currentNightDraft.awakenedDreamTarget != null
+      ? evaluateAwakenedDreamTargetActed(
+          seats,
+          currentNightDraft.awakenedDreamTarget,
+          { ...currentNightDraft, awakenedDreamKillTarget: pendingAwakenedDreamKill },
+          round,
+          currentNightDraft.nightmareFearTarget ?? null,
+        )
+      : null;
+
   const isHunterPoisonedTonight =
     hunterSeat !== undefined &&
     (currentNightDraft.witchPoisonTarget === hunterSeat.seatNumber ||
@@ -441,6 +602,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
   const isSeatSelectableForSkill =
     currentStep.actionType !== 'hunter_gesture' &&
     currentStep.actionType !== 'mech_wolf_reveal_skill' &&
+    currentStep.actionType !== 'gargoyle_team_status' &&
+    currentStep.actionType !== 'gravekeeper_check' &&
+    currentStep.actionType !== 'super_gravekeeper_heir_check' &&
+    currentStep.actionType !== 'nine_tailed_fox_check' &&
+    currentStep.actionType !== 'awakened_dream_catcher_judge' &&
     currentStep.actionType !== 'confirm_only' &&
     !(isInfoRevealStep && revealConfirmed);
 
@@ -516,16 +682,19 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         }
         const isWolfBeauty = isAlive && seat?.roleId === 'wolf_beauty';
         const isEvilKnight = isAlive && seat?.roleId === 'evil_knight';
+        const isDemonWolf = isAlive && seat?.roleId === 'demon_wolf';
         return {
           selected: pendingTarget === seatNumber,
-          disabled: !isAlive || isWolfBeauty || isEvilKnight,
+          disabled: !isAlive || isWolfBeauty || isEvilKnight || isDemonWolf,
           reason: !isAlive
             ? '已出局'
             : isWolfBeauty
               ? '狼美禁自刀'
               : isEvilKnight
                 ? '惡靈禁自刀'
-                : undefined,
+                : isDemonWolf
+                  ? '惡魔禁自刀'
+                  : undefined,
           onSelect: toggleTarget,
         };
       }
@@ -609,6 +778,77 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
           onSelect: toggleTarget,
         };
       }
+      case 'awakened_seer_check': {
+        const [a, b] = pendingDualTargets;
+        const isSelected = a === seatNumber || b === seatNumber;
+        return {
+          selected: isSelected,
+          disabled: !isAlive,
+          reason: !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingDualTargets(([first, second]) => {
+              if (first === seatNumber) return [second, null];
+              if (second === seatNumber) return [first, null];
+              if (first === null) return [seatNumber, second];
+              if (second === null) return [first, seatNumber];
+              return [second, seatNumber];
+            });
+          },
+        };
+      }
+      case 'lantern_seer_check':
+      case 'drunk_seer_check':
+      case 'fool_seer_check':
+      case 'gargoyle_check':
+      case 'wolf_witch_check':
+      case 'pure_white_check':
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !isAlive,
+          reason: !isAlive ? '已出局' : undefined,
+          onSelect: toggleTarget,
+        };
+      case 'fox_check':
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !isAlive || foxLostAbility,
+          reason: foxLostAbility ? '技能已失效' : !isAlive ? '已出局' : undefined,
+          onSelect: toggleTarget,
+        };
+      case 'demon_wolf_check': {
+        const check = canDemonWolfCheck(seats, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'pumpkin_ghost_check':
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !isAlive || !pumpkinGhostState.hasInherited,
+          reason: !pumpkinGhostState.hasInherited ? '尚未繼承石像鬼' : !isAlive ? '已出局' : undefined,
+          onSelect: toggleTarget,
+        };
+      case 'super_gravekeeper_action': {
+        const check = canSuperGravekeeperChooseHeir(seats, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'awakened_dream_catcher_dream': {
+        const check = canAwakenedDreamCatcherDream(seats, lastAwakenedDreamTarget, seatNumber);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
       default:
         return {
           selected: false,
@@ -660,6 +900,48 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         break;
       case 'hybrid_choose':
         updateNightDraft({ hybridIdolTarget: pendingTarget });
+        break;
+      case 'awakened_seer_check':
+        updateNightDraft({ awakenedSeerTargets: pendingDualTargets });
+        break;
+      case 'lantern_seer_check':
+        updateNightDraft({ lanternSeerCheckTarget: pendingTarget });
+        break;
+      case 'drunk_seer_check':
+        updateNightDraft({
+          drunkSeerCheckTarget: pendingTarget,
+          drunkSeerManualResult: pendingDrunkManual,
+        });
+        break;
+      case 'fool_seer_check':
+        updateNightDraft({ foolSeerCheckTarget: pendingTarget });
+        break;
+      case 'fox_check':
+        updateNightDraft({ foxCheckTarget: pendingTarget });
+        break;
+      case 'gargoyle_check':
+        updateNightDraft({ gargoyleCheckTarget: pendingTarget });
+        break;
+      case 'wolf_witch_check':
+        updateNightDraft({ wolfWitchCheckTarget: pendingTarget });
+        break;
+      case 'pure_white_check':
+        updateNightDraft({ pureWhiteCheckTarget: pendingTarget });
+        break;
+      case 'demon_wolf_check':
+        updateNightDraft({ demonWolfCheckTarget: pendingTarget });
+        break;
+      case 'pumpkin_ghost_check':
+        updateNightDraft({ pumpkinGhostCheckTarget: pendingTarget });
+        break;
+      case 'super_gravekeeper_action':
+        updateNightDraft({ superGravekeeperHeirTarget: pendingTarget });
+        break;
+      case 'awakened_dream_catcher_dream':
+        updateNightDraft({ awakenedDreamTarget: pendingTarget });
+        break;
+      case 'awakened_dream_catcher_judge':
+        updateNightDraft({ awakenedDreamKillTarget: round >= 2 ? pendingAwakenedDreamKill : false });
         break;
       default:
         break;
@@ -721,7 +1003,11 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
     if (!pendingValidation.allowed) return;
 
     // 查驗類步驟：若有選擇目標且尚未揭曉，先寫入草稿並鎖定揭曉查驗結果
-    if (isInfoRevealStep && pendingTarget !== null && !revealConfirmed) {
+    const hasRevealableSelection =
+      currentStep.actionType === 'awakened_seer_check'
+        ? pendingDualTargets[0] !== null && pendingDualTargets[1] !== null
+        : pendingTarget !== null;
+    if (isInfoRevealStep && hasRevealableSelection && !revealConfirmed) {
       commitCurrentStepDraft();
       setRevealConfirmed(true);
       return;
@@ -1402,6 +1688,359 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
                   `已預選查驗 ${pendingTarget} 號，點擊「確認查驗」揭曉真實身分`
                 ) : (
                   '請點選上方座位預選通靈查驗目標'
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'wolf_kill' && moonSpiritHowlPreview && (
+              <div
+                className={`rounded-xl border px-3 py-1.5 text-center text-xs font-bold ${
+                  moonSpiritHowlPreview.howled
+                    ? 'border-purple-400/50 bg-purple-950/40 text-purple-100'
+                    : 'border-slate-800 bg-slate-950 text-slate-400'
+                }`}
+              >
+                {moonSpiritHowlPreview.howled ? '🌕 ' : '🌑 '}
+                {moonSpiritHowlPreview.reason}
+              </div>
+            )}
+
+            {currentStep.actionType === 'awakened_seer_check' && (
+              <div
+                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                  awakenedSeerOutcome
+                    ? awakenedSeerOutcome.result === 'suspected_wolf'
+                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
+                      : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
+                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                }`}
+              >
+                {awakenedSeerOutcome ? (
+                  <span className="text-sm font-extrabold">
+                    雙驗結果（{awakenedSeerOutcome.targetSeats[0]} 號 &amp;{' '}
+                    {awakenedSeerOutcome.targetSeats[1]} 號）➜{' '}
+                    {awakenedSeerOutcome.result === 'double_good'
+                      ? '👍 雙金水（皆好人）'
+                      : '👎 疑似狼人（含至少一狼）'}
+                  </span>
+                ) : (
+                  <span>
+                    請點選 2 位存活玩家（可含自己）：目前已選{' '}
+                    {pendingDualTargets.filter((n) => n !== null).join('、') || '無'}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'lantern_seer_check' && (
+              <div
+                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                  lanternSeerOutcome
+                    ? lanternSeerOutcome.faction === 'wolf'
+                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
+                      : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
+                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                }`}
+              >
+                {lanternSeerOutcome ? (
+                  <span className="text-sm font-extrabold">
+                    查驗結果（反轉）：{lanternSeerOutcome.targetSeat} 號 ➜{' '}
+                    {lanternSeerOutcome.faction === 'wolf' ? '👎 狼人陣營' : '👍 好人陣營'}
+                  </span>
+                ) : pendingTarget !== null ? (
+                  `已預選查驗 ${pendingTarget} 號，點擊「確認查驗」揭曉結果`
+                ) : (
+                  '請點選上方座位預選查驗目標（燈影預言家結果將自動反轉）'
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'drunk_seer_check' && (
+              <div className="space-y-1.5">
+                {!isOnlineJudge && !revealConfirmed && (
+                  <div className="flex items-center justify-center gap-1.5 text-[11px]">
+                    <span className="text-slate-400">酒鬼結果：</span>
+                    {(
+                      [
+                        [null, '🎲 隨機'],
+                        ['good', '👍 給金水'],
+                        ['wolf', '👎 給查殺'],
+                      ] as const
+                    ).map(([val, label]) => (
+                      <button
+                        key={String(val)}
+                        type="button"
+                        onClick={() => setPendingDrunkManual(val)}
+                        className={`min-h-8 rounded-lg border px-2 font-bold ${
+                          pendingDrunkManual === val
+                            ? 'border-amber-400 bg-amber-500/25 text-amber-100'
+                            : 'border-slate-700 bg-slate-950 text-slate-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div
+                  className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                    drunkSeerOutcome
+                      ? drunkSeerOutcome.faction === 'wolf'
+                        ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
+                        : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
+                      : 'border-slate-800 bg-slate-950 text-slate-300'
+                  }`}
+                >
+                  {drunkSeerOutcome ? (
+                    <span className="text-sm font-extrabold">
+                      查驗結果：{drunkSeerOutcome.targetSeat} 號 ➜{' '}
+                      {drunkSeerOutcome.faction === 'wolf' ? '👎 狼人陣營' : '👍 好人陣營'}
+                    </span>
+                  ) : pendingTarget !== null ? (
+                    `已預選查驗 ${pendingTarget} 號，點擊「確認查驗」揭曉結果`
+                  ) : (
+                    '請點選上方座位預選酒鬼預言家查驗目標'
+                  )}
+                </div>
+              </div>
+            )}
+
+            {currentStep.actionType === 'fool_seer_check' && (
+              <div
+                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                  foolSeerOutcome
+                    ? foolSeerOutcome.faction === 'wolf'
+                      ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
+                      : 'border-emerald-500/50 bg-emerald-950/50 text-emerald-100'
+                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                }`}
+              >
+                {foolSeerOutcome ? (
+                  <span className="text-sm font-extrabold">
+                    愚言家查驗：{foolSeerOutcome.targetSeat} 號 ➜{' '}
+                    {foolSeerOutcome.faction === 'wolf' ? '👎 狼人陣營' : '👍 好人陣營'}
+                  </span>
+                ) : pendingTarget !== null ? (
+                  `已預選查驗 ${pendingTarget} 號，點擊「確認查驗」揭曉結果`
+                ) : (
+                  '請點選上方座位預選愚言家查驗目標'
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'fox_check' && (
+              <div
+                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                  foxLostAbility
+                    ? 'border-slate-700 bg-slate-900 text-slate-400'
+                    : foxOutcome
+                      ? foxOutcome.hasWolf
+                        ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
+                        : 'border-amber-500/50 bg-amber-950/50 text-amber-100'
+                      : 'border-slate-800 bg-slate-950 text-slate-300'
+                }`}
+              >
+                {foxLostAbility ? (
+                  '⚠️ 狐狸查驗能力已永久失效（請比失能手勢後直接確認）'
+                ) : foxOutcome ? (
+                  <span className="text-sm font-extrabold">
+                    查驗範圍（{foxOutcome.checkedSeats.join('、')} 號）➜{' '}
+                    {foxOutcome.hasWolf ? '🐺 三人中含狼人（技能保留）' : '✨ 全好人（技能永久失效）'}
+                  </span>
+                ) : pendingTarget !== null ? (
+                  `已預選查驗 ${pendingTarget} 號與其左右鄰居，點擊「確認查驗」揭曉`
+                ) : (
+                  '請點選 1 位目標查驗其自身與左右兩側存活鄰居'
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'gargoyle_team_status' && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-center text-xs font-bold text-amber-100">
+                {gargoyleState.hasJoinedWolfTeam
+                  ? '✅ 石像鬼已入狼隊（場上其他狼人皆已出局，今晚可參與狼刀）'
+                  : '⏳ 石像鬼尚未入隊（場上仍有其他存活狼人）'}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'gargoyle_check' ||
+              currentStep.actionType === 'wolf_witch_check' ||
+              currentStep.actionType === 'pure_white_check' ||
+              currentStep.actionType === 'pumpkin_ghost_check') && (
+              <div className="space-y-1.5">
+                {currentStep.actionType === 'pumpkin_ghost_check' && (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-1.5 text-center text-[11px] font-bold text-amber-100">
+                    {pumpkinGhostState.hasInherited ? (
+                      <>
+                        🎃 已繼承石像鬼查驗能力
+                        {pumpkinGhostState.inheritedHistory.length > 0 && (
+                          <div className="mt-0.5 text-amber-200/90">
+                            歷史紀錄：
+                            {pumpkinGhostState.inheritedHistory
+                              .map(
+                                (h) =>
+                                  `N${h.round}:${h.targetSeat}號(${
+                                    getRoleById(h.perceivedRoleId)?.name ?? h.perceivedRoleId
+                                  })`,
+                              )
+                              .join('、')}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      '⏳ 石像鬼仍存活，南瓜鬼尚未繼承查驗能力'
+                    )}
+                  </div>
+                )}
+                {(() => {
+                  const exactOutcome =
+                    currentStep.actionType === 'gargoyle_check'
+                      ? gargoyleOutcome
+                      : currentStep.actionType === 'wolf_witch_check'
+                        ? wolfWitchOutcome
+                        : currentStep.actionType === 'pure_white_check'
+                          ? pureWhiteOutcome
+                          : pumpkinGhostOutcome;
+                  return (
+                    <div
+                      className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                        exactOutcome
+                          ? 'border-indigo-400/50 bg-indigo-950/50 text-indigo-100'
+                          : 'border-slate-800 bg-slate-950 text-slate-300'
+                      }`}
+                    >
+                      {exactOutcome ? (
+                        <span className="text-sm font-extrabold">
+                          真實身分：{exactOutcome.targetSeat} 號 ➜{' '}
+                          {getRoleById(exactOutcome.perceivedRoleId)?.name ??
+                            exactOutcome.perceivedRoleId}
+                        </span>
+                      ) : pendingTarget !== null ? (
+                        `已預選查驗 ${pendingTarget} 號，點擊「確認查驗」揭曉真實身分`
+                      ) : currentStep.actionType === 'pumpkin_ghost_check' &&
+                        !pumpkinGhostState.hasInherited ? (
+                        '尚未繼承，可直接點擊確認繼續'
+                      ) : (
+                        '請點選上方座位預選具體底牌查驗目標'
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {currentStep.actionType === 'demon_wolf_check' && (
+              <div
+                className={`rounded-xl border px-3 py-2 text-center text-xs font-bold ${
+                  demonWolfOutcome
+                    ? 'border-purple-400/50 bg-purple-950/50 text-purple-100'
+                    : 'border-slate-800 bg-slate-950 text-slate-300'
+                }`}
+              >
+                {demonWolfOutcome ? (
+                  <span className="text-sm font-extrabold">
+                    惡魔查驗：{demonWolfOutcome.targetSeat} 號 ➜{' '}
+                    {demonWolfOutcome.roleType === 'god' ? '✨ 神職牌' : '🌾 平民牌'}
+                  </span>
+                ) : pendingTarget !== null ? (
+                  `已預選查驗 ${pendingTarget} 號，點擊「確認查驗」揭曉神／民`
+                ) : (
+                  '請點選狼隊以外的存活玩家查驗神職或平民'
+                )}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'gravekeeper_check' ||
+              currentStep.actionType === 'super_gravekeeper_action' ||
+              currentStep.actionType === 'super_gravekeeper_heir_check') && (
+              <div className="space-y-1.5">
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/35 px-3 py-2 text-center text-xs font-extrabold text-emerald-100">
+                  🪦 {gravekeeperOutcome?.summary ?? '尚無放逐紀錄'}
+                </div>
+                {currentStep.actionType === 'super_gravekeeper_action' && (
+                  <div className="text-center text-xs text-slate-300">
+                    {pendingTarget !== null
+                      ? `預選繼承者：${pendingTarget} 號`
+                      : `目前繼承者：${
+                          superGravekeeperState.heirSeat !== null
+                            ? `${superGravekeeperState.heirSeat} 號`
+                            : '尚未選擇（可點選上方座位指定）'
+                        }`}
+                  </div>
+                )}
+                {currentStep.actionType === 'super_gravekeeper_heir_check' && (
+                  <div className="rounded-xl border border-amber-400/40 bg-amber-950/30 px-3 py-1.5 text-center text-[11px] font-bold text-amber-100">
+                    {superGravekeeperState.heirInherited ? (
+                      <>
+                        ✅ 繼承者（{superGravekeeperState.heirSeat} 號）已接手！原超級守墓人為{' '}
+                        {superGravekeeperState.superGravekeeperSeat ?? '?'} 號
+                        {exiledHistory.length > 0 && (
+                          <div className="mt-0.5 text-amber-200/90">
+                            歷史放逐：
+                            {exiledHistory
+                              .map(
+                                (r) =>
+                                  `D${r.round}:${r.seatNumber}號(${
+                                    getGravekeeperFactionForRecord(r) === 'wolf' ? '狼' : '好'
+                                  })`,
+                              )
+                              .join('、')}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      '⏳ 超級守墓人仍存活或無有效好人繼承者，可直接確認跳過'
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'nine_tailed_fox_check' && nineTailedFoxOutcome && (
+              <div
+                className={`rounded-xl border px-3 py-2 text-center text-sm font-extrabold ${
+                  nineTailedFoxOutcome.diedFromNoTails
+                    ? 'border-rose-500/50 bg-rose-950/50 text-rose-100'
+                    : 'border-amber-400/50 bg-amber-950/35 text-amber-100'
+                }`}
+              >
+                🦊 {nineTailedFoxOutcome.reason}
+              </div>
+            )}
+
+            {currentStep.actionType === 'awakened_dream_catcher_dream' && (
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-300">
+                <span>
+                  昨晚夢語：{lastAwakenedDreamTarget !== null ? `${lastAwakenedDreamTarget} 號` : '無'} ·
+                  預選：
+                  <strong className="text-indigo-300">
+                    {pendingTarget !== null ? `${pendingTarget} 號` : '尚未選擇'}
+                  </strong>
+                </span>
+              </div>
+            )}
+
+            {currentStep.actionType === 'awakened_dream_catcher_judge' && (
+              <div className="space-y-2 rounded-xl border border-indigo-400/40 bg-indigo-950/35 p-2.5 text-center">
+                <div className="text-xs font-extrabold text-indigo-100">
+                  {awakenedDreamJudgeOutcome
+                    ? `🌙 夢語者判定：${awakenedDreamJudgeOutcome.reason}`
+                    : '今晚尚未選擇夢語者'}
+                </div>
+                {round >= 2 && awakenedDreamJudgeOutcome && (
+                  <button
+                    type="button"
+                    onClick={() => setPendingAwakenedDreamKill((v) => !v)}
+                    className={`min-h-11 w-full rounded-xl border px-3 text-xs font-extrabold transition ${
+                      pendingAwakenedDreamKill
+                        ? 'border-rose-400 bg-rose-600 text-white'
+                        : 'border-slate-700 bg-slate-900 text-slate-200'
+                    }`}
+                  >
+                    {pendingAwakenedDreamKill
+                      ? `💀 已選擇：將 ${awakenedDreamJudgeOutcome.targetSeat} 號夢語出局（無法發動技能）`
+                      : `是否將 ${awakenedDreamJudgeOutcome.targetSeat} 號夢語出局？（目前：不處決）`}
+                  </button>
                 )}
               </div>
             )}

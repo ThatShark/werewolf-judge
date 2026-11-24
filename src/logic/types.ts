@@ -59,6 +59,23 @@ export type NightActionType =
   | 'treasure_master_choose'
   | 'nightmare_fear'
   | 'hybrid_choose'
+  | 'awakened_seer_check'
+  | 'lantern_seer_check'
+  | 'drunk_seer_check'
+  | 'fool_seer_check'
+  | 'fox_check'
+  | 'gargoyle_check'
+  | 'gargoyle_team_status'
+  | 'wolf_witch_check'
+  | 'pure_white_check'
+  | 'demon_wolf_check'
+  | 'pumpkin_ghost_check'
+  | 'gravekeeper_check'
+  | 'super_gravekeeper_action'
+  | 'super_gravekeeper_heir_check'
+  | 'nine_tailed_fox_check'
+  | 'awakened_dream_catcher_dream'
+  | 'awakened_dream_catcher_judge'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -245,6 +262,12 @@ export type DeathReason =
   | 'masked_delayed_death'
   | 'treasure_master_exile_delayed'
   | 'evil_knight_counter'
+  | 'cursed_fox_checked'
+  | 'pure_white_check_kill'
+  | 'wolf_witch_check_kill'
+  | 'nine_tailed_fox_no_tails'
+  | 'awakened_dream_catcher_kill'
+  | 'good_self_explode'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -318,6 +341,94 @@ export interface HiddenWolfRuntimeState {
   hasJoinedWolfTeam: boolean;
 }
 
+export interface ExiledRecord {
+  round: number;
+  seatNumber: number;
+  roleId: string | null;
+  infectedBySeedWolf?: boolean;
+}
+
+export interface GargoyleCheckRecord {
+  round: number;
+  targetSeat: number;
+  perceivedRoleId: string;
+}
+
+export interface GargoyleRuntimeState {
+  /** 場上其他狼人全數出局後，石像鬼自動入狼隊並獲得狼刀權限 */
+  hasJoinedWolfTeam: boolean;
+  /** 石像鬼歷夜查驗紀錄（供石像鬼出局後南瓜鬼繼承） */
+  checkHistory: GargoyleCheckRecord[];
+}
+
+export interface PumpkinGhostRuntimeState {
+  /** 石像鬼出局後南瓜鬼是否已繼承查驗能力與歷史紀錄 */
+  hasInherited: boolean;
+  inheritedHistory: GargoyleCheckRecord[];
+}
+
+export interface SuperGravekeeperRuntimeState {
+  /** 最新選定的繼承者座號 */
+  heirSeat: number | null;
+  /** 超級守墓人出局後，好人繼承者是否已接手墓地查驗 */
+  heirInherited: boolean;
+  /** 超級守墓人本人的座號（供繼承者得知） */
+  superGravekeeperSeat: number | null;
+}
+
+export interface AwakenedSeerCheckOutcome {
+  targetSeats: [number, number];
+  result: 'double_good' | 'suspected_wolf';
+}
+
+export interface FoxCheckOutcome {
+  centerSeat: number;
+  checkedSeats: number[];
+  hasWolf: boolean;
+  lostAbility: boolean;
+}
+
+export interface DemonWolfCheckOutcome {
+  targetSeat: number;
+  roleType: 'god' | 'villager';
+}
+
+export interface GravekeeperExileOutcome {
+  exiledSeat: number | null;
+  faction: 'wolf' | 'good' | null;
+  summary: string;
+}
+
+export interface MoonSpiritHowlResult {
+  moonSpiritSeat: number | null;
+  alive: boolean;
+  leftNeighborSeat: number | null;
+  rightNeighborSeat: number | null;
+  howled: boolean;
+  reason: string;
+}
+
+export interface NineTailedFoxResult {
+  seatNumber: number | null;
+  alive: boolean;
+  tailsRemaining: number;
+  diedFromNoTails: boolean;
+  reason: string;
+}
+
+export interface SeniorVillagerRevealResult {
+  seatNumber: number | null;
+  revealed: boolean;
+  reason: string;
+}
+
+export interface AwakenedDreamCheckOutcome {
+  targetSeat: number;
+  didActTonight: boolean;
+  killedByDream: boolean;
+  reason: string;
+}
+
 export interface NightActionDraft {
   round: number;
   guardTarget: number | null;
@@ -336,6 +447,21 @@ export interface NightActionDraft {
   nightmareFearTarget?: number | null;
   hybridIdolTarget?: number | null;
   seedWolfInfectTarget?: number | null;
+  /** 第 1 批：查驗與資訊感知類角色夜間草稿 */
+  awakenedSeerTargets?: [number | null, number | null];
+  lanternSeerCheckTarget?: number | null;
+  drunkSeerCheckTarget?: number | null;
+  drunkSeerManualResult?: 'good' | 'wolf' | null;
+  foolSeerCheckTarget?: number | null;
+  foxCheckTarget?: number | null;
+  gargoyleCheckTarget?: number | null;
+  wolfWitchCheckTarget?: number | null;
+  pureWhiteCheckTarget?: number | null;
+  demonWolfCheckTarget?: number | null;
+  pumpkinGhostCheckTarget?: number | null;
+  superGravekeeperHeirTarget?: number | null;
+  awakenedDreamTarget?: number | null;
+  awakenedDreamKillTarget?: boolean;
 }
 
 export interface BearRoarResult {
@@ -434,6 +560,9 @@ export interface NightHistoryEntry {
   draft: NightActionDraft;
   deaths: NightDeathRecord[];
   bearRoar?: BearRoarResult | null;
+  moonSpiritHowl?: MoonSpiritHowlResult | null;
+  nineTailedFoxResult?: NineTailedFoxResult | null;
+  seniorVillagerReveal?: SeniorVillagerRevealResult | null;
 }
 
 export type DayStructuredEventType =
@@ -453,6 +582,7 @@ export type DayStructuredEventType =
   | 'hunter_shoot'
   | 'wolf_king_shoot'
   | 'self_explode'
+  | 'good_self_explode'
   | 'white_wolf_king_explode'
   | 'knight_duel'
   | 'wolf_beauty_charm_death'
@@ -509,6 +639,16 @@ export interface GameState {
   hybridState?: HybridRuntimeState;
   seedWolfState?: SeedWolfRuntimeState;
   hiddenWolfState?: HiddenWolfRuntimeState;
+  /** 第 1 批：查驗與資訊感知類角色持久化狀態 */
+  gargoyleState?: GargoyleRuntimeState;
+  pumpkinGhostState?: PumpkinGhostRuntimeState;
+  superGravekeeperState?: SuperGravekeeperRuntimeState;
+  foxLostAbility?: boolean;
+  exiledHistory?: ExiledRecord[];
+  lastAwakenedDreamTarget?: number | null;
+  lastMoonSpiritHowl?: MoonSpiritHowlResult | null;
+  lastNineTailedFoxResult?: NineTailedFoxResult | null;
+  lastSeniorVillagerReveal?: SeniorVillagerRevealResult | null;
 
   /** 自動發言順序與單人倒數計時引擎 */
   speakingQueue: number[];
@@ -598,6 +738,15 @@ export interface NightResolutionInput {
   hybridState?: HybridRuntimeState;
   seedWolfState?: SeedWolfRuntimeState;
   hiddenWolfState?: HiddenWolfRuntimeState;
+  /** 第 1 批：查驗與資訊感知類角色輸入狀態 */
+  gargoyleState?: GargoyleRuntimeState;
+  pumpkinGhostState?: PumpkinGhostRuntimeState;
+  superGravekeeperState?: SuperGravekeeperRuntimeState;
+  foxLostAbility?: boolean;
+  exiledHistory?: ExiledRecord[];
+  lastAwakenedDreamTarget?: number | null;
+  /** 測試可注入之亂數產生器（酒鬼預言家預設隨機用） */
+  rng?: () => number;
 }
 
 export interface NightResolutionResult {
@@ -619,13 +768,43 @@ export interface NightResolutionResult {
   hybridState: HybridRuntimeState;
   seedWolfState: SeedWolfRuntimeState;
   hiddenWolfState: HiddenWolfRuntimeState;
+  gargoyleState: GargoyleRuntimeState;
+  pumpkinGhostState: PumpkinGhostRuntimeState;
+  superGravekeeperState: SuperGravekeeperRuntimeState;
+  foxLostAbility: boolean;
+  lastAwakenedDreamTarget: number | null;
   /** 今晚因蒙面人被動而進入負傷／中毒延遲死亡的座號 */
   maskedDelayedSeats: number[];
   bearRoar: BearRoarResult | null;
+  moonSpiritHowl: MoonSpiritHowlResult | null;
+  nineTailedFoxResult: NineTailedFoxResult | null;
+  seniorVillagerReveal: SeniorVillagerRevealResult | null;
   seerResult: SeerCheckOutcome | null;
   psychicResult: PsychicCheckOutcome | null;
   mechWolfPsychicResult: PsychicCheckOutcome | null;
+  awakenedSeerResult: AwakenedSeerCheckOutcome | null;
+  lanternSeerResult: SeerCheckOutcome | null;
+  drunkSeerResult: SeerCheckOutcome | null;
+  foolSeerResult: SeerCheckOutcome | null;
+  foxResult: FoxCheckOutcome | null;
+  gargoyleResult: PsychicCheckOutcome | null;
+  wolfWitchResult: PsychicCheckOutcome | null;
+  pureWhiteResult: PsychicCheckOutcome | null;
+  demonWolfResult: DemonWolfCheckOutcome | null;
+  pumpkinGhostResult: PsychicCheckOutcome | null;
+  gravekeeperResult: GravekeeperExileOutcome | null;
+  awakenedDreamResult: AwakenedDreamCheckOutcome | null;
   shootEligibilities: ShootEligibility[];
+  victory: VictoryResult;
+}
+
+export interface GoodSelfExplodeResult {
+  allowed: boolean;
+  reason?: string;
+  seats: PlayerSeat[];
+  actorSeat: number;
+  enterNightImmediately: boolean;
+  mechWolfState: MechWolfRuntimeState;
   victory: VictoryResult;
 }
 

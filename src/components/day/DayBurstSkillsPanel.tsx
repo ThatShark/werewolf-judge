@@ -18,6 +18,7 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
   const knightDuelUsed = useGameStore((s) => s.knightDuelUsed);
 
   const selfExplode = useGameStore((s) => s.selfExplode);
+  const goodSelfExplode = useGameStore((s) => s.goodSelfExplode);
   const whiteWolfKingExplode = useGameStore((s) => s.whiteWolfKingExplode);
   const knightDuel = useGameStore((s) => s.knightDuel);
 
@@ -25,6 +26,10 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
   const [selectedExplodeSeat, setSelectedExplodeSeat] = useState<number | null>(null);
   const [confirmExplodeOpen, setConfirmExplodeOpen] = useState(false);
   const [explodeError, setExplodeError] = useState<string | null>(null);
+
+  // 愚言家／鐵好人翻牌自曝
+  const [selectedGoodExplodeSeat, setSelectedGoodExplodeSeat] = useState<number | null>(null);
+  const [confirmGoodExplodeOpen, setConfirmGoodExplodeOpen] = useState(false);
 
   // 白狼王自爆帶人
   const [selectedWwkTarget, setSelectedWwkTarget] = useState<number | null>(null);
@@ -53,8 +58,19 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
     () => seats.find((s) => s.isAlive && s.roleId === 'knight') ?? null,
     [seats],
   );
+  const aliveGoodExploders = useMemo(
+    () =>
+      seats.filter(
+        (s) =>
+          s.isAlive &&
+          !s.infectedBySeedWolf &&
+          (s.roleId === 'fool_seer' || s.roleId === 'iron_good'),
+      ),
+    [seats],
+  );
 
   const selectedExplodeObj = seats.find((s) => s.seatNumber === selectedExplodeSeat);
+  const selectedGoodExplodeObj = seats.find((s) => s.seatNumber === selectedGoodExplodeSeat);
   const selectedWwkTargetObj = seats.find((s) => s.seatNumber === selectedWwkTarget);
   const selectedKnightTargetObj = seats.find((s) => s.seatNumber === selectedKnightTarget);
 
@@ -282,6 +298,78 @@ export function DayBurstSkillsPanel({ disabled = false }: DayBurstSkillsPanelPro
             : '請選擇自爆狼人座位'}
         </button>
       </div>
+
+      {/* 愚言家／鐵好人翻牌自曝（僅實體法官且場上有存活者時顯示） */}
+      {!isOnlineJudge && aliveGoodExploders.length > 0 && (
+        <div className="space-y-2.5 rounded-xl border border-sky-400/35 bg-slate-950/75 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-extrabold text-sky-200">🪪 愚言家／鐵好人翻牌自曝</h3>
+            <span className="text-[11px] font-bold text-slate-400">立即出局並強制入夜</span>
+          </div>
+          <p className="text-xs text-slate-400">
+            愚言家或鐵好人於白天發言階段翻牌自曝，立即淘汰自己並強制進入夜晚（上警期間會吞警徽）。
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+            {aliveGoodExploders.map((seat) => {
+              const active = selectedGoodExplodeSeat === seat.seatNumber;
+              const role = getRoleById(seat.roleId);
+              return (
+                <button
+                  key={seat.seatNumber}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() =>
+                    setSelectedGoodExplodeSeat((prev) =>
+                      prev === seat.seatNumber ? null : seat.seatNumber,
+                    )
+                  }
+                  className={`min-h-12 rounded-lg border p-2 text-left text-xs font-bold transition ${
+                    active
+                      ? 'border-sky-400 bg-sky-500/30 text-sky-100 ring-1 ring-sky-400/50'
+                      : 'border-slate-800 bg-slate-900 text-slate-200 hover:border-slate-600'
+                  }`}
+                >
+                  <div>{seat.seatNumber} 號</div>
+                  {role && (
+                    <div className="mt-0.5 text-[10px] font-bold text-sky-300">{role.name}</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            disabled={selectedGoodExplodeSeat === null || disabled}
+            onClick={() => setConfirmGoodExplodeOpen(true)}
+            className="min-h-12 w-full rounded-xl bg-sky-600 px-4 text-sm font-extrabold text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+          >
+            {selectedGoodExplodeObj
+              ? `🪪 宣告 ${formatSeatDisplay(selectedGoodExplodeObj)} 翻牌自曝並入夜`
+              : '請選擇翻牌自曝玩家'}
+          </button>
+        </div>
+      )}
+
+      {/* 確認好人自曝 */}
+      <ConfirmModal
+        open={!isOnlineJudge && confirmGoodExplodeOpen && selectedGoodExplodeObj !== undefined}
+        title="確認好人翻牌自曝並強制入夜？"
+        description={
+          selectedGoodExplodeObj
+            ? `${formatSeatDisplay(selectedGoodExplodeObj)} 將立即淘汰出局並強制進入第 ${round + 1} 晚${explodeBadgeNotice}。`
+            : undefined
+        }
+        confirmLabel="確認翻牌自曝"
+        tone="primary"
+        onConfirm={() => {
+          if (selectedGoodExplodeSeat !== null) {
+            goodSelfExplode(selectedGoodExplodeSeat);
+            setSelectedGoodExplodeSeat(null);
+          }
+          setConfirmGoodExplodeOpen(false);
+        }}
+        onCancel={() => setConfirmGoodExplodeOpen(false)}
+      />
 
       {/* 確認普通狼人自爆 */}
       <ConfirmModal

@@ -1248,7 +1248,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -3111,7 +3111,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -4892,18 +4892,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
             "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         }
       ],
       "subsequentNights": [
@@ -4955,18 +4952,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
             "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         }
       ]
     },
@@ -5231,18 +5225,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_dream_catcher_dream",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_dream",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "請選擇要夢語的玩家",
-          "closePrompt": "覺醒攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -5303,35 +5294,31 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守墓人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "awakened_dream_catcher_judge",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_judge",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "該玩家今晚是否有行動",
           "closePrompt": "覺醒攝夢人請閉眼",
           "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。",
             "(法官走若干圈告知轉化者是誰)"
           ]
         }
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_dream_catcher_dream",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_dream",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "請選擇要夢語的玩家",
-          "closePrompt": "覺醒攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -5379,32 +5366,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "gravekeeper_check",
           "actorLabel": "守墓人",
           "actorRoleIds": [
             "gravekeeper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gravekeeper_check",
           "openPrompt": "守墓人請睜眼",
           "actionPrompt": "昨天被放逐玩家的身分是...",
-          "closePrompt": "守墓人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "守墓人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "awakened_dream_catcher_judge",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_judge",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "該玩家今晚是否有行動\n是否要讓該玩家出局",
-          "closePrompt": "覺醒攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒攝夢人請閉眼"
         }
       ]
     },
@@ -6288,7 +6269,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -6326,32 +6307,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "wolf_witch_check",
           "actorLabel": "狼巫",
           "actorRoleIds": [
             "wolf_witch"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_witch_check",
           "openPrompt": "狼巫請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "狼巫請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼巫請閉眼"
         }
       ],
       "subsequentNights": [
@@ -6379,18 +6354,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_witch_check",
           "actorLabel": "狼巫",
           "actorRoleIds": [
             "wolf_witch"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_witch_check",
           "openPrompt": "狼巫請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "狼巫請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼巫請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -6404,18 +6376,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         }
       ]
     },
@@ -8204,19 +8173,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
-            "awakened_seer",
-            "seer"
+            "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -8241,18 +8206,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "通靈師請閉眼"
         },
         {
-          "stepId": "step_11",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         },
         {
           "stepId": "mech_wolf_reveal_skill",
@@ -8323,19 +8285,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
-            "awakened_seer",
-            "seer"
+            "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "psychic_check",
@@ -8349,18 +8307,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "通靈師請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -12293,7 +12248,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -12352,34 +12307,28 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守墓人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "gargoyle_check",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_check",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         }
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "gargoyle_team_status",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_team_status",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "今晚的入隊手勢為...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -12426,32 +12375,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "gravekeeper_check",
           "actorLabel": "守墓人",
           "actorRoleIds": [
             "gravekeeper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gravekeeper_check",
           "openPrompt": "守墓人請睜眼",
           "actionPrompt": "昨天被放逐玩家的身分是...",
-          "closePrompt": "守墓人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "守墓人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "gargoyle_check",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_check",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         }
       ]
     },
@@ -15216,18 +15159,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
             "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -15290,18 +15230,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
             "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -16263,18 +16200,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_dream_catcher_dream",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_dream",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "請選擇要夢語的玩家",
-          "closePrompt": "覺醒攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒攝夢人請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -16347,35 +16281,31 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守墓人請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "awakened_dream_catcher_judge",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_judge",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "該玩家今晚是否有行動",
           "closePrompt": "覺醒攝夢人請閉眼",
           "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。",
             "(法官走若干圈告知轉化者是誰)"
           ]
         }
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "awakened_dream_catcher_dream",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_dream",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "請選擇要夢語的玩家",
-          "closePrompt": "覺醒攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒攝夢人請閉眼"
         },
         {
           "stepId": "step_2",
@@ -16435,32 +16365,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "gravekeeper_check",
           "actorLabel": "守墓人",
           "actorRoleIds": [
             "gravekeeper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gravekeeper_check",
           "openPrompt": "守墓人請睜眼",
           "actionPrompt": "昨天被放逐玩家的身分是...",
-          "closePrompt": "守墓人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "守墓人請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "awakened_dream_catcher_judge",
           "actorLabel": "覺醒攝夢人",
           "actorRoleIds": [
             "awakened_dream_catcher"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_dream_catcher_judge",
           "openPrompt": "覺醒攝夢人請睜眼",
           "actionPrompt": "該玩家今晚是否有行動\n是否要讓該玩家出局",
-          "closePrompt": "覺醒攝夢人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒攝夢人請閉眼"
         }
       ]
     },
@@ -17686,7 +17610,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -17735,32 +17659,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "wolf_witch_check",
           "actorLabel": "狼巫",
           "actorRoleIds": [
             "wolf_witch"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_witch_check",
           "openPrompt": "狼巫請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "狼巫請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼巫請閉眼"
         }
       ],
       "subsequentNights": [
@@ -17788,18 +17706,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_witch_check",
           "actorLabel": "狼巫",
           "actorRoleIds": [
             "wolf_witch"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_witch_check",
           "openPrompt": "狼巫請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "狼巫請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼巫請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -17813,18 +17728,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -18379,18 +18291,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "fox_check",
           "actorLabel": "狐狸",
           "actorRoleIds": [
             "fox"
           ],
-          "actionType": "confirm_only",
+          "actionType": "fox_check",
           "openPrompt": "狐狸請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他們三人中是否有狼人",
-          "closePrompt": "狐狸請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狐狸請閉眼"
         },
         {
           "stepId": "step_4",
@@ -18446,18 +18355,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "fox_check",
           "actorLabel": "狐狸",
           "actorRoleIds": [
             "fox"
           ],
-          "actionType": "confirm_only",
+          "actionType": "fox_check",
           "openPrompt": "狐狸請睜眼",
           "actionPrompt": "今晚的查驗手勢為...\n請選擇要查驗的玩家，他們三人中是否有狼人",
-          "closePrompt": "狐狸請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狐狸請閉眼"
         },
         {
           "stepId": "step_4",
@@ -19297,18 +19203,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_10",
+          "stepId": "gargoyle_check",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_check",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         }
       ],
       "subsequentNights": [
@@ -19338,18 +19241,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "gargoyle_team_status",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_team_status",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "今晚的入隊手勢為...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         },
         {
           "stepId": "step_4",
@@ -19425,18 +19325,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_10",
+          "stepId": "gargoyle_check",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_check",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         }
       ]
     },
@@ -20057,7 +19954,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -20106,12 +20003,12 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家 A 請閉眼"
         },
         {
-          "stepId": "seer_check_2",
+          "stepId": "lantern_seer_check",
           "actorLabel": "預言家 B",
           "actorRoleIds": [
-            "seer"
+            "lantern_seer"
           ],
-          "actionType": "seer_check",
+          "actionType": "lantern_seer_check",
           "openPrompt": "預言家 B 請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
           "closePrompt": "預言家 B 請閉眼"
@@ -20175,12 +20072,12 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家 A 請閉眼"
         },
         {
-          "stepId": "seer_check_2",
+          "stepId": "lantern_seer_check",
           "actorLabel": "預言家 B",
           "actorRoleIds": [
-            "seer"
+            "lantern_seer"
           ],
-          "actionType": "seer_check",
+          "actionType": "lantern_seer_check",
           "openPrompt": "預言家 B 請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
           "closePrompt": "預言家 B 請閉眼"
@@ -20262,7 +20159,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -20311,12 +20208,12 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家 A 請閉眼"
         },
         {
-          "stepId": "seer_check_2",
+          "stepId": "drunk_seer_check",
           "actorLabel": "預言家 B",
           "actorRoleIds": [
-            "seer"
+            "drunk_seer"
           ],
-          "actionType": "seer_check",
+          "actionType": "drunk_seer_check",
           "openPrompt": "預言家 B 請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
           "closePrompt": "預言家 B 請閉眼"
@@ -20380,12 +20277,12 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家 A 請閉眼"
         },
         {
-          "stepId": "seer_check_2",
+          "stepId": "drunk_seer_check",
           "actorLabel": "預言家 B",
           "actorRoleIds": [
-            "seer"
+            "drunk_seer"
           ],
-          "actionType": "seer_check",
+          "actionType": "drunk_seer_check",
           "openPrompt": "預言家 B 請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
           "closePrompt": "預言家 B 請閉眼"
@@ -20468,7 +20365,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -20506,18 +20403,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "fool_seer_check",
           "actorLabel": "愚言家",
           "actorRoleIds": [
             "fool_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "fool_seer_check",
           "openPrompt": "愚言家請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "愚言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "愚言家請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -20567,18 +20461,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "fool_seer_check",
           "actorLabel": "愚言家",
           "actorRoleIds": [
             "fool_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "fool_seer_check",
           "openPrompt": "愚言家請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "愚言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "愚言家請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -20894,18 +20785,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "fox_check",
           "actorLabel": "狐狸",
           "actorRoleIds": [
             "fox"
           ],
-          "actionType": "confirm_only",
+          "actionType": "fox_check",
           "openPrompt": "狐狸請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他們三人中是否有狼人",
-          "closePrompt": "狐狸請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狐狸請閉眼"
         },
         {
           "stepId": "step_4",
@@ -20933,8 +20821,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "stepId": "step_6",
           "actorLabel": "高級平民",
           "actorRoleIds": [
-            "senior_villager",
-            "villager"
+            "senior_villager"
           ],
           "actionType": "confirm_only",
           "openPrompt": "高級平民請睜眼",
@@ -20970,18 +20857,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_3",
+          "stepId": "fox_check",
           "actorLabel": "狐狸",
           "actorRoleIds": [
             "fox"
           ],
-          "actionType": "confirm_only",
+          "actionType": "fox_check",
           "openPrompt": "狐狸請睜眼",
           "actionPrompt": "今晚的查驗手勢為...\n請選擇要查驗的玩家，他們三人中是否有狼人",
-          "closePrompt": "狐狸請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狐狸請閉眼"
         }
       ]
     },
@@ -21965,8 +21849,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "stepId": "step_8",
           "actorLabel": "高級平民",
           "actorRoleIds": [
-            "senior_villager",
-            "villager"
+            "senior_villager"
           ],
           "actionType": "confirm_only",
           "openPrompt": "高級平民請睜眼",
@@ -22331,7 +22214,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -22436,18 +22319,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "nine_tailed_fox_check",
           "actorLabel": "九尾狐",
           "actorRoleIds": [
             "nine_tailed_fox"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nine_tailed_fox_check",
           "openPrompt": "九尾狐請睜眼",
           "actionPrompt": "尾巴剩餘數量為...",
-          "closePrompt": "九尾狐請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "九尾狐請閉眼"
         }
       ]
     },
@@ -23320,7 +23200,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -23380,18 +23260,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "demon_wolf_check",
           "actorLabel": "惡魔",
           "actorRoleIds": [
             "demon_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_wolf_check",
           "openPrompt": "惡魔請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "惡魔請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "惡魔請閉眼"
         }
       ],
       "subsequentNights": [
@@ -23452,18 +23329,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "demon_wolf_check",
           "actorLabel": "惡魔",
           "actorRoleIds": [
             "demon_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_wolf_check",
           "openPrompt": "惡魔請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "惡魔請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "惡魔請閉眼"
         }
       ]
     },
@@ -25275,7 +25149,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -25324,48 +25198,39 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "super_gravekeeper_action",
           "actorLabel": "超級守墓人",
           "actorRoleIds": [
             "super_gravekeeper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "super_gravekeeper_action",
           "openPrompt": "超級守墓人請睜眼",
           "actionPrompt": "請選擇繼承者",
-          "closePrompt": "超級守墓人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "超級守墓人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "gargoyle_check",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_check",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         }
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "gargoyle_team_status",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_team_status",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "今晚的入隊手勢為...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -25413,59 +25278,49 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "super_gravekeeper_action",
           "actorLabel": "超級守墓人",
           "actorRoleIds": [
             "super_gravekeeper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "super_gravekeeper_action",
           "openPrompt": "超級守墓人請睜眼",
           "actionPrompt": "昨天被放逐玩家的身分是...\n請選擇繼承者",
-          "closePrompt": "超級守墓人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "超級守墓人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "super_gravekeeper_heir_check",
           "actorLabel": "繼承者",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "super_gravekeeper_heir_check",
           "openPrompt": "繼承者請睜眼",
           "actionPrompt": "昨天被放逐玩家的身分是...\n超級守墓人為...，之前所有放逐玩家的紀錄為...",
           "closePrompt": "繼承者請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知繼承者是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知繼承者是誰)"
           ]
         },
         {
-          "stepId": "step_8",
+          "stepId": "gargoyle_check",
           "actorLabel": "石像鬼",
           "actorRoleIds": [
             "gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gargoyle_check",
           "openPrompt": "石像鬼請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "石像鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "石像鬼請閉眼"
         },
         {
-          "stepId": "step_9",
+          "stepId": "pumpkin_ghost_check",
           "actorLabel": "南瓜鬼",
           "actorRoleIds": [
             "pumpkin_ghost"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pumpkin_ghost_check",
           "openPrompt": "南瓜鬼請睜眼",
           "actionPrompt": "今晚的繼承手勢為...，石像鬼的查驗紀錄為...\n請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "南瓜鬼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "南瓜鬼請閉眼"
         }
       ]
     },
@@ -26964,7 +26819,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ]
     },
     "compositionNote": "含第二身分機制（開膛手傑克 / 狂熱粉 / 偵探），請搭配實體牌與性別提示主持。",
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -27048,18 +26903,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "demon_wolf_check",
           "actorLabel": "惡魔",
           "actorRoleIds": [
             "demon_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_wolf_check",
           "openPrompt": "惡魔請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "惡魔請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "惡魔請閉眼"
         }
       ],
       "subsequentNights": [
@@ -27120,18 +26972,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "demon_wolf_check",
           "actorLabel": "惡魔",
           "actorRoleIds": [
             "demon_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "demon_wolf_check",
           "openPrompt": "惡魔請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "惡魔請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "惡魔請閉眼"
         }
       ]
     },
@@ -27831,18 +27680,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "白痴請閉眼"
         },
         {
-          "stepId": "step_13",
+          "stepId": "wolf_witch_check",
           "actorLabel": "狼巫",
           "actorRoleIds": [
             "wolf_witch"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_witch_check",
           "openPrompt": "狼巫請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "狼巫請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼巫請閉眼"
         }
       ],
       "subsequentNights": [
@@ -27883,18 +27729,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "wolf_witch_check",
           "actorLabel": "狼巫",
           "actorRoleIds": [
             "wolf_witch"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_witch_check",
           "openPrompt": "狼巫請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "狼巫請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼巫請閉眼"
         },
         {
           "stepId": "step_5",
@@ -29000,19 +28843,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_9",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
-            "awakened_seer",
-            "seer"
+            "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -29070,18 +28909,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "通靈師請閉眼"
         },
         {
-          "stepId": "step_15",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         },
         {
           "stepId": "mech_wolf_reveal_skill",
@@ -29166,19 +29002,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
-            "awakened_seer",
-            "seer"
+            "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "psychic_check",
@@ -29192,18 +29024,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "通靈師請閉眼"
         },
         {
-          "stepId": "step_9",
+          "stepId": "pure_white_check",
           "actorLabel": "純白之女",
           "actorRoleIds": [
             "pure_white_maiden"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pure_white_check",
           "openPrompt": "純白之女請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "純白之女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "純白之女請閉眼"
         },
         {
           "stepId": "hunter_gesture",
@@ -29217,18 +29046,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_11",
+          "stepId": "gravekeeper_check",
           "actorLabel": "守墓人",
           "actorRoleIds": [
             "gravekeeper"
           ],
-          "actionType": "confirm_only",
+          "actionType": "gravekeeper_check",
           "openPrompt": "守墓人請睜眼",
           "actionPrompt": "昨天被放逐玩家的身分是...",
-          "closePrompt": "守墓人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "守墓人請閉眼"
         }
       ]
     },
@@ -29435,18 +29261,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
             "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "step_9",
@@ -29589,18 +29412,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "awakened_seer_check",
           "actorLabel": "覺醒預言家",
           "actorRoleIds": [
             "awakened_seer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "awakened_seer_check",
           "openPrompt": "覺醒預言家請睜眼",
           "actionPrompt": "今晚的技能狀態為...\n請選擇要查驗的兩位玩家，他們的結果是...",
-          "closePrompt": "覺醒預言家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "覺醒預言家請閉眼"
         },
         {
           "stepId": "psychic_check",

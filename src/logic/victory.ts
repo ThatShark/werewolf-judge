@@ -72,6 +72,7 @@ export function checkVictory(
   seats: PlayerSeat[],
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
+  options: { cursedFoxDiedThisResolution?: boolean } = {},
 ): VictoryResult {
   if (seats.length === 0) {
     return { winner: null, winReason: null };
@@ -111,6 +112,17 @@ export function checkVictory(
       : villagersEliminated || godsEliminated;
 
   const goodWon = hasAnyWolf && wolves === 0;
+
+  // 咒狐勝利覆蓋：當好人或狼人任一方達成勝利條件時，若咒狐仍在場（或同結算中同時出局），咒狐單獨獲勝
+  if (wolfWon || goodWon) {
+    const cursedFox = seats.find((s) => s.roleId === 'cursed_fox');
+    if (cursedFox && (cursedFox.isAlive || options.cursedFoxDiedThisResolution)) {
+      return {
+        winner: 'third_party',
+        winReason: '第三方陣營（咒狐）單獨獲勝（結算時咒狐仍在場／同時達成條件）',
+      };
+    }
+  }
 
   if (wolfWon && (!goodWon || ruleOverrides.wolfKillPriority)) {
     if (ruleOverrides.victoryMode === 'slaughter_all') {

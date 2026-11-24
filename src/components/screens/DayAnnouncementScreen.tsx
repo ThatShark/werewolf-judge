@@ -24,6 +24,7 @@ export function DayAnnouncementScreen() {
   const lastMoonSpiritHowl = useGameStore((s) => s.lastMoonSpiritHowl ?? null);
   const lastSeniorVillagerReveal = useGameStore((s) => s.lastSeniorVillagerReveal ?? null);
   const interferenceState = useGameStore((s) => s.interferenceState);
+  const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const combatState = useGameStore((s) => s.combatState);
   const reviveWithAlchemySnake = useGameStore((s) => s.reviveWithAlchemySnake);
   const triggerWhiteCatDelayedDeath = useGameStore((s) => s.triggerWhiteCatDelayedDeath);
@@ -188,6 +189,33 @@ export function DayAnnouncementScreen() {
             {interferenceState.activeTricksterVoteSwap[1]} 號於今日放逐計票時將自動對調票數。
           </section>
         )}
+
+        {thirdPartySpecialState?.crowActiveCursedSeat != null && (
+          <section className="rounded-2xl border border-violet-400/50 bg-violet-950/35 p-3 text-xs font-bold text-violet-100">
+            🐦 烏鴉詛咒：{thirdPartySpecialState.crowActiveCursedSeat} 號於今日放逐投票無條件 +1 票。
+          </section>
+        )}
+
+        {!isOnlineJudge && thirdPartySpecialState?.butlerActiveVoteBonusSeat != null && (
+          <section className="rounded-2xl border border-sky-400/45 bg-sky-950/30 p-3 text-xs font-bold text-sky-100">
+            🍵 管家上茶（法官視角）：平民 {thirdPartySpecialState.butlerActiveVoteBonusSeat} 號今日放逐投票票權 +1（警長 2.5 票）。
+          </section>
+        )}
+
+        {!isOnlineJudge && thirdPartySpecialState?.wolfMaidActiveVotePenaltySeat != null && (
+          <section className="rounded-2xl border border-rose-400/45 bg-rose-950/30 p-3 text-xs font-bold text-rose-100">
+            🫖 狼僕上茶（法官視角）：平民 {thirdPartySpecialState.wolfMaidActiveVotePenaltySeat} 號今日放逐投票票權 -1（警長 0.5 票）。
+          </section>
+        )}
+
+        {!isOnlineJudge &&
+          thirdPartySpecialState &&
+          !thirdPartySpecialState.sleepingBeautyAwakened &&
+          thirdPartySpecialState.sleepingSeats.length > 0 && (
+            <section className="rounded-2xl border border-indigo-400/45 bg-indigo-950/30 p-3 text-xs font-bold text-indigo-100">
+              😴 睡美人睡眠擴散（法官視角）：目前睡眠座位為 {thirdPartySpecialState.sleepingSeats.join('、')} 號（熊不咆哮／女巫毒失效／獵人禁槍／禁言無效）。
+            </section>
+          )}
 
         {!isOnlineJudge &&
           interferenceState &&

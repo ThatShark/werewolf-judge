@@ -111,13 +111,14 @@ export function getSeerCheckResult(
     };
   }
 
-  // 隱狼、雪狼、混血兒、咒狐與邱比特被預言家查驗恆為好人（金水）
+  // 隱狼、雪狼、混血兒、咒狐、邱比特與潘朵拉被預言家查驗恆為好人（金水）
   if (
     target.roleId === 'hidden_wolf' ||
     target.roleId === 'snow_wolf' ||
     target.roleId === 'hybrid' ||
     target.roleId === 'cursed_fox' ||
-    target.roleId === 'cupid'
+    target.roleId === 'cupid' ||
+    target.roleId === 'pandora'
   ) {
     return {
       targetSeat,

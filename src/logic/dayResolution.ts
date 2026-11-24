@@ -557,6 +557,11 @@ export function resolveSelfExplode(
     scent_phantom: '尋香魅影不可自爆',
     puppet_wolf: '傀儡不可自爆',
     chameleon_wolf_king: '百變狼王不可自爆',
+    nine_tails_wolf: '九尾不可自爆',
+    masked_wolf: '假面不可自爆',
+    evil_merchant: '邪惡商人不可自爆',
+    wolf_maid: '狼僕不可自爆',
+    super_black_market_merchant: '超級黑市商人不可自爆',
   };
   if (player.roleId && nonExplodableCombatRoles[player.roleId]) {
     return {

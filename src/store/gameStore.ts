@@ -7,11 +7,14 @@ import {
   DEFAULT_ONLINE_JUDGE_SETTINGS,
   DEFAULT_RULE_OVERRIDES,
   DEFAULT_SPEAK_DURATION_SEC,
+  applyPandoraGift,
+  checkVictory,
   claimSeatRole as claimSeatRoleLogic,
   clampOnlineJudgeSettings,
   createEmptyNightDraft,
   createInitialCombatState,
   createInitialConversionState,
+  createInitialThirdPartySpecialState,
   createInitialGargoyleState,
   createInitialHiddenWolfState,
   createInitialHybridState,
@@ -34,11 +37,14 @@ import {
   resolveAlchemySnakeRevive,
   resolveAvengerAssassinate,
   resolveAwakenedHunterDirectionShoot,
+  resolveBaiZeInherit,
   resolveDayExile,
   resolveGoodSelfExplode,
   resolveKnightDuel,
   resolveNight,
+  resolveNineTailsHunt,
   resolveOldRascalDelayedDeath,
+  resolvePandoraHopeLight,
   resolvePufferfishExplode,
   resolveSelfExplode,
   resolveSheriffVoteRound,
@@ -50,6 +56,7 @@ import {
   shouldTriggerAutoVictory,
   startSheriffElection as startSheriffElectionLogic,
   syncGargoyleTeamStatus,
+  syncBatch5LoneWolfTeamStatus,
   syncConversionOnDeaths,
   syncPumpkinGhostInheritance,
   syncSheriffBadgeOnDeaths,
@@ -68,6 +75,7 @@ import type {
   DeathReason,
   ExileVoteTallyResult,
   GameState,
+  PandoraBoxItem,
   GameWinner,
   GoodSelfExplodeResult,
   HostModeConfig,
@@ -133,6 +141,7 @@ export type UndoSnapshotData = Pick<
   | 'interferenceState'
   | 'combatState'
   | 'conversionState'
+  | 'thirdPartySpecialState'
   | 'speakingQueue'
   | 'currentSpeakerIndex'
   | 'speakingMeta'
@@ -234,6 +243,16 @@ export interface GameStore extends GameState {
   awakenedHunterShoot: (hunterSeat: number, direction: 'left' | 'right') => { allowed: boolean; killedSeat?: number | null };
   triggerOldRascalDelayedDeath: () => void;
   avengerAssassinate: (targetSeat: number) => { allowed: boolean; reason?: string; killedSeat?: number | null };
+  /** 第 5 批：潘朵拉白天贈盒／希望之光／九尾獵殺時刻／白澤繼承人 */
+  pandoraDayGift: (
+    targetSeat: number,
+    item: PandoraBoxItem,
+  ) => { allowed: boolean; reason?: string; poisonedSeat?: number | null };
+  usePandoraHopeLight: (
+    actorSeat: number,
+  ) => { allowed: boolean; reason?: string; triggeredWinner?: string | null };
+  triggerNineTailsHunt: () => { success: boolean; eliminatedSeats: number[] };
+  setBaiZeHeir: (heirSeat: number) => { allowed: boolean; reason?: string };
   advanceToNextNight: () => void;
 
   toggleSeatAlive: (seatNumber: number, options?: { reason?: DeathReason }) => void;
@@ -297,6 +316,7 @@ function createInitialGameState(): GameState & {
     interferenceState: createInitialInterferenceState(),
     combatState: createInitialCombatState(),
     conversionState: createInitialConversionState(),
+    thirdPartySpecialState: createInitialThirdPartySpecialState(),
     speakingQueue: [],
     currentSpeakerIndex: 0,
     speakingMeta: null,
@@ -352,6 +372,7 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     interferenceState: state.interferenceState,
     combatState: state.combatState,
     conversionState: state.conversionState,
+    thirdPartySpecialState: state.thirdPartySpecialState,
     speakingQueue: state.speakingQueue,
     currentSpeakerIndex: state.currentSpeakerIndex,
     speakingMeta: state.speakingMeta,
@@ -762,6 +783,8 @@ export const useGameStore = create<GameStore>()(
           interferenceState: state.interferenceState ?? createInitialInterferenceState(),
           combatState: state.combatState ?? createInitialCombatState(),
           conversionState: state.conversionState ?? createInitialConversionState(),
+          thirdPartySpecialState:
+            state.thirdPartySpecialState ?? createInitialThirdPartySpecialState(),
         });
 
         const deathMap = new Map(result.deaths.map((d) => [d.seat, d.reason]));
@@ -835,6 +858,7 @@ export const useGameStore = create<GameStore>()(
           interferenceState: result.interferenceState,
           combatState: result.combatState,
           conversionState: result.conversionState,
+          thirdPartySpecialState: result.thirdPartySpecialState,
           sheriffState: nextSheriffState,
           speakingQueue: [],
           currentSpeakerIndex: 0,
@@ -1646,6 +1670,146 @@ export const useGameStore = create<GameStore>()(
           undoStack: pushUndo(state, `復仇者刺殺 ${targetSeat} 號`),
         });
         return { allowed: true, killedSeat: res.killedSeat };
+      },
+
+      pandoraDayGift: (targetSeat, item) => {
+        const state = get();
+        const res = applyPandoraGift(
+          state.seats,
+          state.thirdPartySpecialState ?? createInitialThirdPartySpecialState(),
+          targetSeat,
+          item,
+          state.round,
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const syncedState = syncBatch5LoneWolfTeamStatus(res.seats, res.state);
+        const victory = checkVictory(res.seats, state.ruleOverrides, undefined, {
+          conversionState: state.conversionState,
+          thirdPartySpecialState: syncedState,
+        });
+        const triggerGameOver = shouldTriggerAutoVictory(
+          victory,
+          state.forceContinueAfterVictory,
+        );
+        const summary =
+          res.poisonedSeat != null
+            ? `潘朵拉白天贈送魔盒給 ${targetSeat} 號，開出毒藥立即出局`
+            : `潘朵拉白天贈送魔盒給 ${targetSeat} 號`;
+        set({
+          seats: res.seats,
+          thirdPartySpecialState: syncedState,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat,
+          }),
+          winner: triggerGameOver ? victory.winner : state.winner,
+          winReason: triggerGameOver ? victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, `潘朵拉贈送魔盒給 ${targetSeat} 號`),
+        });
+        return { allowed: true, poisonedSeat: res.poisonedSeat };
+      },
+
+      usePandoraHopeLight: (actorSeat) => {
+        const state = get();
+        const res = resolvePandoraHopeLight(
+          state.seats,
+          state.thirdPartySpecialState ?? createInitialThirdPartySpecialState(),
+          actorSeat,
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const victory = checkVictory(state.seats, state.ruleOverrides, undefined, {
+          conversionState: state.conversionState,
+          thirdPartySpecialState: res.state,
+        });
+        const triggerGameOver = shouldTriggerAutoVictory(
+          victory,
+          state.forceContinueAfterVictory,
+        );
+        const summary = res.triggeredWinner
+          ? `${actorSeat} 號使用潘朵拉「希望之光」觸發勝利！`
+          : `${actorSeat} 號使用潘朵拉「希望之光」（未達最後一人條件，未觸發勝利）`;
+        set({
+          thirdPartySpecialState: res.state,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            actorSeat,
+          }),
+          winner: triggerGameOver ? victory.winner : state.winner,
+          winReason: triggerGameOver ? victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, `${actorSeat} 號使用希望之光`),
+        });
+        return { allowed: true, triggeredWinner: res.triggeredWinner };
+      },
+
+      triggerNineTailsHunt: () => {
+        const state = get();
+        const tpState = state.thirdPartySpecialState ?? createInitialThirdPartySpecialState();
+        const res = resolveNineTailsHunt(state.seats, tpState, state.round);
+        if (!res.success) {
+          return { success: false, eliminatedSeats: [] };
+        }
+        const syncedState = syncBatch5LoneWolfTeamStatus(res.seats, tpState);
+        const victory = checkVictory(res.seats, state.ruleOverrides, undefined, {
+          conversionState: state.conversionState,
+          thirdPartySpecialState: syncedState,
+        });
+        const triggerGameOver = shouldTriggerAutoVictory(
+          victory,
+          state.forceContinueAfterVictory,
+        );
+        const summary = `九尾發動「獵殺時刻」成功（A=${res.groupACount} > B=${res.groupBCount}），B 方 ${res.eliminatedSeats.join('、')} 號全員出局並立刻入夜！`;
+        set({
+          seats: res.seats,
+          thirdPartySpecialState: syncedState,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+          }),
+          winner: triggerGameOver ? victory.winner : state.winner,
+          winReason: triggerGameOver ? victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : 'night',
+          round: triggerGameOver ? state.round : state.round + 1,
+          currentStepIndex: triggerGameOver ? state.currentStepIndex : 0,
+          currentNightDraft: triggerGameOver
+            ? state.currentNightDraft
+            : createEmptyNightDraft(state.round + 1),
+          undoStack: pushUndo(state, '九尾獵殺時刻成功'),
+        });
+        return { success: true, eliminatedSeats: res.eliminatedSeats };
+      },
+
+      setBaiZeHeir: (heirSeat) => {
+        const state = get();
+        const res = resolveBaiZeInherit(
+          state.seats,
+          state.thirdPartySpecialState ?? createInitialThirdPartySpecialState(),
+          heirSeat,
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const summary =
+          res.heirType === 'villager'
+            ? `白澤指定 ${heirSeat} 號為繼承人（平民轉為神／民雙陣營）`
+            : res.heirType === 'god'
+              ? `白澤指定 ${heirSeat} 號為繼承人（神職夜死延遲至下一放逐結束後生效）`
+              : `白澤指定 ${heirSeat} 號為繼承人（狼人陣營，無事發生）`;
+        set({
+          seats: res.seats,
+          thirdPartySpecialState: res.state,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat: heirSeat,
+          }),
+          undoStack: pushUndo(state, `白澤指定繼承人 ${heirSeat} 號`),
+        });
+        return { allowed: true };
       },
 
       selfExplode: (wolfSeat) => {

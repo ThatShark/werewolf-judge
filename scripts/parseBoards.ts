@@ -903,6 +903,22 @@ const AUTOMATED_ROLE_IDS = new Set([
   'thief',
   'jack_the_ripper',
   'fanatic',
+  // 第 5 批：第三方獨立勝利、特殊計分與收集／贈禮類（15 角色）
+  'pandora',
+  'sleeping_beauty',
+  'exotic_prince',
+  'nine_tails_wolf',
+  'bai_ze',
+  'dancer',
+  'masked_wolf',
+  'crow',
+  'miracle_merchant',
+  'black_market_merchant',
+  'super_black_market_merchant',
+  'evil_merchant',
+  'medium',
+  'butler',
+  'wolf_maid',
 ]);
 
 function stripMarkdownFormatting(input: string): string {
@@ -1738,6 +1754,58 @@ function inferNightActionType(
     (combined.includes('狂熱粉') || combined.includes('擊殺'))
   ) {
     return 'jack_ripper_action';
+  }
+  // 第 5 批：第三方獨立勝利、特殊計分與收集／贈禮類
+  if (actorRoleIds.includes('pandora') && actorRoleIds.length === 1) {
+    if (combined.includes('襲擊') || combined.includes('開刀') || combined.includes('刀')) {
+      return 'pandora_knife';
+    }
+    return 'pandora_gift';
+  }
+  if (actorRoleIds.includes('sleeping_beauty') && actorRoleIds.length === 1) {
+    return 'sleeping_beauty_pick';
+  }
+  if (actorRoleIds.includes('exotic_prince') && actorRoleIds.length === 1) {
+    return 'exotic_prince_check';
+  }
+  if (actorRoleIds.includes('nine_tails_wolf') && actorRoleIds.length === 1) {
+    return 'nine_tails_mark';
+  }
+  if (actorRoleIds.includes('bai_ze') && actorRoleIds.length === 1) {
+    return 'bai_ze_clear';
+  }
+  if (actorRoleIds.includes('dancer') && actorRoleIds.length === 1) {
+    return 'dancer_dance';
+  }
+  if (actorRoleIds.includes('masked_wolf') && actorRoleIds.length === 1) {
+    return 'masked_wolf_action';
+  }
+  if (actorRoleIds.includes('crow') && actorRoleIds.length === 1) {
+    return 'crow_curse';
+  }
+  if (actorRoleIds.includes('miracle_merchant') && actorRoleIds.length === 1) {
+    return 'miracle_merchant_gift';
+  }
+  if (actorRoleIds.includes('black_market_merchant') && actorRoleIds.length === 1) {
+    return 'black_market_gift';
+  }
+  if (actorRoleIds.includes('super_black_market_merchant') && actorRoleIds.length === 1) {
+    return 'super_black_market_gift';
+  }
+  if (actorRoleIds.includes('evil_merchant') && actorRoleIds.length === 1) {
+    return 'evil_merchant_gift';
+  }
+  if (actorRoleIds.includes('medium') && actorRoleIds.length === 1) {
+    return 'medium_channel';
+  }
+  if (actorRoleIds.includes('butler') && actorRoleIds.length === 1) {
+    return 'butler_tea';
+  }
+  if (actorRoleIds.includes('wolf_maid') && actorRoleIds.length === 1) {
+    return 'wolf_maid_tea';
+  }
+  if (combined.includes('幸運兒') && (combined.includes('技能') || combined.includes('使用'))) {
+    return 'lucky_item_action';
   }
 
   return 'confirm_only';

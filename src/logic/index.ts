@@ -9,6 +9,7 @@ export * from './inspectionRoles';
 export * from './interferenceRoles';
 export * from './combatRoles';
 export * from './conversionRoles';
+export * from './thirdPartySpecialRoles';
 export * from './advancedRoles';
 export * from './speakingOrder';
 export * from './sheriff';

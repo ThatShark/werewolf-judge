@@ -84,6 +84,15 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   xu_xian_link: '許仙綁定鏈殉情出局',
   avenger_assassinate: '復仇者刺殺出局',
   jack_ripper_kill: '開膛手傑克擊殺出局',
+  pandora_poison: '開啟潘朵拉魔盒毒藥出局',
+  pandora_knife: '遭潘朵拉魔盒刀襲擊出局',
+  pandora_day_gun: '遭潘朵拉魔盒日槍帶走',
+  nine_tails_hunt: '遭九尾獵殺時刻淘汰',
+  dance_out: '舞者舞池陣營少數出局',
+  merchant_backfire: '商人贈禮給狼人反噬出局',
+  medium_knife: '遭通靈者繼承狼刀擊殺',
+  butler_seer_kill: '管家上茶預言家查殺出局',
+  wolf_maid_tea_kill: '狼僕毒茶出局',
   manual_judge: '法官手動標記出局',
 };
 

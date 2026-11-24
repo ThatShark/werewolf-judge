@@ -30,6 +30,7 @@ const LOGIC_ENGINE_FILES = [
   'interferenceRoles.ts',
   'combatRoles.ts',
   'conversionRoles.ts',
+  'thirdPartySpecialRoles.ts',
   'victory.ts',
 ] as const;
 
@@ -140,6 +141,22 @@ const FULL_AUTOMATED_ROLE_CAPABILITIES: Record<string, string> = {
   thief: '首夜第一個睜眼從剩餘兩張底牌擇一（含狼必選狼、雙狼重開）',
   jack_the_ripper: '首夜指定狂熱粉（原身分失效）；任一方出局後每晚可無視解藥單獨擊殺一人',
   fanatic: '與開膛手傑克同屬第三方勝利條件，無擊殺能力',
+  // 第 5 批：第三方獨立勝利、特殊計分與收集／贈禮類（15 角色）
+  pandora: '驗為好人；共 5 魔盒（刀／毒／希望之光／2 日槍）每人限贈 1 次，3 條獨立勝利條件且優先於他陣營',
+  sleeping_beauty: '首夜隨機指定睡美人、次夜起左右擴散 1 格睡眠，封鎖熊／女巫毒／獵人槍／禁言，全狼睡眠空刀',
+  exotic_prince: '平民不受睡眠影響（抽中則本場無睡美人）；第二晚起每晚查驗並喚醒睡美人清除全場睡眠',
+  nine_tails_wolf: '不可自爆、初始不入隊（餘狼滅入隊）；每晚與投票標記玩家，白天獵殺時刻 A > B 全滅 B 方並入夜',
+  bai_ze: '每晚清除目標標記；夜死或放逐翻牌指定繼承人（平民轉神民雙陣營、神職夜死延遲至下一放逐後）',
+  dancer: '第二晚起每晚選 3 名未進舞池存活者，陣營少數者出局；舞者在舞池中三人免疫當晚狼刀',
+  masked_wolf: '不可自爆、初始不入隊（餘狼滅入隊）；第二晚起每晚查驗是否在舞池並改判一人舞池陣營',
+  crow: '每晚詛咒存活玩家（不可連選、禁選翻牌白痴），隔天白天放逐投票無條件 +1 票',
+  miracle_merchant: '整局限一次贈送幸運兒查驗／毒／盾（盾可奶穿）；贈給狼人則不獲技且商人反噬出局（受攝夢免疫）',
+  black_market_merchant: '整局限一次贈送幸運兒查驗／毒／獵槍；贈給狼人則不獲技且商人反噬出局（受攝夢免疫）',
+  super_black_market_merchant: '首夜選 3 名幸運兒分別交易查驗／毒／獵槍；若 3 人皆好人則天亮轉入狼人陣營（餘狼滅帶刀）',
+  evil_merchant: '不可自爆、隨狼刀；首夜贈小狼獵槍，白天無槍狼死可收回改贈毒藥，任一道具使用即永久失能',
+  medium: '每晚將已死玩家技能（狼刀／查驗／毒／盾）通靈給非己存活者次夜一次性使用（每死／活人限一次）',
+  butler: '第二晚起每晚上茶（每人限一次）：預言家驗狼殺、女巫多毒、守衛雙守護至白天、小狼空刀、平民 +1 票',
+  wolf_maid: '不可自爆、初始不入隊（餘狼滅入隊）；第二晚起上茶：預／女出局、守衛首目標死、小狼多刀、平民 -1 票',
 };
 
 /** 僅實作局部交互、尚未完成完整規則結算的角色註記（歸入清單 B） */
@@ -175,6 +192,7 @@ const ROLE_SYMBOL_PATTERNS: Record<string, RegExp> = {
   seer: /\b(?:getSeerCheckResult|seerCheckTarget|seerResult)\b/,
   psychic: /\b(?:getPsychicCheckResult|psychicCheckTarget|psychicResult)\b/,
   wolf: /\b(?:wolfTarget|wolf_kill|self_explode)\b/,
+  sleeping_beauty: /\b(?:sleepingBeautySeat|advanceSleepSpread|isSeatAsleep)\b/,
 };
 
 function scanLogicReferences(roleIds: string[]): Map<string, string[]> {

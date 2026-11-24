@@ -126,6 +126,23 @@ export type NightActionType =
   | 'chameleon_wolf_choose'
   | 'thief_choose'
   | 'jack_ripper_action'
+  | 'pandora_gift'
+  | 'pandora_knife'
+  | 'sleeping_beauty_pick'
+  | 'exotic_prince_check'
+  | 'nine_tails_mark'
+  | 'bai_ze_clear'
+  | 'dancer_dance'
+  | 'masked_wolf_action'
+  | 'crow_curse'
+  | 'miracle_merchant_gift'
+  | 'black_market_gift'
+  | 'super_black_market_gift'
+  | 'evil_merchant_gift'
+  | 'medium_channel'
+  | 'butler_tea'
+  | 'wolf_maid_tea'
+  | 'lucky_item_action'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -361,6 +378,15 @@ export type DeathReason =
   | 'xu_xian_link'
   | 'avenger_assassinate'
   | 'jack_ripper_kill'
+  | 'pandora_poison'
+  | 'pandora_knife'
+  | 'pandora_day_gun'
+  | 'nine_tails_hunt'
+  | 'dance_out'
+  | 'merchant_backfire'
+  | 'medium_knife'
+  | 'butler_seer_kill'
+  | 'wolf_maid_tea_kill'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -396,6 +422,10 @@ export interface PlayerSeat {
   isPuppetized?: boolean;
   /** 特殊狀態：遭殭屍感染 */
   infectedByZombie?: boolean;
+  /** 特殊狀態：白澤繼承人（平民）轉為神／民雙陣營 */
+  baiZeDualFaction?: boolean;
+  /** 特殊狀態：白澤繼承人（神職）夜死延遲至下一放逐投票結束後生效 */
+  baiZeDelayedDeath?: boolean;
 }
 
 export interface MechWolfRuntimeState {
@@ -648,6 +678,73 @@ export interface ConversionRuntimeState {
   jackRipperKillUnlocked: boolean;
 }
 
+/** 潘朵拉魔盒道具類型 */
+export type PandoraBoxItem = 'knife' | 'poison' | 'hope_light' | 'day_gun';
+/** 商人贈禮道具類型 */
+export type MerchantGiftItem = 'seer_check' | 'witch_poison' | 'guard_shield' | 'hunter_gun';
+/** 通靈者可通靈技能類型 */
+export type MediumSkillType = 'wolf_kill' | 'seer_check' | 'witch_poison' | 'guard_shield';
+
+/** 第 5 批：第三方獨立勝利、特殊計分與收集／贈禮類持久化狀態 */
+export interface ThirdPartySpecialRuntimeState {
+  // 潘朵拉（5 個魔盒：1 刀、1 毒、1 希望之光、2 日槍）
+  pandoraRemainingBoxes: PandoraBoxItem[];
+  pandoraGiftHistory: Array<{ seat: number; item: PandoraBoxItem; used: boolean }>;
+  pandoraKnifeUsed: boolean;
+  pandoraHopeLightWinner: GameWinner | null;
+  // 睡美人 & 異族王子
+  sleepingBeautySeat: number | null;
+  sleepingBeautyAwakened: boolean;
+  sleepingSeats: number[];
+  // 九尾 & 白澤
+  nineTailsMarkedSeats: number[];
+  nineTailsJoinedTeam: boolean;
+  baiZeHeirSeat: number | null;
+  baiZeHeirRoleType: 'villager' | 'god' | 'wolf' | null;
+  // 舞者 & 假面
+  dancerVisitedSeats: number[];
+  maskedWolfJoinedTeam: boolean;
+  maskedWolfLastCheckSeat: number | null;
+  maskedWolfLastAlterSeat: number | null;
+  // 烏鴉
+  crowLastCursedSeat: number | null;
+  crowActiveCursedSeat: number | null;
+  // 奇蹟商人 & 黑市商人 & 超級黑市商人 & 邪惡商人
+  miracleMerchantUsed: boolean;
+  miracleLuckySeat: number | null;
+  miracleLuckyItem: MerchantGiftItem | null;
+  miracleLuckyItemUsed: boolean;
+  blackMarketMerchantUsed: boolean;
+  blackMarketLuckySeat: number | null;
+  blackMarketLuckyItem: MerchantGiftItem | null;
+  blackMarketLuckyItemUsed: boolean;
+  superBlackMarketUsed: boolean;
+  superBlackMarketGifts: Array<{ seat: number; item: MerchantGiftItem; used: boolean }>;
+  superBlackMarketTurnedWolf: boolean;
+  superBlackMarketJoinedTeam: boolean;
+  evilMerchantGunHolderSeat: number | null;
+  evilMerchantPoisonHolderSeat: number | null;
+  evilMerchantDisabled: boolean;
+  // 通靈者
+  mediumChanneledDeadSeats: number[];
+  mediumInheritedHeirs: Array<{
+    heirSeat: number;
+    fromDeadSeat: number;
+    skill: MediumSkillType;
+    receivedRound: number;
+    used: boolean;
+  }>;
+  // 管家 & 狼僕
+  butlerServedSeats: number[];
+  butlerActiveTeaSeat: number | null;
+  butlerActiveVoteBonusSeat: number | null;
+  butlerDayProtectedSeat: number | null;
+  wolfMaidJoinedTeam: boolean;
+  wolfMaidServedSeats: number[];
+  wolfMaidActiveTeaSeat: number | null;
+  wolfMaidActiveVotePenaltySeat: number | null;
+}
+
 export interface NightActionDraft {
   round: number;
   guardTarget: number | null;
@@ -744,6 +841,41 @@ export interface NightActionDraft {
   thiefChosenRoleId?: string | null;
   jackRipperFanaticTarget?: number | null;
   jackRipperKillTarget?: number | null;
+  /** 第 5 批：第三方獨立勝利、特殊計分與收集／贈禮類夜間草稿 */
+  pandoraGiftTarget?: number | null;
+  pandoraGiftItem?: PandoraBoxItem | null;
+  pandoraKnifeTarget?: number | null;
+  sleepingBeautyPickSeat?: number | null;
+  exoticPrinceCheckTarget?: number | null;
+  nineTailsMarkTarget?: number | null;
+  baiZeClearTarget?: number | null;
+  dancerFloorTargets?: number[];
+  maskedWolfCheckTarget?: number | null;
+  maskedWolfAlterTarget?: number | null;
+  crowCurseTarget?: number | null;
+  miracleMerchantTarget?: number | null;
+  miracleMerchantItem?: MerchantGiftItem | null;
+  blackMarketTarget?: number | null;
+  blackMarketItem?: MerchantGiftItem | null;
+  superBlackMarketTargets?: {
+    seer_check?: number | null;
+    witch_poison?: number | null;
+    hunter_gun?: number | null;
+  };
+  evilMerchantTarget?: number | null;
+  evilMerchantGiftType?: 'hunter_gun' | 'witch_poison' | null;
+  mediumDeadSeat?: number | null;
+  mediumHeirSeat?: number | null;
+  mediumSkillActionSeat?: number | null;
+  mediumSkillTargetSeat?: number | null;
+  butlerTeaTarget?: number | null;
+  butlerTeaAccepted?: boolean;
+  butlerGuardSecondTarget?: number | null;
+  wolfMaidTeaTarget?: number | null;
+  wolfMaidTeaAccepted?: boolean;
+  wolfMaidExtraKillTarget?: number | null;
+  luckyItemActorSeat?: number | null;
+  luckyItemTargetSeat?: number | null;
 }
 
 export interface BearRoarResult {
@@ -937,6 +1069,8 @@ export interface GameState {
   combatState?: CombatRuntimeState;
   /** 第 4 批：死亡連帶／認主／換牌／陣營轉換持久化狀態 */
   conversionState?: ConversionRuntimeState;
+  /** 第 5 批：第三方獨立勝利／特殊計分／收集／贈禮持久化狀態 */
+  thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
 
   /** 自動發言順序與單人倒數計時引擎 */
   speakingQueue: number[];
@@ -1036,6 +1170,7 @@ export interface NightResolutionInput {
   interferenceState?: InterferenceRuntimeState;
   combatState?: CombatRuntimeState;
   conversionState?: ConversionRuntimeState;
+  thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
   /** 測試可注入之亂數產生器（酒鬼預言家預設隨機用） */
   rng?: () => number;
 }
@@ -1067,6 +1202,7 @@ export interface NightResolutionResult {
   interferenceState: InterferenceRuntimeState;
   combatState: CombatRuntimeState;
   conversionState: ConversionRuntimeState;
+  thirdPartySpecialState: ThirdPartySpecialRuntimeState;
   /** 今晚白貓觸發翻牌免死的座號 */
   whiteCatRevealedSeats: number[];
   /** 今晚因蒙面人被動而進入負傷／中毒延遲死亡的座號 */

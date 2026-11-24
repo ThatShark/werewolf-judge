@@ -260,7 +260,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -286,30 +286,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "miracle_merchant_gift",
           "actorLabel": "奇蹟商人",
           "actorRoleIds": [
             "miracle_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "miracle_merchant_gift",
           "openPrompt": "奇蹟商人請睜眼",
           "actionPrompt": "你選擇幸運兒和要給的禮物",
-          "closePrompt": "奇蹟商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "奇蹟商人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "你獲得的技能是...，請問你是否要使用技能",
           "closePrompt": "幸運兒請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知幸運兒是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知幸運兒是誰)"
           ]
         }
       ],
@@ -337,16 +333,13 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "請問你是否要使用技能",
-          "closePrompt": "幸運兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "幸運兒請閉眼"
         }
       ]
     },
@@ -1798,18 +1791,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         },
         {
           "stepId": "step_4",
@@ -1848,18 +1838,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ]
     },
@@ -1982,18 +1969,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "pandora_gift",
           "actorLabel": "潘朵拉",
           "actorRoleIds": [
             "pandora"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pandora_gift",
           "openPrompt": "潘朵拉請睜眼",
           "actionPrompt": "請選擇要給予魔盒的對象",
-          "closePrompt": "潘朵拉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "潘朵拉請閉眼"
         },
         {
           "stepId": "step_7",
@@ -2067,18 +2051,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "pandora_gift",
           "actorLabel": "潘朵拉",
           "actorRoleIds": [
             "pandora"
           ],
-          "actionType": "confirm_only",
+          "actionType": "pandora_gift",
           "openPrompt": "潘朵拉請睜眼",
           "actionPrompt": "請選擇要給予魔盒的對象",
-          "closePrompt": "潘朵拉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "潘朵拉請閉眼"
         },
         {
           "stepId": "step_7",
@@ -4387,7 +4368,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -4424,30 +4405,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "miracle_merchant_gift",
           "actorLabel": "奇蹟商人",
           "actorRoleIds": [
             "miracle_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "miracle_merchant_gift",
           "openPrompt": "奇蹟商人請睜眼",
           "actionPrompt": "你選擇幸運兒和要給的禮物",
-          "closePrompt": "奇蹟商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "奇蹟商人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "你獲得的技能是...，請問你是否要使用技能",
           "closePrompt": "幸運兒請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知幸運兒是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知幸運兒是誰)"
           ]
         }
       ],
@@ -4486,16 +4463,13 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "請問你是否要使用技能",
-          "closePrompt": "幸運兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "幸運兒請閉眼"
         }
       ]
     },
@@ -4562,7 +4536,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -4625,30 +4599,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "miracle_merchant_gift",
           "actorLabel": "奇蹟商人",
           "actorRoleIds": [
             "miracle_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "miracle_merchant_gift",
           "openPrompt": "奇蹟商人請睜眼",
           "actionPrompt": "你選擇幸運兒和要給的禮物",
-          "closePrompt": "奇蹟商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "奇蹟商人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "你獲得的技能是...，請問你是否要使用技能",
           "closePrompt": "幸運兒請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知幸運兒是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知幸運兒是誰)"
           ]
         }
       ],
@@ -4713,16 +4683,13 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "請問你是否要使用技能",
-          "closePrompt": "幸運兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "幸運兒請閉眼"
         }
       ]
     },
@@ -7263,18 +7230,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_11",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ],
       "subsequentNights": [
@@ -7358,18 +7322,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ]
     },
@@ -13956,7 +13917,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -14017,30 +13978,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "black_market_gift",
           "actorLabel": "黑市商人",
           "actorRoleIds": [
             "black_market_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "black_market_gift",
           "openPrompt": "黑市商人請睜眼",
           "actionPrompt": "你選擇幸運兒和要給的禮物",
-          "closePrompt": "黑市商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "黑市商人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "你獲得的技能是...",
           "closePrompt": "幸運兒請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知幸運兒是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知幸運兒是誰)"
           ]
         }
       ],
@@ -14102,16 +14059,13 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_6_6",
+          "stepId": "lucky_item_action_6",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "請問你是否要使用技能",
-          "closePrompt": "幸運兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "幸運兒請閉眼"
         },
         {
           "stepId": "wolf_younger_brother_kill_cond_7",
@@ -14207,7 +14161,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -14281,30 +14235,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "miracle_merchant_gift",
           "actorLabel": "奇蹟商人",
           "actorRoleIds": [
             "miracle_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "miracle_merchant_gift",
           "openPrompt": "奇蹟商人請睜眼",
           "actionPrompt": "你選擇幸運兒和要給的禮物",
-          "closePrompt": "奇蹟商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "奇蹟商人請閉眼"
         },
         {
-          "stepId": "step_8",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "你獲得的技能是...，請問你是否要使用技能",
           "closePrompt": "幸運兒請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知幸運兒是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知幸運兒是誰)"
           ]
         }
       ],
@@ -14380,16 +14330,13 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "請問你是否要使用技能",
-          "closePrompt": "幸運兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "幸運兒請閉眼"
         }
       ]
     },
@@ -14520,7 +14467,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -14582,18 +14529,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ],
       "subsequentNights": [
@@ -14656,18 +14600,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ]
     },
@@ -16513,7 +16454,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -16586,32 +16527,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "dancer_dance",
           "actorLabel": "舞者",
           "actorRoleIds": [
             "dancer"
           ],
-          "actionType": "confirm_only",
+          "actionType": "dancer_dance",
           "openPrompt": "舞者請睜眼",
           "actionPrompt": "請選擇入舞池的三人",
-          "closePrompt": "舞者請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "舞者請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "masked_wolf_action",
           "actorLabel": "假面",
           "actorRoleIds": [
             "masked_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "masked_wolf_action",
           "openPrompt": "假面請睜眼",
           "actionPrompt": "請選擇一位玩家，他是否有入舞池\n請選擇要給予面具的玩家",
-          "closePrompt": "假面請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "假面請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -18016,18 +17951,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狐狸請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         },
         {
           "stepId": "step_5",
@@ -18077,18 +18009,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狐狸請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ]
     },
@@ -22426,7 +22355,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -22489,18 +22418,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1_1",
+          "stepId": "medium_channel_1",
           "actorLabel": "通靈者",
           "actorRoleIds": [
             "medium"
           ],
-          "actionType": "confirm_only",
+          "actionType": "medium_channel",
           "openPrompt": "通靈者請睜眼",
           "actionPrompt": "請選擇要通靈的玩家，請選擇要繼承的玩家",
-          "closePrompt": "通靈者請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "通靈者請閉眼"
         },
         {
           "stepId": "step_2_2",
@@ -24541,7 +24467,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -24567,18 +24493,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "白澤請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "nine_tails_mark",
           "actorLabel": "九尾",
           "actorRoleIds": [
             "nine_tails_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nine_tails_mark",
           "openPrompt": "九尾請睜眼",
           "actionPrompt": "請選擇要標記的玩家",
-          "closePrompt": "九尾請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "九尾請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -24628,32 +24551,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "bai_ze_clear",
           "actorLabel": "白澤",
           "actorRoleIds": [
             "bai_ze"
           ],
-          "actionType": "confirm_only",
+          "actionType": "bai_ze_clear",
           "openPrompt": "白澤請睜眼",
           "actionPrompt": "請選擇要清除標記的玩家",
-          "closePrompt": "白澤請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "白澤請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "nine_tails_mark",
           "actorLabel": "九尾",
           "actorRoleIds": [
             "nine_tails_wolf"
           ],
-          "actionType": "confirm_only",
+          "actionType": "nine_tails_mark",
           "openPrompt": "九尾請睜眼",
           "actionPrompt": "請選擇要標記的玩家\n今晚的帶刀手勢是...",
-          "closePrompt": "九尾請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "九尾請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -25006,7 +24923,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -25033,18 +24950,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "evil_merchant_gift",
           "actorLabel": "邪惡商人",
           "actorRoleIds": [
             "evil_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "evil_merchant_gift",
           "openPrompt": "邪惡商人請睜眼",
           "actionPrompt": "請選擇要分槍的對象",
-          "closePrompt": "邪惡商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "邪惡商人請閉眼"
         },
         {
           "stepId": "step_4",
@@ -25119,18 +25033,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "evil_merchant_gift",
           "actorLabel": "邪惡商人",
           "actorRoleIds": [
             "evil_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "evil_merchant_gift",
           "openPrompt": "邪惡商人請睜眼",
           "actionPrompt": "能換毒藥的手勢為...\n是否要收回獵槍？請選擇要給毒藥的對象",
-          "closePrompt": "邪惡商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "邪惡商人請閉眼"
         },
         {
           "stepId": "step_4",
@@ -25254,7 +25165,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -25303,17 +25214,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "預言家請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "super_black_market_gift",
           "actorLabel": "超級黑市商人",
           "actorRoleIds": [
             "super_black_market_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "super_black_market_gift",
           "openPrompt": "超級黑市商人請睜眼",
           "actionPrompt": "請依序選擇三位幸運兒",
           "closePrompt": "超級黑市商人請閉眼",
           "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。",
             "(法官走若干圈告知三位幸運兒分別是誰)"
           ]
         }
@@ -25331,18 +25241,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2_2",
+          "stepId": "super_black_market_gift_2",
           "actorLabel": "超級黑市商人",
           "actorRoleIds": [
             "super_black_market_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "super_black_market_gift",
           "openPrompt": "超級黑市商人請睜眼",
           "actionPrompt": "你的陣營為...\n今晚的入隊手勢為...",
-          "closePrompt": "超級黑市商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "超級黑市商人請閉眼"
         },
         {
           "stepId": "wolf_kill_3",
@@ -25415,18 +25322,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2_cond_9",
+          "stepId": "super_black_market_gift_cond_9",
           "actorLabel": "超級黑市商人",
           "actorRoleIds": [
             "super_black_market_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "super_black_market_gift",
           "openPrompt": "超級黑市商人請睜眼",
           "actionPrompt": "今晚的入隊手勢為...",
           "closePrompt": "超級黑市商人請閉眼",
           "judgeTips": [
-            "條件分支步驟（第三晚之後）",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "條件分支步驟（第三晚之後）"
           ]
         },
         {
@@ -25996,7 +25902,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -26069,46 +25975,37 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "wolf_maid_tea",
           "actorLabel": "狼僕",
           "actorRoleIds": [
             "wolf_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_maid_tea",
           "openPrompt": "狼僕請睜眼",
           "actionPrompt": "請問你要對誰上茶",
-          "closePrompt": "狼僕請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼僕請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "butler_tea",
           "actorLabel": "管家",
           "actorRoleIds": [
             "butler"
           ],
-          "actionType": "confirm_only",
+          "actionType": "butler_tea",
           "openPrompt": "管家請睜眼",
           "actionPrompt": "你是否被上茶\n請問你要對誰上茶",
-          "closePrompt": "管家請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "管家請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "wolf_maid_tea_2",
           "actorLabel": "狼僕",
           "actorRoleIds": [
             "wolf_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_maid_tea",
           "openPrompt": "狼僕請睜眼",
           "actionPrompt": "你是否被上茶",
-          "closePrompt": "狼僕請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼僕請閉眼"
         },
         {
           "stepId": "guard_protect",
@@ -26732,18 +26629,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "exotic_prince_check",
           "actorLabel": "異族王子",
           "actorRoleIds": [
             "exotic_prince"
           ],
-          "actionType": "confirm_only",
+          "actionType": "exotic_prince_check",
           "openPrompt": "異族王子請睜眼",
           "actionPrompt": "請選擇要查驗的玩家，他是否為睡美人",
-          "closePrompt": "異族王子請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "異族王子請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -27245,18 +27139,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_11",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         },
         {
           "stepId": "step_12",
@@ -27374,18 +27265,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_9",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ]
     },
@@ -27569,18 +27457,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ],
       "subsequentNights": [
@@ -27630,18 +27515,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "crow_curse",
           "actorLabel": "烏鴉",
           "actorRoleIds": [
             "crow"
           ],
-          "actionType": "confirm_only",
+          "actionType": "crow_curse",
           "openPrompt": "烏鴉請睜眼",
           "actionPrompt": "請選擇要詛咒的玩家",
-          "closePrompt": "烏鴉請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "烏鴉請閉眼"
         }
       ]
     },
@@ -28869,30 +28751,26 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵魔人 B 請閉眼"
         },
         {
-          "stepId": "step_11",
+          "stepId": "miracle_merchant_gift",
           "actorLabel": "奇蹟商人",
           "actorRoleIds": [
             "miracle_merchant"
           ],
-          "actionType": "confirm_only",
+          "actionType": "miracle_merchant_gift",
           "openPrompt": "奇蹟商人請睜眼",
           "actionPrompt": "你選擇幸運兒和要給的禮物",
-          "closePrompt": "奇蹟商人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "奇蹟商人請閉眼"
         },
         {
-          "stepId": "step_12",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "你獲得的技能是...，請問你是否要使用技能",
           "closePrompt": "幸運兒請閉眼",
           "judgeTips": [
-            "(法官走若干圈告知幸運兒是誰)",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "(法官走若干圈告知幸運兒是誰)"
           ]
         },
         {
@@ -29025,16 +28903,13 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵魔人 B 請閉眼"
         },
         {
-          "stepId": "step_11",
+          "stepId": "lucky_item_action",
           "actorLabel": "幸運兒",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "lucky_item_action",
           "openPrompt": "幸運兒請睜眼",
           "actionPrompt": "請問你是否要使用技能",
-          "closePrompt": "幸運兒請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "幸運兒請閉眼"
         }
       ]
     },

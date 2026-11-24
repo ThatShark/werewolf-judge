@@ -49,6 +49,24 @@ import {
   evaluateCupidAffiliation,
   syncConversionOnDeaths,
 } from './conversionRoles';
+import {
+  addNineTailsMark,
+  advanceSleepSpread,
+  applyPandoraGift,
+  areAllAliveWolvesAsleep,
+  canCrowCurse,
+  canDancerPickFloor,
+  canMediumChannel,
+  canPandoraKnifeHolderAttack,
+  clearBaiZeMarks,
+  cloneThirdPartySpecialState,
+  createInitialThirdPartySpecialState,
+  getChannelableSkillForRole,
+  isSeatAsleep,
+  resolveDancerFloor,
+  resolveExoticPrinceCheck,
+  syncBatch5LoneWolfTeamStatus,
+} from './thirdPartySpecialRoles';
 import { checkCanShoot } from './dayResolution';
 import {
   canAwakenedDreamCatcherDream,
@@ -386,6 +404,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     interferenceState = createInitialInterferenceState(),
     combatState = createInitialCombatState(),
     conversionState = createInitialConversionState(),
+    thirdPartySpecialState = createInitialThirdPartySpecialState(),
     rng,
   } = input;
 
@@ -438,6 +457,32 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextCombatState,
   );
   let nextConversionState = cloneConversionState(conversionState);
+  let nextThirdPartySpecialState = cloneThirdPartySpecialState(thirdPartySpecialState);
+  nextThirdPartySpecialState.crowActiveCursedSeat = null;
+  nextThirdPartySpecialState.butlerActiveTeaSeat = null;
+  nextThirdPartySpecialState.butlerActiveVoteBonusSeat = null;
+  nextThirdPartySpecialState.butlerDayProtectedSeat = null;
+  nextThirdPartySpecialState.wolfMaidActiveTeaSeat = null;
+  nextThirdPartySpecialState.wolfMaidActiveVotePenaltySeat = null;
+  // 睡美人睡眠擴散與異族王子喚醒
+  nextThirdPartySpecialState = advanceSleepSpread(
+    updatedSeats,
+    nextThirdPartySpecialState,
+    round,
+    draft.sleepingBeautyPickSeat,
+  );
+  if (
+    round >= 2 &&
+    draft.exoticPrinceCheckTarget != null &&
+    updatedSeats.some((s) => s.roleId === 'exotic_prince' && s.isAlive)
+  ) {
+    const wakeOutcome = resolveExoticPrinceCheck(
+      nextThirdPartySpecialState,
+      draft.exoticPrinceCheckTarget,
+    );
+    nextThirdPartySpecialState = wakeOutcome.state;
+  }
+  const allWolvesAsleepTonight = areAllAliveWolvesAsleep(updatedSeats, nextThirdPartySpecialState);
   let nextFoxLostAbility = foxLostAbility;
   let nextLastAwakenedDreamTarget: number | null = lastAwakenedDreamTarget;
   let nextWitchAntidoteUsed = witchAntidoteUsed;
@@ -1556,6 +1601,31 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   const anyAntidoteUsed = effectiveWitchUseAntidote || effectiveAwUseAntidote;
 
+  if (allWolvesAsleepTonight) {
+    effectiveWolfTarget = null;
+  }
+
+  const luckyShieldSeat =
+    draft.luckyItemActorSeat != null &&
+    draft.luckyItemTargetSeat != null &&
+    nextThirdPartySpecialState.miracleLuckySeat === draft.luckyItemActorSeat &&
+    nextThirdPartySpecialState.miracleLuckyItem === 'guard_shield' &&
+    !nextThirdPartySpecialState.miracleLuckyItemUsed
+      ? draft.luckyItemTargetSeat
+      : null;
+
+  const mediumShieldEntry =
+    draft.mediumSkillActionSeat != null && draft.mediumSkillTargetSeat != null
+      ? nextThirdPartySpecialState.mediumInheritedHeirs.find(
+          (h) =>
+            h.heirSeat === draft.mediumSkillActionSeat &&
+            h.skill === 'guard_shield' &&
+            !h.used &&
+            h.receivedRound < round,
+        )
+      : undefined;
+  const mediumShieldSeat = mediumShieldEntry ? (draft.mediumSkillTargetSeat ?? null) : null;
+
   if (
     effectiveWolfTarget !== null &&
     !isDreamProtected(effectiveWolfTarget) &&
@@ -1564,7 +1634,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   ) {
     const guardedByNormal =
       (hasAliveGuard && effectiveGuardTarget === effectiveWolfTarget) ||
-      twinsGuardedSeat === effectiveWolfTarget;
+      twinsGuardedSeat === effectiveWolfTarget ||
+      luckyShieldSeat === effectiveWolfTarget ||
+      mediumShieldSeat === effectiveWolfTarget ||
+      (draft.butlerGuardSecondTarget != null &&
+        draft.butlerGuardSecondTarget === effectiveWolfTarget);
     const guardedByMech = mechGuardTarget === effectiveWolfTarget;
     const isGuarded = guardedByNormal || guardedByMech;
 
@@ -1977,6 +2051,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         interferenceState: nextInterferenceState,
         combatState: nextCombatState,
         conversionState: nextConversionState,
+        thirdPartySpecialState: nextThirdPartySpecialState,
         whiteCatRevealedSeats,
         maskedDelayedSeats,
         bearRoar: evaluateBearRoar(updatedSeats, nextMechWolfState, fearedSeat),
@@ -2607,6 +2682,417 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     deaths.push(ld);
   }
 
+  // 8.68 第 5 批：第三方獨立勝利、標記收集、舞池、烏鴉、商人贈禮、通靈者、管家／狼僕與睡美人封鎖
+  // 8.68a 潘朵拉夜間贈盒與魔盒刀
+  if (
+    draft.pandoraGiftTarget != null &&
+    draft.pandoraGiftItem &&
+    updatedSeats.some((s) => s.roleId === 'pandora' && s.isAlive)
+  ) {
+    const giftRes = applyPandoraGift(
+      updatedSeats,
+      nextThirdPartySpecialState,
+      draft.pandoraGiftTarget,
+      draft.pandoraGiftItem,
+      round,
+    );
+    if (giftRes.allowed) {
+      updatedSeats = giftRes.seats;
+      nextThirdPartySpecialState = giftRes.state;
+      if (giftRes.poisonedSeat != null) {
+        deaths.push({ seat: giftRes.poisonedSeat, reason: 'pandora_poison' });
+      }
+    }
+  }
+
+  if (draft.pandoraKnifeTarget != null) {
+    const knifeEntry = nextThirdPartySpecialState.pandoraGiftHistory.find(
+      (g) => g.item === 'knife' && !g.used,
+    );
+    if (
+      knifeEntry &&
+      canPandoraKnifeHolderAttack(updatedSeats, nextThirdPartySpecialState, knifeEntry.seat).allowed
+    ) {
+      knifeEntry.used = true;
+      nextThirdPartySpecialState.pandoraKnifeUsed = true;
+      doKill(draft.pandoraKnifeTarget, 'pandora_knife');
+    }
+  }
+
+  // 8.68b 九尾標記 & 白澤清除標記
+  if (
+    draft.nineTailsMarkTarget != null &&
+    updatedSeats.some((s) => s.roleId === 'nine_tails_wolf' && s.isAlive)
+  ) {
+    nextThirdPartySpecialState = addNineTailsMark(
+      nextThirdPartySpecialState,
+      draft.nineTailsMarkTarget,
+    );
+  }
+  if (
+    draft.baiZeClearTarget != null &&
+    updatedSeats.some((s) => s.roleId === 'bai_ze' && s.isAlive)
+  ) {
+    nextThirdPartySpecialState = clearBaiZeMarks(
+      nextThirdPartySpecialState,
+      draft.baiZeClearTarget,
+    );
+  }
+
+  // 8.68c 假面改判 & 舞者舞池結算（舞者在舞池中，三人均免疫狼刀）
+  let maskedAlterSeatTonight: number | null = null;
+  if (
+    round >= 2 &&
+    updatedSeats.some((s) => s.roleId === 'masked_wolf' && s.isAlive)
+  ) {
+    if (
+      draft.maskedWolfCheckTarget != null &&
+      draft.maskedWolfCheckTarget !== nextThirdPartySpecialState.maskedWolfLastCheckSeat
+    ) {
+      nextThirdPartySpecialState.maskedWolfLastCheckSeat = draft.maskedWolfCheckTarget;
+    }
+    if (
+      draft.maskedWolfAlterTarget != null &&
+      draft.maskedWolfAlterTarget !== nextThirdPartySpecialState.maskedWolfLastAlterSeat
+    ) {
+      maskedAlterSeatTonight = draft.maskedWolfAlterTarget;
+      nextThirdPartySpecialState.maskedWolfLastAlterSeat = draft.maskedWolfAlterTarget;
+    }
+  }
+
+  if (
+    draft.dancerFloorTargets &&
+    draft.dancerFloorTargets.length === 3 &&
+    initialSeats.some((s) => s.roleId === 'dancer' && s.isAlive) &&
+    canDancerPickFloor(initialSeats, nextThirdPartySpecialState, round, draft.dancerFloorTargets).allowed
+  ) {
+    for (const num of draft.dancerFloorTargets) {
+      if (!nextThirdPartySpecialState.dancerVisitedSeats.includes(num)) {
+        nextThirdPartySpecialState.dancerVisitedSeats.push(num);
+      }
+    }
+    const floorOutcome = resolveDancerFloor(
+      initialSeats,
+      nextThirdPartySpecialState,
+      draft.dancerFloorTargets,
+      maskedAlterSeatTonight,
+    );
+    // 若舞者在舞池中，舞池 3 人免疫當晚狼刀
+    for (const immSeat of floorOutcome.immuneToWolfKillSeats) {
+      const wIdx = deaths.findIndex((d) => d.seat === immSeat && d.reason === 'wolf_kill');
+      if (wIdx !== -1) {
+        deaths.splice(wIdx, 1);
+        updatedSeats = updatedSeats.map((s) =>
+          s.seatNumber === immSeat
+            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+            : s,
+        );
+      }
+    }
+    if (floorOutcome.eliminatedSeat != null) {
+      doKill(floorOutcome.eliminatedSeat, 'dance_out');
+    }
+  }
+
+  // 8.68d 烏鴉詛咒
+  if (
+    draft.crowCurseTarget != null &&
+    initialSeats.some((s) => s.roleId === 'crow' && s.isAlive) &&
+    canCrowCurse(initialSeats, nextThirdPartySpecialState, draft.crowCurseTarget).allowed
+  ) {
+    nextThirdPartySpecialState.crowActiveCursedSeat = draft.crowCurseTarget;
+    nextThirdPartySpecialState.crowLastCursedSeat = draft.crowCurseTarget;
+  }
+
+  // 8.68e 奇蹟商人 & 黑市商人 & 超級黑市商人 & 邪惡商人
+  const aliveMiracle = updatedSeats.find((s) => s.roleId === 'miracle_merchant' && s.isAlive);
+  if (
+    aliveMiracle &&
+    !nextThirdPartySpecialState.miracleMerchantUsed &&
+    draft.miracleMerchantTarget != null &&
+    draft.miracleMerchantTarget !== aliveMiracle.seatNumber &&
+    draft.miracleMerchantItem
+  ) {
+    nextThirdPartySpecialState.miracleMerchantUsed = true;
+    const lucky = updatedSeats.find((s) => s.seatNumber === draft.miracleMerchantTarget);
+    if (lucky && isSeatWolfFaction(lucky)) {
+      if (!isDreamProtected(aliveMiracle.seatNumber)) {
+        doKill(aliveMiracle.seatNumber, 'merchant_backfire');
+      }
+    } else if (lucky) {
+      nextThirdPartySpecialState.miracleLuckySeat = lucky.seatNumber;
+      nextThirdPartySpecialState.miracleLuckyItem = draft.miracleMerchantItem;
+    }
+  }
+
+  const aliveBlackMarket = updatedSeats.find(
+    (s) => s.roleId === 'black_market_merchant' && s.isAlive,
+  );
+  if (
+    aliveBlackMarket &&
+    !nextThirdPartySpecialState.blackMarketMerchantUsed &&
+    draft.blackMarketTarget != null &&
+    draft.blackMarketTarget !== aliveBlackMarket.seatNumber &&
+    draft.blackMarketItem
+  ) {
+    nextThirdPartySpecialState.blackMarketMerchantUsed = true;
+    const lucky = updatedSeats.find((s) => s.seatNumber === draft.blackMarketTarget);
+    if (lucky && isSeatWolfFaction(lucky)) {
+      if (!isDreamProtected(aliveBlackMarket.seatNumber)) {
+        doKill(aliveBlackMarket.seatNumber, 'merchant_backfire');
+      }
+    } else if (lucky) {
+      nextThirdPartySpecialState.blackMarketLuckySeat = lucky.seatNumber;
+      nextThirdPartySpecialState.blackMarketLuckyItem = draft.blackMarketItem;
+    }
+  }
+
+  const aliveSuperBlackMarket = updatedSeats.find(
+    (s) => s.roleId === 'super_black_market_merchant' && s.isAlive,
+  );
+  if (
+    aliveSuperBlackMarket &&
+    !nextThirdPartySpecialState.superBlackMarketUsed &&
+    draft.superBlackMarketTargets
+  ) {
+    const entries: Array<{ item: 'seer_check' | 'witch_poison' | 'hunter_gun'; seat: number }> = [];
+    if (draft.superBlackMarketTargets.seer_check != null) {
+      entries.push({ item: 'seer_check', seat: draft.superBlackMarketTargets.seer_check });
+    }
+    if (draft.superBlackMarketTargets.witch_poison != null) {
+      entries.push({ item: 'witch_poison', seat: draft.superBlackMarketTargets.witch_poison });
+    }
+    if (draft.superBlackMarketTargets.hunter_gun != null) {
+      entries.push({ item: 'hunter_gun', seat: draft.superBlackMarketTargets.hunter_gun });
+    }
+    if (entries.length === 3) {
+      nextThirdPartySpecialState.superBlackMarketUsed = true;
+      nextThirdPartySpecialState.superBlackMarketGifts = entries.map((e) => ({
+        seat: e.seat,
+        item: e.item,
+        used: false,
+      }));
+      const allGood = entries.every((e) => {
+        const seatObj = updatedSeats.find((s) => s.seatNumber === e.seat);
+        return seatObj != null && !isSeatWolfFaction(seatObj);
+      });
+      if (allGood) {
+        nextThirdPartySpecialState.superBlackMarketTurnedWolf = true;
+      }
+    }
+  }
+
+  // 幸運兒使用道具（毒藥／盾）
+  if (draft.luckyItemActorSeat != null && draft.luckyItemTargetSeat != null) {
+    if (
+      nextThirdPartySpecialState.miracleLuckySeat === draft.luckyItemActorSeat &&
+      !nextThirdPartySpecialState.miracleLuckyItemUsed
+    ) {
+      if (nextThirdPartySpecialState.miracleLuckyItem === 'witch_poison') {
+        doKill(draft.luckyItemTargetSeat, 'witch_poison');
+      }
+      nextThirdPartySpecialState.miracleLuckyItemUsed = true;
+    } else if (
+      nextThirdPartySpecialState.blackMarketLuckySeat === draft.luckyItemActorSeat &&
+      !nextThirdPartySpecialState.blackMarketLuckyItemUsed
+    ) {
+      if (nextThirdPartySpecialState.blackMarketLuckyItem === 'witch_poison') {
+        doKill(draft.luckyItemTargetSeat, 'witch_poison');
+      }
+      nextThirdPartySpecialState.blackMarketLuckyItemUsed = true;
+    }
+  }
+
+  // 邪惡商人贈禮
+  if (
+    !nextThirdPartySpecialState.evilMerchantDisabled &&
+    draft.evilMerchantTarget != null &&
+    updatedSeats.some((s) => s.roleId === 'evil_merchant' && s.isAlive)
+  ) {
+    const giftType = draft.evilMerchantGiftType ?? (round === 1 ? 'hunter_gun' : 'witch_poison');
+    if (giftType === 'hunter_gun') {
+      nextThirdPartySpecialState.evilMerchantGunHolderSeat = draft.evilMerchantTarget;
+    } else if (giftType === 'witch_poison') {
+      nextThirdPartySpecialState.evilMerchantGunHolderSeat = null;
+      nextThirdPartySpecialState.evilMerchantPoisonHolderSeat = draft.evilMerchantTarget;
+    }
+  }
+
+  // 8.68f 通靈者通靈與繼承技能結算
+  const aliveMedium = updatedSeats.find((s) => s.roleId === 'medium' && s.isAlive);
+  if (
+    aliveMedium &&
+    draft.mediumDeadSeat != null &&
+    draft.mediumHeirSeat != null &&
+    canMediumChannel(
+      updatedSeats,
+      nextThirdPartySpecialState,
+      aliveMedium.seatNumber,
+      draft.mediumDeadSeat,
+      draft.mediumHeirSeat,
+    ).allowed
+  ) {
+    const deadObj = updatedSeats.find((s) => s.seatNumber === draft.mediumDeadSeat);
+    const skill = getChannelableSkillForRole(deadObj?.roleId ?? null);
+    nextThirdPartySpecialState.mediumChanneledDeadSeats.push(draft.mediumDeadSeat);
+    if (skill) {
+      nextThirdPartySpecialState.mediumInheritedHeirs.push({
+        heirSeat: draft.mediumHeirSeat,
+        fromDeadSeat: draft.mediumDeadSeat,
+        skill,
+        receivedRound: round,
+        used: false,
+      });
+    }
+  }
+
+  if (draft.mediumSkillActionSeat != null && draft.mediumSkillTargetSeat != null) {
+    const heirEntry = nextThirdPartySpecialState.mediumInheritedHeirs.find(
+      (h) =>
+        h.heirSeat === draft.mediumSkillActionSeat && !h.used && h.receivedRound < round,
+    );
+    if (heirEntry) {
+      heirEntry.used = true;
+      if (heirEntry.skill === 'wolf_kill') {
+        const targetProtected =
+          anyAntidoteUsed && effectiveWolfTarget === draft.mediumSkillTargetSeat
+            ? true
+            : (hasAliveGuard && effectiveGuardTarget === draft.mediumSkillTargetSeat) ||
+              mediumShieldSeat === draft.mediumSkillTargetSeat;
+        if (!targetProtected) {
+          doKill(draft.mediumSkillTargetSeat, 'medium_knife');
+        }
+      } else if (heirEntry.skill === 'witch_poison') {
+        doKill(draft.mediumSkillTargetSeat, 'witch_poison');
+      }
+    }
+  }
+
+  // 8.68g 管家 & 狼僕上茶結算（第二晚起，每人限一次）
+  if (
+    round >= 2 &&
+    draft.butlerTeaTarget != null &&
+    updatedSeats.some((s) => s.roleId === 'butler' && s.isAlive) &&
+    !nextThirdPartySpecialState.butlerServedSeats.includes(draft.butlerTeaTarget)
+  ) {
+    nextThirdPartySpecialState.butlerServedSeats.push(draft.butlerTeaTarget);
+    const targetObj = updatedSeats.find((s) => s.seatNumber === draft.butlerTeaTarget);
+    const accepted =
+      targetObj?.roleId === 'wolf_maid' ||
+      targetObj?.roleId === 'villager' ||
+      draft.butlerTeaAccepted !== false;
+    if (targetObj && accepted) {
+      nextThirdPartySpecialState.butlerActiveTeaSeat = targetObj.seatNumber;
+      if (targetObj.roleId === 'villager') {
+        nextThirdPartySpecialState.butlerActiveVoteBonusSeat = targetObj.seatNumber;
+      } else if (targetObj.roleId === 'seer' && seerResult?.faction === 'wolf') {
+        doKill(seerResult.targetSeat, 'butler_seer_kill');
+      } else if (targetObj.roleId === 'wolf') {
+        // 小狼接管家茶：當晚少一刀（撤銷本晚 wolf_kill）
+        const wkIdx = deaths.findIndex((d) => d.reason === 'wolf_kill');
+        if (wkIdx !== -1) {
+          const rescued = deaths[wkIdx].seat;
+          deaths.splice(wkIdx, 1);
+          updatedSeats = updatedSeats.map((s) =>
+            s.seatNumber === rescued
+              ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+              : s,
+          );
+        }
+      } else if (targetObj.roleId === 'guard' && effectiveGuardTarget != null) {
+        nextThirdPartySpecialState.butlerDayProtectedSeat = effectiveGuardTarget;
+      }
+    }
+  }
+
+  if (
+    round >= 2 &&
+    draft.wolfMaidTeaTarget != null &&
+    initialSeats.some((s) => s.roleId === 'wolf_maid' && s.isAlive) &&
+    !nextThirdPartySpecialState.wolfMaidServedSeats.includes(draft.wolfMaidTeaTarget)
+  ) {
+    nextThirdPartySpecialState.wolfMaidServedSeats.push(draft.wolfMaidTeaTarget);
+    const targetObj = updatedSeats.find((s) => s.seatNumber === draft.wolfMaidTeaTarget);
+    const accepted =
+      targetObj?.roleId === 'butler' ||
+      targetObj?.roleId === 'villager' ||
+      draft.wolfMaidTeaAccepted !== false;
+    if (targetObj && accepted) {
+      nextThirdPartySpecialState.wolfMaidActiveTeaSeat = targetObj.seatNumber;
+      if (targetObj.roleId === 'villager') {
+        nextThirdPartySpecialState.wolfMaidActiveVotePenaltySeat = targetObj.seatNumber;
+      } else if (targetObj.roleId === 'seer' || targetObj.roleId === 'witch') {
+        doKill(targetObj.seatNumber, 'wolf_maid_tea_kill');
+      } else if (targetObj.roleId === 'guard' && effectiveGuardTarget != null) {
+        doKill(effectiveGuardTarget, 'wolf_maid_tea_kill');
+      } else if (targetObj.roleId === 'wolf' && draft.wolfMaidExtraKillTarget != null) {
+        doKill(draft.wolfMaidExtraKillTarget, 'wolf_kill');
+      }
+    }
+  }
+
+  // 8.68h 睡美人睡眠狀態封鎖（女巫毒失敗、禁言長老無效）
+  const witchSeatObj = updatedSeats.find((s) => s.roleId === 'witch');
+  if (witchSeatObj && isSeatAsleep(updatedSeats, nextThirdPartySpecialState, witchSeatObj.seatNumber)) {
+    const wpIdx = deaths.findIndex((d) => d.reason === 'witch_poison');
+    if (wpIdx !== -1) {
+      const rescued = deaths[wpIdx].seat;
+      deaths.splice(wpIdx, 1);
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === rescued
+          ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+          : s,
+      );
+    }
+  }
+  const muteElderObj = updatedSeats.find((s) => s.roleId === 'mute_elder');
+  if (muteElderObj && isSeatAsleep(updatedSeats, nextThirdPartySpecialState, muteElderObj.seatNumber)) {
+    nextInterferenceState.activeMutedSeat = null;
+    updatedSeats = updatedSeats.map((s) => (s.muted ? { ...s, muted: false } : s));
+  }
+
+  // 8.68i 白澤神職繼承人夜死延遲至下一白天放逐投票結束後（若為最後一神則不延遲）
+  if (
+    nextThirdPartySpecialState.baiZeHeirRoleType === 'god' &&
+    nextThirdPartySpecialState.baiZeHeirSeat != null
+  ) {
+    const heirSeatNum = nextThirdPartySpecialState.baiZeHeirSeat;
+    const heirDeathIdx = deaths.findIndex((d) => d.seat === heirSeatNum);
+    if (heirDeathIdx !== -1) {
+      const otherAliveGods = updatedSeats.some(
+        (s) =>
+          s.isAlive &&
+          s.seatNumber !== heirSeatNum &&
+          s.roleId != null &&
+          !isSeatWolfFaction(s) &&
+          (s.baiZeDualFaction ||
+            (s.roleId !== 'villager' &&
+              s.roleId !== 'senior_villager' &&
+              s.roleId !== 'old_rascal' &&
+              s.roleId !== 'masked_villager')),
+      );
+      if (otherAliveGods) {
+        deaths.splice(heirDeathIdx, 1);
+        updatedSeats = updatedSeats.map((s) =>
+          s.seatNumber === heirSeatNum
+            ? {
+                ...s,
+                isAlive: true,
+                deathReason: undefined,
+                deathRound: undefined,
+                baiZeDelayedDeath: true,
+              }
+            : s,
+        );
+      }
+    }
+  }
+
+  nextThirdPartySpecialState = syncBatch5LoneWolfTeamStatus(
+    updatedSeats,
+    nextThirdPartySpecialState,
+  );
+
   // 9. 更新機械狼／盜寶大師／隱狼／石像鬼入隊狀態、南瓜鬼／超級守墓人繼承、混血兒榜樣同步、開槍資格、熊咆哮與最終勝負
   nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
   nextTreasureMasterState = syncTreasureMasterTeamStatus(updatedSeats, nextTreasureMasterState);
@@ -2627,17 +3113,39 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   for (const record of deaths) {
     const eligibility = checkCanShoot(updatedSeats, record.seat, record.reason, { fearedSeat });
     if (eligibility) {
-      shootEligibilities.push(eligibility);
+      if (
+        eligibility.roleId === 'hunter' &&
+        isSeatAsleep(updatedSeats, nextThirdPartySpecialState, record.seat)
+      ) {
+        shootEligibilities.push({
+          ...eligibility,
+          canShoot: false,
+          reason: '獵人處於睡美人睡眠狀態，無法開槍',
+        });
+      } else {
+        shootEligibilities.push(eligibility);
+      }
     }
   }
 
-  const bearRoar = evaluateBearRoar(updatedSeats, nextMechWolfState, fearedSeat);
+  const bearSeatObj = updatedSeats.find((s) => s.roleId === 'bear');
+  const rawBearRoar = evaluateBearRoar(updatedSeats, nextMechWolfState, fearedSeat);
+  const bearRoar =
+    rawBearRoar &&
+    bearSeatObj &&
+    isSeatAsleep(updatedSeats, nextThirdPartySpecialState, bearSeatObj.seatNumber)
+      ? { ...rawBearRoar, roared: false, reason: '熊處於睡美人睡眠狀態，永遠不會咆哮' }
+      : rawBearRoar;
   const seniorVillagerReveal = evaluateSeniorVillagerReveal(updatedSeats, round);
   const victory = checkVictory(
     updatedSeats,
     hadWolfBeautyCharmDeath ? { ...ruleOverrides, wolfKillPriority: true } : ruleOverrides,
     nextTreasureMasterState,
-    { cursedFoxDiedThisResolution: cursedFoxDiedTonight, conversionState: nextConversionState },
+    {
+      cursedFoxDiedThisResolution: cursedFoxDiedTonight,
+      conversionState: nextConversionState,
+      thirdPartySpecialState: nextThirdPartySpecialState,
+    },
   );
 
   return {
@@ -2667,6 +3175,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     interferenceState: nextInterferenceState,
     combatState: nextCombatState,
     conversionState: nextConversionState,
+    thirdPartySpecialState: nextThirdPartySpecialState,
     whiteCatRevealedSeats,
     maskedDelayedSeats,
     bearRoar,

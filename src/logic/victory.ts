@@ -1,10 +1,12 @@
 import { getRoleById } from '../data/roles';
 import { checkConversionThirdPartyVictory } from './conversionRoles';
+import { checkThirdPartySpecialVictory } from './thirdPartySpecialRoles';
 import type {
   ConversionRuntimeState,
   ManualVictoryOverrideKind,
   PlayerSeat,
   RuleOverrides,
+  ThirdPartySpecialRuntimeState,
   TreasureMasterRuntimeState,
   VictoryResult,
 } from './types';
@@ -20,10 +22,17 @@ function getEffectiveSide(
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
   conversionState?: ConversionRuntimeState,
+  thirdPartySpecialState?: ThirdPartySpecialRuntimeState,
 ): 'wolf' | 'villager' | 'god' | null {
   if (!seat.roleId) return null;
   // 被種狼感染或覺醒石像鬼轉化為狼人者，即時改計入狼人陣營
   if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) {
+    return 'wolf';
+  }
+  if (
+    seat.roleId === 'super_black_market_merchant' &&
+    thirdPartySpecialState?.superBlackMarketTurnedWolf
+  ) {
     return 'wolf';
   }
   if (seat.roleId === 'wild_child') {
@@ -62,6 +71,7 @@ export function countAliveFactions(
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
   conversionState?: ConversionRuntimeState,
+  thirdPartySpecialState?: ThirdPartySpecialRuntimeState,
 ): AliveFactionCounts {
   let wolves = 0;
   let villagers = 0;
@@ -69,13 +79,23 @@ export function countAliveFactions(
 
   for (const seat of seats) {
     if (!seat.isAlive) continue;
-    const side = getEffectiveSide(seat, ruleOverrides, treasureMasterState, conversionState);
+    const side = getEffectiveSide(
+      seat,
+      ruleOverrides,
+      treasureMasterState,
+      conversionState,
+      thirdPartySpecialState,
+    );
     if (!side) continue;
 
     if (side === 'wolf') {
       wolves += 1;
     } else if (side === 'villager') {
       villagers += 1;
+      // 白澤繼承人（平民）轉為神／民雙陣營：狼隊屠神亦須淘汰該玩家
+      if (seat.baiZeDualFaction) {
+        gods += 1;
+      }
     } else if (side === 'god') {
       // 白痴翻牌免死後，若規則設定不需追刀（idiotNeedsExtraKill = false），則不再計入存活神職
       if (seat.roleId === 'idiot' && seat.idiotRevealed && !ruleOverrides.idiotNeedsExtraKill) {
@@ -95,10 +115,17 @@ export function checkVictory(
   options: {
     cursedFoxDiedThisResolution?: boolean;
     conversionState?: ConversionRuntimeState;
+    thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
   } = {},
 ): VictoryResult {
   if (seats.length === 0) {
     return { winner: null, winReason: null };
+  }
+
+  // 第 5 批：潘朵拉與希望之光最高優先權勝利判定（與其他陣營同達標時優先判定）
+  const specialTpWin = checkThirdPartySpecialVictory(seats, options.thirdPartySpecialState);
+  if (specialTpWin.winner !== null) {
+    return specialTpWin;
   }
 
   // 第 4 批第三方陣營專屬勝利條件優先判定（殭屍全場感染、許仙白蛇雙死、復仇者獨勝、人狼戀／鬼魂新娘／白蛇許仙屠城）
@@ -116,10 +143,13 @@ export function checkVictory(
       ruleOverrides,
       treasureMasterState,
       options.conversionState,
+      options.thirdPartySpecialState,
     );
     if (side === 'wolf') hasAnyWolf = true;
-    else if (side === 'villager') hasAnyVillager = true;
-    else if (side === 'god') hasAnyGod = true;
+    else if (side === 'villager') {
+      hasAnyVillager = true;
+      if (seat.baiZeDualFaction) hasAnyGod = true;
+    } else if (side === 'god') hasAnyGod = true;
 
     // 若原好人（神職／平民）被種狼感染轉為狼人，本局仍視為原本存在該陣營邊，避免最後一神／最後一民被感染時漏判屠邊
     if (seat.infectedBySeedWolf && seat.roleId) {
@@ -134,6 +164,7 @@ export function checkVictory(
     ruleOverrides,
     treasureMasterState,
     options.conversionState,
+    options.thirdPartySpecialState,
   );
 
   const villagersEliminated = hasAnyVillager && villagers === 0;

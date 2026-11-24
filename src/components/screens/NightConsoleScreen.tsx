@@ -221,6 +221,32 @@ function getInitialTargetForStep(
       return draft.round === 1
         ? (draft.jackRipperFanaticTarget ?? null)
         : (draft.jackRipperKillTarget ?? null);
+    case 'pandora_gift':
+      return draft.pandoraGiftTarget ?? null;
+    case 'pandora_knife':
+      return draft.pandoraKnifeTarget ?? null;
+    case 'sleeping_beauty_pick':
+      return draft.sleepingBeautyPickSeat ?? null;
+    case 'exotic_prince_check':
+      return draft.exoticPrinceCheckTarget ?? null;
+    case 'nine_tails_mark':
+      return draft.nineTailsMarkTarget ?? null;
+    case 'bai_ze_clear':
+      return draft.baiZeClearTarget ?? null;
+    case 'crow_curse':
+      return draft.crowCurseTarget ?? null;
+    case 'miracle_merchant_gift':
+      return draft.miracleMerchantTarget ?? null;
+    case 'black_market_gift':
+      return draft.blackMarketTarget ?? null;
+    case 'evil_merchant_gift':
+      return draft.evilMerchantTarget ?? null;
+    case 'butler_tea':
+      return draft.butlerTeaTarget ?? null;
+    case 'wolf_maid_tea':
+      return draft.wolfMaidTeaTarget ?? null;
+    case 'lucky_item_action':
+      return draft.luckyItemTargetSeat ?? null;
     default:
       return null;
   }
@@ -1388,11 +1414,57 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       case 'wild_child_choose':
       case 'shadow_choose':
       case 'chameleon_wolf_choose':
+      case 'pandora_gift':
+      case 'pandora_knife':
+      case 'sleeping_beauty_pick':
+      case 'exotic_prince_check':
+      case 'nine_tails_mark':
+      case 'bai_ze_clear':
+      case 'crow_curse':
+      case 'miracle_merchant_gift':
+      case 'black_market_gift':
+      case 'evil_merchant_gift':
+      case 'butler_tea':
+      case 'wolf_maid_tea':
+      case 'lucky_item_action':
         return {
           selected: pendingTarget === seatNumber,
           disabled: !isAlive,
           reason: !isAlive ? '已出局' : undefined,
           onSelect: toggleTarget,
+        };
+      case 'masked_wolf_action':
+      case 'medium_channel':
+        return {
+          selected: pendingDualTargets.includes(seatNumber),
+          disabled: currentStep.actionType === 'masked_wolf_action' ? !isAlive : false,
+          onSelect: () => {
+            setPendingDualTargets(([first, second]) => {
+              if (first === seatNumber) return [second, null];
+              if (second === seatNumber) return [first, null];
+              if (first === null) return [seatNumber, second];
+              if (second === null) return [first, seatNumber];
+              return [second, seatNumber];
+            });
+          },
+        };
+      case 'dancer_dance':
+      case 'super_black_market_gift':
+        return {
+          selected: pendingMultiTargets.includes(seatNumber),
+          disabled: !isAlive,
+          reason: !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingMultiTargets((prev) => {
+              if (prev.includes(seatNumber)) {
+                return prev.filter((n) => n !== seatNumber);
+              }
+              if (prev.length >= 3) {
+                return [...prev.slice(1), seatNumber];
+              }
+              return [...prev, seatNumber];
+            });
+          },
         };
       default:
         return {
@@ -1658,6 +1730,78 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         } else {
           updateNightDraft({ jackRipperKillTarget: pendingTarget });
         }
+        break;
+      case 'pandora_gift':
+        updateNightDraft({ pandoraGiftTarget: pendingTarget });
+        break;
+      case 'pandora_knife':
+        updateNightDraft({ pandoraKnifeTarget: pendingTarget });
+        break;
+      case 'sleeping_beauty_pick':
+        updateNightDraft({ sleepingBeautyPickSeat: pendingTarget });
+        break;
+      case 'exotic_prince_check':
+        updateNightDraft({ exoticPrinceCheckTarget: pendingTarget });
+        break;
+      case 'nine_tails_mark':
+        updateNightDraft({ nineTailsMarkTarget: pendingTarget });
+        break;
+      case 'bai_ze_clear':
+        updateNightDraft({ baiZeClearTarget: pendingTarget });
+        break;
+      case 'dancer_dance':
+        updateNightDraft({ dancerFloorTargets: pendingMultiTargets });
+        break;
+      case 'masked_wolf_action':
+        updateNightDraft({
+          maskedWolfCheckTarget: pendingDualTargets[0],
+          maskedWolfAlterTarget: pendingDualTargets[1],
+        });
+        break;
+      case 'crow_curse':
+        updateNightDraft({ crowCurseTarget: pendingTarget });
+        break;
+      case 'miracle_merchant_gift':
+        updateNightDraft({
+          miracleMerchantTarget: pendingTarget,
+          miracleMerchantItem: currentNightDraft.miracleMerchantItem ?? 'seer_check',
+        });
+        break;
+      case 'black_market_gift':
+        updateNightDraft({
+          blackMarketTarget: pendingTarget,
+          blackMarketItem: currentNightDraft.blackMarketItem ?? 'seer_check',
+        });
+        break;
+      case 'super_black_market_gift':
+        updateNightDraft({
+          superBlackMarketTargets: {
+            seer_check: pendingMultiTargets[0] ?? null,
+            witch_poison: pendingMultiTargets[1] ?? null,
+            hunter_gun: pendingMultiTargets[2] ?? null,
+          },
+        });
+        break;
+      case 'evil_merchant_gift':
+        updateNightDraft({
+          evilMerchantTarget: pendingTarget,
+          evilMerchantGiftType: round === 1 ? 'hunter_gun' : 'witch_poison',
+        });
+        break;
+      case 'medium_channel':
+        updateNightDraft({
+          mediumDeadSeat: pendingDualTargets[0],
+          mediumHeirSeat: pendingDualTargets[1],
+        });
+        break;
+      case 'butler_tea':
+        updateNightDraft({ butlerTeaTarget: pendingTarget, butlerTeaAccepted: true });
+        break;
+      case 'wolf_maid_tea':
+        updateNightDraft({ wolfMaidTeaTarget: pendingTarget, wolfMaidTeaAccepted: true });
+        break;
+      case 'lucky_item_action':
+        updateNightDraft({ luckyItemTargetSeat: pendingTarget });
         break;
       default:
         break;
@@ -2946,11 +3090,42 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'shadow_choose' ||
               currentStep.actionType === 'puppet_wolf_choose' ||
               currentStep.actionType === 'chameleon_wolf_choose' ||
-              currentStep.actionType === 'jack_ripper_action') && (
+              currentStep.actionType === 'jack_ripper_action' ||
+              currentStep.actionType === 'pandora_gift' ||
+              currentStep.actionType === 'pandora_knife' ||
+              currentStep.actionType === 'sleeping_beauty_pick' ||
+              currentStep.actionType === 'exotic_prince_check' ||
+              currentStep.actionType === 'nine_tails_mark' ||
+              currentStep.actionType === 'bai_ze_clear' ||
+              currentStep.actionType === 'crow_curse' ||
+              currentStep.actionType === 'miracle_merchant_gift' ||
+              currentStep.actionType === 'black_market_gift' ||
+              currentStep.actionType === 'evil_merchant_gift' ||
+              currentStep.actionType === 'butler_tea' ||
+              currentStep.actionType === 'wolf_maid_tea' ||
+              currentStep.actionType === 'lucky_item_action') && (
               <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-center text-xs font-bold text-slate-200">
                 {pendingTarget !== null
                   ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
                   : '請點選上方座位選擇技能目標（或直接確認跳過）'}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'dancer_dance' ||
+              currentStep.actionType === 'super_black_market_gift') && (
+              <div className="rounded-xl border border-fuchsia-400/40 bg-fuchsia-950/35 px-3 py-2 text-center text-xs font-bold text-fuchsia-100">
+                {currentStep.actionType === 'dancer_dance'
+                  ? `💃 舞者舞池（須選 3 人）：${pendingMultiTargets.join('、') || '請點選 3 位未進舞池的存活玩家'}`
+                  : `🎁 超級黑市商人（查驗／毒／槍 3 位幸運兒）：${pendingMultiTargets.join('、') || '請依序點選 3 位玩家'}`}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'masked_wolf_action' ||
+              currentStep.actionType === 'medium_channel') && (
+              <div className="rounded-xl border border-indigo-400/40 bg-indigo-950/35 px-3 py-2 text-center text-xs font-bold text-indigo-100">
+                {currentStep.actionType === 'masked_wolf_action'
+                  ? `🎭 假面（查舞池／改陣營）：${pendingDualTargets.filter((n) => n !== null).join(' ／ ') || '請依序點選查驗與改判目標'}`
+                  : `🔮 通靈者（死者 → 繼承者）：${pendingDualTargets.filter((n) => n !== null).join(' → ') || '請依序點選已死亡玩家與存活繼承者'}`}
               </div>
             )}
 

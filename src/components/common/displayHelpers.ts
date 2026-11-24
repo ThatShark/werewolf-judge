@@ -93,6 +93,11 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   medium_knife: '遭通靈者繼承狼刀擊殺',
   butler_seer_kill: '管家上茶預言家查殺出局',
   wolf_maid_tea_kill: '狼僕毒茶出局',
+  eclipse_maid_kill: '蝕日侍女吞噬技能擊殺出局',
+  grey_wolf_steal_kill: '灰太狼偷竊技能擊殺出局',
+  detective_execute: '偵探白天處決出局',
+  police_dog_bite: '警犬夜間撕咬出局',
+  little_girl_caught: '小女孩遭狼隊指認代死出局',
   manual_judge: '法官手動標記出局',
 };
 

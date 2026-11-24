@@ -143,6 +143,12 @@ export type NightActionType =
   | 'butler_tea'
   | 'wolf_maid_tea'
   | 'lucky_item_action'
+  | 'eclipse_maid_devour'
+  | 'grey_wolf_boss_steal'
+  | 'happy_sheep_action'
+  | 'phantom_wolf_invincible'
+  | 'police_dog_action'
+  | 'little_girl_identify'
   | 'confirm_only';
 
 export interface NightStepScript {
@@ -387,6 +393,11 @@ export type DeathReason =
   | 'medium_knife'
   | 'butler_seer_kill'
   | 'wolf_maid_tea_kill'
+  | 'eclipse_maid_kill'
+  | 'grey_wolf_steal_kill'
+  | 'detective_execute'
+  | 'police_dog_bite'
+  | 'little_girl_caught'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -745,6 +756,37 @@ export interface ThirdPartySpecialRuntimeState {
   wolfMaidActiveVotePenaltySeat: number | null;
 }
 
+/** 第 6 批：最終 13 個角色（吞噬／偷竊／防盜／無敵／翻牌處決／重投／回溯）持久化狀態 */
+export interface FinalBatchRuntimeState {
+  // 蝕日侍女
+  eclipseMaidJoinedTeam: boolean;
+  eclipseMaidDevouredSeatTonight: number | null;
+  // 灰太狼 & 喜羊羊
+  greyWolfBossJoinedTeam: boolean;
+  greyWolfBossStolenSeats: number[];
+  greyWolfBossBorrowedHunterGun: boolean;
+  happySheepLastProtectSeat: number | null;
+  happySheepLastAntiTheftSeat: number | null;
+  // 怪盜狼王
+  phantomWolfInvincibleUsed: boolean;
+  phantomWolfInvincibleActive: boolean;
+  // 定序王子
+  sequencePrinceUsed: boolean;
+  // 槓精
+  contrarianUsed: boolean;
+  contrarianSilencedVoterSeat: number | null;
+  // 偵探 & 警犬
+  detectiveRevealedToday: boolean;
+  detectiveUsed: boolean;
+  policeDogActivatedRound: number | null;
+  policeDogMode: 'bite' | 'check' | null;
+  policeDogUsed: boolean;
+  // 白夜使者
+  whiteNightEnvoyUsed: boolean;
+  // 小女孩
+  littleGirlIdentifyUsed: boolean;
+}
+
 export interface NightActionDraft {
   round: number;
   guardTarget: number | null;
@@ -876,6 +918,16 @@ export interface NightActionDraft {
   wolfMaidExtraKillTarget?: number | null;
   luckyItemActorSeat?: number | null;
   luckyItemTargetSeat?: number | null;
+  /** 第 6 批：最終 13 角色夜間草稿 */
+  eclipseMaidDevourTarget?: number | null;
+  eclipseMaidUseSkillTarget?: number | null;
+  greyWolfBossStealTarget?: number | null;
+  greyWolfBossUseSkillTarget?: number | null;
+  happySheepMode?: 'guard' | 'anti_theft' | null;
+  happySheepTarget?: number | null;
+  phantomWolfActivateInvincible?: boolean;
+  policeDogTarget?: number | null;
+  littleGirlIdentifyTarget?: number | null;
 }
 
 export interface BearRoarResult {
@@ -1071,6 +1123,8 @@ export interface GameState {
   conversionState?: ConversionRuntimeState;
   /** 第 5 批：第三方獨立勝利／特殊計分／收集／贈禮持久化狀態 */
   thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
+  /** 第 6 批：最終 13 角色（吞噬／偷竊／無敵／偵探警犬／回溯）持久化狀態 */
+  finalBatchState?: FinalBatchRuntimeState;
 
   /** 自動發言順序與單人倒數計時引擎 */
   speakingQueue: number[];
@@ -1171,6 +1225,7 @@ export interface NightResolutionInput {
   combatState?: CombatRuntimeState;
   conversionState?: ConversionRuntimeState;
   thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
+  finalBatchState?: FinalBatchRuntimeState;
   /** 測試可注入之亂數產生器（酒鬼預言家預設隨機用） */
   rng?: () => number;
 }
@@ -1203,6 +1258,7 @@ export interface NightResolutionResult {
   combatState: CombatRuntimeState;
   conversionState: ConversionRuntimeState;
   thirdPartySpecialState: ThirdPartySpecialRuntimeState;
+  finalBatchState: FinalBatchRuntimeState;
   /** 今晚白貓觸發翻牌免死的座號 */
   whiteCatRevealedSeats: number[];
   /** 今晚因蒙面人被動而進入負傷／中毒延遲死亡的座號 */

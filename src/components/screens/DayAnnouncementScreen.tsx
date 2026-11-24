@@ -25,6 +25,7 @@ export function DayAnnouncementScreen() {
   const lastSeniorVillagerReveal = useGameStore((s) => s.lastSeniorVillagerReveal ?? null);
   const interferenceState = useGameStore((s) => s.interferenceState);
   const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
+  const finalBatchState = useGameStore((s) => s.finalBatchState);
   const combatState = useGameStore((s) => s.combatState);
   const reviveWithAlchemySnake = useGameStore((s) => s.reviveWithAlchemySnake);
   const triggerWhiteCatDelayedDeath = useGameStore((s) => s.triggerWhiteCatDelayedDeath);
@@ -216,6 +217,18 @@ export function DayAnnouncementScreen() {
               😴 睡美人睡眠擴散（法官視角）：目前睡眠座位為 {thirdPartySpecialState.sleepingSeats.join('、')} 號（熊不咆哮／女巫毒失效／獵人禁槍／禁言無效）。
             </section>
           )}
+
+        {finalBatchState?.detectiveRevealedToday && (
+          <section className="rounded-2xl border border-cyan-400/50 bg-cyan-950/35 p-3 text-xs font-bold text-cyan-100">
+            🕵️ 偵探今日已翻牌：本輪全體狼人禁止自爆，發言結束後偵探可指定處決一名玩家。
+          </section>
+        )}
+
+        {!isOnlineJudge && finalBatchState?.phantomWolfInvincibleActive && (
+          <section className="rounded-2xl border border-amber-400/50 bg-amber-950/35 p-3 text-xs font-bold text-amber-100">
+            🛡️ 怪盜狼王無敵生效中（法官視角）：今日免疫公投放逐與獵人開槍，下次入夜立即失效。
+          </section>
+        )}
 
         {!isOnlineJudge &&
           interferenceState &&

@@ -247,6 +247,16 @@ function getInitialTargetForStep(
       return draft.wolfMaidTeaTarget ?? null;
     case 'lucky_item_action':
       return draft.luckyItemTargetSeat ?? null;
+    case 'eclipse_maid_devour':
+      return draft.eclipseMaidDevourTarget ?? null;
+    case 'grey_wolf_boss_steal':
+      return draft.greyWolfBossStealTarget ?? null;
+    case 'happy_sheep_action':
+      return draft.happySheepTarget ?? null;
+    case 'police_dog_action':
+      return draft.policeDogTarget ?? null;
+    case 'little_girl_identify':
+      return draft.littleGirlIdentifyTarget ?? null;
     default:
       return null;
   }
@@ -1427,12 +1437,17 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
       case 'butler_tea':
       case 'wolf_maid_tea':
       case 'lucky_item_action':
+      case 'happy_sheep_action':
+      case 'police_dog_action':
+      case 'little_girl_identify':
         return {
           selected: pendingTarget === seatNumber,
           disabled: !isAlive,
           reason: !isAlive ? '已出局' : undefined,
           onSelect: toggleTarget,
         };
+      case 'eclipse_maid_devour':
+      case 'grey_wolf_boss_steal':
       case 'masked_wolf_action':
       case 'medium_channel':
         return {
@@ -1802,6 +1817,35 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
         break;
       case 'lucky_item_action':
         updateNightDraft({ luckyItemTargetSeat: pendingTarget });
+        break;
+      case 'eclipse_maid_devour':
+        updateNightDraft({
+          eclipseMaidDevourTarget: pendingDualTargets[0],
+          eclipseMaidUseSkillTarget: pendingDualTargets[1],
+        });
+        break;
+      case 'grey_wolf_boss_steal':
+        updateNightDraft({
+          greyWolfBossStealTarget: pendingDualTargets[0],
+          greyWolfBossUseSkillTarget: pendingDualTargets[1],
+        });
+        break;
+      case 'happy_sheep_action':
+        updateNightDraft({
+          happySheepTarget: pendingTarget,
+          happySheepMode: currentNightDraft.happySheepMode ?? 'guard',
+        });
+        break;
+      case 'phantom_wolf_invincible':
+        updateNightDraft({
+          phantomWolfActivateInvincible: currentNightDraft.phantomWolfActivateInvincible ?? false,
+        });
+        break;
+      case 'police_dog_action':
+        updateNightDraft({ policeDogTarget: pendingTarget });
+        break;
+      case 'little_girl_identify':
+        updateNightDraft({ littleGirlIdentifyTarget: pendingTarget });
         break;
       default:
         break;
@@ -3103,11 +3147,23 @@ export function NightConsoleScreen({ onOpenHistory, onOpenQA }: NightConsoleScre
               currentStep.actionType === 'evil_merchant_gift' ||
               currentStep.actionType === 'butler_tea' ||
               currentStep.actionType === 'wolf_maid_tea' ||
-              currentStep.actionType === 'lucky_item_action') && (
+              currentStep.actionType === 'lucky_item_action' ||
+              currentStep.actionType === 'happy_sheep_action' ||
+              currentStep.actionType === 'police_dog_action' ||
+              currentStep.actionType === 'little_girl_identify') && (
               <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-center text-xs font-bold text-slate-200">
                 {pendingTarget !== null
                   ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
                   : '請點選上方座位選擇技能目標（或直接確認跳過）'}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'eclipse_maid_devour' ||
+              currentStep.actionType === 'grey_wolf_boss_steal') && (
+              <div className="rounded-xl border border-rose-400/40 bg-rose-950/35 px-3 py-2 text-center text-xs font-bold text-rose-100">
+                {currentStep.actionType === 'eclipse_maid_devour'
+                  ? `🌑 蝕日侍女（吞噬對象 → 技能目標）：${pendingDualTargets.filter((n) => n !== null).join(' → ') || '請依序點選吞噬對象與技能目標'}`
+                  : `🐺 灰太狼（偷竊對象 → 技能目標）：${pendingDualTargets.filter((n) => n !== null).join(' → ') || '請依序點選偷竊對象與技能目標'}`}
               </div>
             )}
 

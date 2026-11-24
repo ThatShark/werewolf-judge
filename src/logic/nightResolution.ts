@@ -67,6 +67,17 @@ import {
   resolveExoticPrinceCheck,
   syncBatch5LoneWolfTeamStatus,
 } from './thirdPartySpecialRoles';
+import {
+  canEclipseMaidDevour,
+  canGreyWolfBossSteal,
+  canHappySheepAct,
+  canPhantomWolfActivateInvincible,
+  canPoliceDogAct,
+  canWolvesIdentifyLittleGirl,
+  cloneFinalBatchState,
+  createInitialFinalBatchState,
+  syncFinalBatchLoneWolfTeamStatus,
+} from './finalBatchRoles';
 import { checkCanShoot } from './dayResolution';
 import {
   canAwakenedDreamCatcherDream,
@@ -405,6 +416,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     combatState = createInitialCombatState(),
     conversionState = createInitialConversionState(),
     thirdPartySpecialState = createInitialThirdPartySpecialState(),
+    finalBatchState = createInitialFinalBatchState(),
     rng,
   } = input;
 
@@ -483,6 +495,46 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextThirdPartySpecialState = wakeOutcome.state;
   }
   const allWolvesAsleepTonight = areAllAliveWolvesAsleep(updatedSeats, nextThirdPartySpecialState);
+  let nextFinalBatchState = cloneFinalBatchState(finalBatchState);
+  nextFinalBatchState.phantomWolfInvincibleActive = false;
+  nextFinalBatchState.detectiveRevealedToday = false;
+  nextFinalBatchState.contrarianSilencedVoterSeat = null;
+  nextFinalBatchState.eclipseMaidDevouredSeatTonight = null;
+  nextFinalBatchState.greyWolfBossBorrowedHunterGun = false;
+
+  // 怪盜狼王無敵發動（持續至下次入夜前）
+  if (
+    draft.phantomWolfActivateInvincible &&
+    canPhantomWolfActivateInvincible(updatedSeats, nextFinalBatchState).allowed
+  ) {
+    nextFinalBatchState.phantomWolfInvincibleUsed = true;
+    nextFinalBatchState.phantomWolfInvincibleActive = true;
+  }
+
+  // 喜羊羊防盜／守護（對自己視為同時防盜＋守護）
+  let happySheepGuardedSeat: number | null = null;
+  let happySheepAntiTheftSeat: number | null = null;
+  if (draft.happySheepTarget != null && draft.happySheepMode) {
+    const sheepActor = updatedSeats.find((s) => s.roleId === 'happy_sheep' && s.isAlive);
+    if (
+      sheepActor &&
+      canHappySheepAct(updatedSeats, nextFinalBatchState, draft.happySheepMode, draft.happySheepTarget)
+        .allowed
+    ) {
+      if (draft.happySheepTarget === sheepActor.seatNumber) {
+        happySheepGuardedSeat = sheepActor.seatNumber;
+        happySheepAntiTheftSeat = sheepActor.seatNumber;
+        nextFinalBatchState.happySheepLastProtectSeat = sheepActor.seatNumber;
+        nextFinalBatchState.happySheepLastAntiTheftSeat = sheepActor.seatNumber;
+      } else if (draft.happySheepMode === 'guard') {
+        happySheepGuardedSeat = draft.happySheepTarget;
+        nextFinalBatchState.happySheepLastProtectSeat = draft.happySheepTarget;
+      } else {
+        happySheepAntiTheftSeat = draft.happySheepTarget;
+        nextFinalBatchState.happySheepLastAntiTheftSeat = draft.happySheepTarget;
+      }
+    }
+  }
   let nextFoxLostAbility = foxLostAbility;
   let nextLastAwakenedDreamTarget: number | null = lastAwakenedDreamTarget;
   let nextWitchAntidoteUsed = witchAntidoteUsed;
@@ -1637,6 +1689,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       twinsGuardedSeat === effectiveWolfTarget ||
       luckyShieldSeat === effectiveWolfTarget ||
       mediumShieldSeat === effectiveWolfTarget ||
+      happySheepGuardedSeat === effectiveWolfTarget ||
       (draft.butlerGuardSecondTarget != null &&
         draft.butlerGuardSecondTarget === effectiveWolfTarget);
     const guardedByMech = mechGuardTarget === effectiveWolfTarget;
@@ -2052,6 +2105,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         combatState: nextCombatState,
         conversionState: nextConversionState,
         thirdPartySpecialState: nextThirdPartySpecialState,
+        finalBatchState: nextFinalBatchState,
         whiteCatRevealedSeats,
         maskedDelayedSeats,
         bearRoar: evaluateBearRoar(updatedSeats, nextMechWolfState, fearedSeat),
@@ -3093,6 +3147,165 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextThirdPartySpecialState,
   );
 
+  // 8.69 第 6 批：蝕日侍女、灰太狼、小女孩、警犬與怪盜狼王無敵結算
+  // 8.69a 小女孩：第二晚起狼隊指認小女孩，指認成功由小女孩代替原狼刀目標死亡
+  if (
+    draft.littleGirlIdentifyTarget != null &&
+    canWolvesIdentifyLittleGirl(round, nextFinalBatchState).allowed
+  ) {
+    nextFinalBatchState.littleGirlIdentifyUsed = true;
+    const identifiedSeat = updatedSeats.find(
+      (s) => s.seatNumber === draft.littleGirlIdentifyTarget,
+    );
+    if (identifiedSeat?.roleId === 'little_girl') {
+      const wkIdx = deaths.findIndex((d) => d.reason === 'wolf_kill');
+      if (wkIdx !== -1) {
+        const rescuedSeat = deaths[wkIdx].seat;
+        deaths.splice(wkIdx, 1);
+        updatedSeats = updatedSeats.map((s) =>
+          s.seatNumber === rescuedSeat
+            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+            : s,
+        );
+      }
+      doKill(identifiedSeat.seatNumber, 'little_girl_caught');
+    }
+  }
+
+  // 8.69b 蝕日侍女：第二晚起吞噬非狼玩家並使用其技能
+  const aliveEclipseMaid = initialSeats.find((s) => s.roleId === 'eclipse_maid' && s.isAlive);
+  if (
+    aliveEclipseMaid &&
+    draft.eclipseMaidDevourTarget != null &&
+    canEclipseMaidDevour(initialSeats, round, draft.eclipseMaidDevourTarget).allowed
+  ) {
+    nextFinalBatchState.eclipseMaidDevouredSeatTonight = draft.eclipseMaidDevourTarget;
+    const devoured = initialSeats.find((s) => s.seatNumber === draft.eclipseMaidDevourTarget);
+    if (devoured?.roleId === 'witch' && !witchPoisonUsed) {
+      // 吞女巫：封鎖原女巫毒、蝕日侍女改用毒藥
+      const wpIdx = deaths.findIndex((d) => d.reason === 'witch_poison');
+      if (wpIdx !== -1) {
+        const rescued = deaths[wpIdx].seat;
+        deaths.splice(wpIdx, 1);
+        updatedSeats = updatedSeats.map((s) =>
+          s.seatNumber === rescued
+            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+            : s,
+        );
+      }
+      if (draft.eclipseMaidUseSkillTarget != null) {
+        doKill(draft.eclipseMaidUseSkillTarget, 'eclipse_maid_kill');
+        nextWitchPoisonUsed = true;
+      }
+    } else if (devoured?.roleId === 'demon_hunter') {
+      // 吞獵魔人：蝕日侍女當晚免疫女巫毒藥；狩狼殺狼、狩好自死
+      const maidPoisonIdx = deaths.findIndex(
+        (d) => d.seat === aliveEclipseMaid.seatNumber && d.reason === 'witch_poison',
+      );
+      if (maidPoisonIdx !== -1) {
+        deaths.splice(maidPoisonIdx, 1);
+        updatedSeats = updatedSeats.map((s) =>
+          s.seatNumber === aliveEclipseMaid.seatNumber
+            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+            : s,
+        );
+      }
+      if (draft.eclipseMaidUseSkillTarget != null) {
+        const huntTarget = initialSeats.find((s) => s.seatNumber === draft.eclipseMaidUseSkillTarget);
+        if (huntTarget && isSeatWolfFaction(huntTarget)) {
+          doKill(huntTarget.seatNumber, 'eclipse_maid_kill');
+        } else if (huntTarget) {
+          doKill(aliveEclipseMaid.seatNumber, 'eclipse_maid_kill');
+        }
+      }
+    } else if (devoured?.roleId === 'cursed_fox') {
+      // 吞咒狐：蝕日侍女當晚免狼刀
+      const maidWolfIdx = deaths.findIndex(
+        (d) => d.seat === aliveEclipseMaid.seatNumber && d.reason === 'wolf_kill',
+      );
+      if (maidWolfIdx !== -1) {
+        deaths.splice(maidWolfIdx, 1);
+        updatedSeats = updatedSeats.map((s) =>
+          s.seatNumber === aliveEclipseMaid.seatNumber
+            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+            : s,
+        );
+      }
+    } else if (
+      devoured?.roleId === 'miracle_merchant' &&
+      draft.eclipseMaidUseSkillTarget != null
+    ) {
+      const mTarget = initialSeats.find((s) => s.seatNumber === draft.eclipseMaidUseSkillTarget);
+      if (mTarget && isSeatWolfFaction(mTarget)) {
+        doKill(aliveEclipseMaid.seatNumber, 'merchant_backfire');
+      }
+    }
+  }
+
+  // 8.69c 灰太狼：每晚偷取技能（受喜羊羊防盜阻斷，每人整局限偷一次）
+  if (
+    draft.greyWolfBossStealTarget != null &&
+    canGreyWolfBossSteal(initialSeats, nextFinalBatchState, draft.greyWolfBossStealTarget).allowed
+  ) {
+    nextFinalBatchState.greyWolfBossStolenSeats.push(draft.greyWolfBossStealTarget);
+    const blockedByAntiTheft = happySheepAntiTheftSeat === draft.greyWolfBossStealTarget;
+    const targetObj = initialSeats.find((s) => s.seatNumber === draft.greyWolfBossStealTarget);
+    if (!blockedByAntiTheft && targetObj) {
+      if ((targetObj.roleId === 'wolf' || targetObj.roleId === 'little_grey_wolf') && round >= 2) {
+        // 次夜起偷小狼：狼隊當晚無刀，改由灰太狼代刀
+        const wkIdx = deaths.findIndex((d) => d.reason === 'wolf_kill');
+        if (wkIdx !== -1) {
+          const rescued = deaths[wkIdx].seat;
+          deaths.splice(wkIdx, 1);
+          updatedSeats = updatedSeats.map((s) =>
+            s.seatNumber === rescued
+              ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+              : s,
+          );
+        }
+        if (draft.greyWolfBossUseSkillTarget != null) {
+          doKill(draft.greyWolfBossUseSkillTarget, 'grey_wolf_steal_kill');
+        }
+      } else if (targetObj.roleId === 'witch' && !witchPoisonUsed) {
+        if (draft.greyWolfBossUseSkillTarget != null) {
+          doKill(draft.greyWolfBossUseSkillTarget, 'grey_wolf_steal_kill');
+          nextWitchPoisonUsed = true;
+        }
+      } else if (targetObj.roleId === 'hunter') {
+        nextFinalBatchState.greyWolfBossBorrowedHunterGun = true;
+      }
+    }
+  }
+
+  // 8.69d 警犬：偵探處決後當晚激活（處決好人→撕咬、處決狼人→查驗）
+  if (
+    draft.policeDogTarget != null &&
+    canPoliceDogAct(initialSeats, nextFinalBatchState, round).allowed
+  ) {
+    nextFinalBatchState.policeDogUsed = true;
+    if (nextFinalBatchState.policeDogMode === 'bite') {
+      doKill(draft.policeDogTarget, 'police_dog_bite');
+    }
+  }
+
+  // 8.69e 怪盜狼王無敵：免疫一切夜間死亡
+  if (nextFinalBatchState.phantomWolfInvincibleActive) {
+    const phantomSeat = updatedSeats.find((s) => s.roleId === 'phantom_wolf_king');
+    if (phantomSeat) {
+      const pIdx = deaths.findIndex((d) => d.seat === phantomSeat.seatNumber);
+      if (pIdx !== -1) {
+        deaths.splice(pIdx, 1);
+        updatedSeats = updatedSeats.map((s) =>
+          s.seatNumber === phantomSeat.seatNumber
+            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+            : s,
+        );
+      }
+    }
+  }
+
+  nextFinalBatchState = syncFinalBatchLoneWolfTeamStatus(updatedSeats, nextFinalBatchState);
+
   // 9. 更新機械狼／盜寶大師／隱狼／石像鬼入隊狀態、南瓜鬼／超級守墓人繼承、混血兒榜樣同步、開槍資格、熊咆哮與最終勝負
   nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
   nextTreasureMasterState = syncTreasureMasterTeamStatus(updatedSeats, nextTreasureMasterState);
@@ -3176,6 +3389,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     combatState: nextCombatState,
     conversionState: nextConversionState,
     thirdPartySpecialState: nextThirdPartySpecialState,
+    finalBatchState: nextFinalBatchState,
     whiteCatRevealedSeats,
     maskedDelayedSeats,
     bearRoar,

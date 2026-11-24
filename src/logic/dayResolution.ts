@@ -5,6 +5,7 @@ import {
   isOldRascalDelayableDeath,
 } from './combatRoles';
 import { canGoodSelfExplode, isDemonWolfNightShootImmune } from './inspectionRoles';
+import { isPhantomWolfInvincible } from './finalBatchRoles';
 import {
   isWarWolfImmuneToDeath,
   shouldWhiteCatSurviveDeath,
@@ -21,6 +22,7 @@ import {
 import type {
   DayExileResult,
   DeathReason,
+  FinalBatchRuntimeState,
   GoodSelfExplodeResult,
   KnightDuelResult,
   MechWolfRuntimeState,
@@ -295,10 +297,25 @@ export function resolveDayExile(
   mechWolfState: MechWolfRuntimeState,
   activeCharmedSeat: number | null = null,
   treasureMasterState?: TreasureMasterRuntimeState,
+  finalBatchState?: FinalBatchRuntimeState,
 ): DayExileResult {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.isAlive) {
     throw new Error('放逐目標不存在或已出局');
+  }
+
+  // 怪盜狼王處於「無敵」期間免疫公投放逐出局
+  if (isPhantomWolfInvincible(target, finalBatchState)) {
+    return {
+      seats: seats.map((s) => ({ ...s })),
+      exiledSeat: targetSeat,
+      idiotRevealed: false,
+      charmedDeathSeat: null,
+      shootEligibility: null,
+      mechWolfState,
+      treasureMasterState,
+      victory: { winner: null, winReason: null },
+    };
   }
 
   // 盜寶蒙面狼作為最後一狼切換成蒙面人並被放逐時，暫時不死且可於隔夜再刀一人（類似血月使徒）
@@ -473,12 +490,32 @@ export function resolveDayExile(
 export function resolveSelfExplode(
   seats: PlayerSeat[],
   wolfSeat: number,
+  finalBatchState?: FinalBatchRuntimeState,
 ): SelfExplodeResult {
   const player = seats.find((seat) => seat.seatNumber === wolfSeat);
   if (!player || !player.isAlive) {
     return {
       allowed: false,
       reason: '該玩家不存在或已出局',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (finalBatchState?.detectiveRevealedToday) {
+    return {
+      allowed: false,
+      reason: '偵探今日已翻牌，當天狼人無法自爆',
+      pendingSelfExplodeSeat: null,
+    };
+  }
+
+  if (
+    player.roleId === 'phantom_wolf_king' &&
+    (!finalBatchState?.phantomWolfInvincibleUsed || finalBatchState.phantomWolfInvincibleActive)
+  ) {
+    return {
+      allowed: false,
+      reason: '怪盜狼王於「無敵」技能使用並失效前方可自爆',
       pendingSelfExplodeSeat: null,
     };
   }
@@ -562,6 +599,8 @@ export function resolveSelfExplode(
     evil_merchant: '邪惡商人不可自爆',
     wolf_maid: '狼僕不可自爆',
     super_black_market_merchant: '超級黑市商人不可自爆',
+    eclipse_maid: '蝕日侍女不可自爆',
+    grey_wolf_boss: '灰太狼不可自爆',
   };
   if (player.roleId && nonExplodableCombatRoles[player.roleId]) {
     return {

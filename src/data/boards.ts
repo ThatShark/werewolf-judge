@@ -1764,7 +1764,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -5641,7 +5641,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -5803,7 +5803,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -5819,18 +5819,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "你的狼隊友為...",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -5868,18 +5865,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "請選擇要吞噬的目標，\n你偷到的技能為...，請問你要使用嗎？",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "radiant_earl_shield",
@@ -6951,7 +6945,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -8643,18 +8637,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "你的狼隊友為...",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -8692,18 +8683,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "請選擇要吞噬的目標，\n你偷到的技能為...，請問你要使用嗎？",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "xu_xian_action",
@@ -15505,7 +15493,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -16644,7 +16632,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -16853,7 +16841,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -16880,18 +16868,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_3",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "你的狼隊友為...",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -16929,18 +16914,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "請選擇要吞噬的目標，\n你偷到的技能為...，請問你要使用嗎？",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "radiant_earl_shield",
@@ -17913,7 +17895,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -18079,7 +18061,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -19050,7 +19032,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -19090,18 +19072,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "寂夜導師請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "你的狼隊友為...(小狼為...狼鴉之爪為...寂夜導師為...)",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -19161,18 +19140,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "寂夜導師請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "今晚的技能數量為...請選擇要擊殺的目標\n請選擇要吞噬的目標，\n你偷到的技能為...，請問你要使用嗎？",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "radiant_earl_shield",
@@ -20165,7 +20141,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -21987,7 +21963,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -23674,7 +23650,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -25411,7 +25387,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
@@ -25426,18 +25402,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "phantom_wolf_invincible",
           "actorLabel": "怪盜狼王",
           "actorRoleIds": [
             "phantom_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "phantom_wolf_invincible",
           "openPrompt": "怪盜狼王請睜眼",
           "actionPrompt": "請問今晚是否使用技能",
-          "closePrompt": "怪盜狼王請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "怪盜狼王請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -25501,18 +25474,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_2_2",
+          "stepId": "phantom_wolf_invincible_2",
           "actorLabel": "怪盜狼王",
           "actorRoleIds": [
             "phantom_wolf_king"
           ],
-          "actionType": "confirm_only",
+          "actionType": "phantom_wolf_invincible",
           "openPrompt": "怪盜狼王請睜眼",
           "actionPrompt": "請問今晚是否使用技能",
           "closePrompt": "怪盜狼王請閉眼",
           "judgeTips": [
-            "情境條件：如果偵探未使用技能",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "情境條件：如果偵探未使用技能"
           ]
         },
         {
@@ -25560,18 +25532,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_5_cond_6",
+          "stepId": "police_dog_action_cond_6",
           "actorLabel": "警犬（如果偵探使用技能）",
           "actorRoleIds": [
             "police_dog"
           ],
-          "actionType": "confirm_only",
+          "actionType": "police_dog_action",
           "openPrompt": "警犬請睜眼",
           "actionPrompt": "昨晚被處決的身分為...\n請選擇你要使用技能的對象",
           "closePrompt": "警犬請閉眼",
           "judgeTips": [
-            "條件分支步驟（第二晚 (如果偵探使用技能)）",
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "條件分支步驟（第二晚 (如果偵探使用技能)）"
           ]
         }
       ]
@@ -25642,36 +25613,30 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ]
     },
-    "automationLevel": "partial_manual",
+    "automationLevel": "full",
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "happy_sheep_action",
           "actorLabel": "喜羊羊",
           "actorRoleIds": [
             "happy_sheep"
           ],
-          "actionType": "confirm_only",
+          "actionType": "happy_sheep_action",
           "openPrompt": "喜羊羊請睜眼",
           "actionPrompt": "請選擇一名玩家進行防盜或守護",
-          "closePrompt": "喜羊羊請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "喜羊羊請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "grey_wolf_boss_steal",
           "actorLabel": "灰太狼",
           "actorRoleIds": [
             "grey_wolf_boss"
           ],
-          "actionType": "confirm_only",
+          "actionType": "grey_wolf_boss_steal",
           "openPrompt": "灰太狼請睜眼",
           "actionPrompt": "請選擇要偷取的玩家",
-          "closePrompt": "灰太狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "灰太狼請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -25719,48 +25684,39 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "grey_wolf_boss_steal_2",
           "actorLabel": "灰太狼",
           "actorRoleIds": [
             "grey_wolf_boss"
           ],
-          "actionType": "confirm_only",
+          "actionType": "grey_wolf_boss_steal",
           "openPrompt": "灰太狼請睜眼",
           "actionPrompt": "你偷取到的技能為...，請選擇技能發動目標",
-          "closePrompt": "灰太狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "灰太狼請閉眼"
         }
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "happy_sheep_action",
           "actorLabel": "喜羊羊",
           "actorRoleIds": [
             "happy_sheep"
           ],
-          "actionType": "confirm_only",
+          "actionType": "happy_sheep_action",
           "openPrompt": "喜羊羊請睜眼",
           "actionPrompt": "請選擇一名玩家進行防盜或守護",
-          "closePrompt": "喜羊羊請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "喜羊羊請閉眼"
         },
         {
-          "stepId": "step_2",
+          "stepId": "grey_wolf_boss_steal",
           "actorLabel": "灰太狼",
           "actorRoleIds": [
             "grey_wolf_boss"
           ],
-          "actionType": "confirm_only",
+          "actionType": "grey_wolf_boss_steal",
           "openPrompt": "灰太狼請睜眼",
           "actionPrompt": "今晚的帶刀手勢為...\n請選擇要偷取的玩家，你偷取到的技能為...",
-          "closePrompt": "灰太狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "灰太狼請閉眼"
         },
         {
           "stepId": "wolf_kill",
@@ -25808,18 +25764,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "獵人請閉眼"
         },
         {
-          "stepId": "step_7",
+          "stepId": "grey_wolf_boss_steal_2",
           "actorLabel": "灰太狼",
           "actorRoleIds": [
             "grey_wolf_boss"
           ],
-          "actionType": "confirm_only",
+          "actionType": "grey_wolf_boss_steal",
           "openPrompt": "灰太狼請睜眼",
           "actionPrompt": "請選擇技能發動目標",
-          "closePrompt": "灰太狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "灰太狼請閉眼"
         }
       ]
     },
@@ -28693,18 +28646,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "蝕時狼妃請閉眼"
         },
         {
-          "stepId": "step_6",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "你的狼隊友為...(小狼是...覺醒狼美人是...蝕時狼妃是...)",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -28787,18 +28737,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "請選擇要吞噬的目標，\n你偷到的技能為...，請問你要使用嗎？",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "dream_catcher_dream",
@@ -29456,18 +29403,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "你的狼隊友為...",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -29516,18 +29460,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "step_1",
+          "stepId": "eclipse_maid_devour",
           "actorLabel": "蝕日侍女",
           "actorRoleIds": [
             "eclipse_maid"
           ],
-          "actionType": "confirm_only",
+          "actionType": "eclipse_maid_devour",
           "openPrompt": "蝕日侍女請睜眼",
           "actionPrompt": "請選擇要吞噬的目標，\n你偷到的技能為...，請問你要使用嗎？",
-          "closePrompt": "蝕日侍女請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "蝕日侍女請閉眼"
         },
         {
           "stepId": "xu_xian_action",

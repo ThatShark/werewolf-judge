@@ -190,7 +190,7 @@ export const ROLES_BY_ID: Record<string, RoleDefinition> = {
     "name": "兔兔",
     "aliases": [],
     "faction": "good",
-    "category": "god",
+    "category": "villager",
     "description": "同「平民」，沒有特殊技能，黑夜階段全程閉眼，透過白天階段所得資訊投票放逐疑似狼人的玩家。"
   },
   "crow": {
@@ -520,7 +520,7 @@ export const ROLES_BY_ID: Record<string, RoleDefinition> = {
     "name": "羊駝",
     "aliases": [],
     "faction": "good",
-    "category": "god",
+    "category": "villager",
     "description": "同「平民」，沒有特殊技能，黑夜階段全程閉眼，透過白天階段所得資訊投票放逐疑似狼人的玩家。"
   },
   "fox_cub": {

@@ -8,12 +8,14 @@ import {
   DEFAULT_RULE_OVERRIDES,
   DEFAULT_SPEAK_DURATION_SEC,
   applyPandoraGift,
+  canWhiteNightEnvoyRewind,
   checkVictory,
   claimSeatRole as claimSeatRoleLogic,
   clampOnlineJudgeSettings,
   createEmptyNightDraft,
   createInitialCombatState,
   createInitialConversionState,
+  createInitialFinalBatchState,
   createInitialThirdPartySpecialState,
   createInitialGargoyleState,
   createInitialHiddenWolfState,
@@ -38,7 +40,10 @@ import {
   resolveAvengerAssassinate,
   resolveAwakenedHunterDirectionShoot,
   resolveBaiZeInherit,
+  resolveContrarianDebate,
   resolveDayExile,
+  resolveDetectiveExecute,
+  resolveDetectiveReveal,
   resolveGoodSelfExplode,
   resolveKnightDuel,
   resolveNight,
@@ -47,6 +52,7 @@ import {
   resolvePandoraHopeLight,
   resolvePufferfishExplode,
   resolveSelfExplode,
+  resolveSequencePrinceRevote,
   resolveSheriffVoteRound,
   resolveShoot,
   resolveWhiteCatDelayedDeath,
@@ -142,6 +148,7 @@ export type UndoSnapshotData = Pick<
   | 'combatState'
   | 'conversionState'
   | 'thirdPartySpecialState'
+  | 'finalBatchState'
   | 'speakingQueue'
   | 'currentSpeakerIndex'
   | 'speakingMeta'
@@ -253,6 +260,17 @@ export interface GameStore extends GameState {
   ) => { allowed: boolean; reason?: string; triggeredWinner?: string | null };
   triggerNineTailsHunt: () => { success: boolean; eliminatedSeats: number[] };
   setBaiZeHeir: (heirSeat: number) => { allowed: boolean; reason?: string };
+  /** 第 6 批：定序王子重投／槓精開槓／偵探翻牌處決／白夜使者回溯 */
+  triggerSequencePrinceRevote: () => { allowed: boolean; reason?: string };
+  resolveContrarianVote: (
+    targetSeat: number,
+    majorityPassed: boolean,
+  ) => { allowed: boolean; reason?: string; silencedVoterSeat?: number | null };
+  triggerDetectiveReveal: () => { allowed: boolean; reason?: string };
+  detectiveExecutePlayer: (
+    targetSeat: number,
+  ) => { allowed: boolean; reason?: string; targetWasWolf?: boolean };
+  triggerWhiteNightRewind: () => { allowed: boolean; reason?: string };
   advanceToNextNight: () => void;
 
   toggleSeatAlive: (seatNumber: number, options?: { reason?: DeathReason }) => void;
@@ -317,6 +335,7 @@ function createInitialGameState(): GameState & {
     combatState: createInitialCombatState(),
     conversionState: createInitialConversionState(),
     thirdPartySpecialState: createInitialThirdPartySpecialState(),
+    finalBatchState: createInitialFinalBatchState(),
     speakingQueue: [],
     currentSpeakerIndex: 0,
     speakingMeta: null,
@@ -373,6 +392,7 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     combatState: state.combatState,
     conversionState: state.conversionState,
     thirdPartySpecialState: state.thirdPartySpecialState,
+    finalBatchState: state.finalBatchState,
     speakingQueue: state.speakingQueue,
     currentSpeakerIndex: state.currentSpeakerIndex,
     speakingMeta: state.speakingMeta,
@@ -785,6 +805,7 @@ export const useGameStore = create<GameStore>()(
           conversionState: state.conversionState ?? createInitialConversionState(),
           thirdPartySpecialState:
             state.thirdPartySpecialState ?? createInitialThirdPartySpecialState(),
+          finalBatchState: state.finalBatchState ?? createInitialFinalBatchState(),
         });
 
         const deathMap = new Map(result.deaths.map((d) => [d.seat, d.reason]));
@@ -859,6 +880,7 @@ export const useGameStore = create<GameStore>()(
           combatState: result.combatState,
           conversionState: result.conversionState,
           thirdPartySpecialState: result.thirdPartySpecialState,
+          finalBatchState: result.finalBatchState,
           sheriffState: nextSheriffState,
           speakingQueue: [],
           currentSpeakerIndex: 0,
@@ -1812,9 +1834,163 @@ export const useGameStore = create<GameStore>()(
         return { allowed: true };
       },
 
+      triggerSequencePrinceRevote: () => {
+        const state = get();
+        const res = resolveSequencePrinceRevote(
+          state.seats,
+          state.finalBatchState ?? createInitialFinalBatchState(),
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const summary = '定序王子翻牌發動技能：全員再發言一次並重新進行放逐投票！';
+        set({
+          finalBatchState: res.state,
+          exilePkCandidates: [],
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+          }),
+          undoStack: pushUndo(state, '定序王子翻牌重新投票'),
+        });
+        return { allowed: true };
+      },
+
+      resolveContrarianVote: (targetSeat, majorityPassed) => {
+        const state = get();
+        const res = resolveContrarianDebate(
+          state.seats,
+          state.finalBatchState ?? createInitialFinalBatchState(),
+          targetSeat,
+          majorityPassed,
+          state.sheriffState.sheriffSeat,
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const summary = majorityPassed
+          ? `槓精對 ${targetSeat} 號開槓投票過半：${targetSeat} 號中止發言並失去本輪投票權${res.newSheriffSeat !== state.sheriffState.sheriffSeat ? '，警徽移交給槓精' : ''}`
+          : `槓精對 ${targetSeat} 號開槓未過半：槓精失去本輪投票權`;
+        set({
+          finalBatchState: res.state,
+          sheriffState:
+            res.newSheriffSeat !== state.sheriffState.sheriffSeat
+              ? { ...state.sheriffState, sheriffSeat: res.newSheriffSeat, badgeStatus: 'active' }
+              : state.sheriffState,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat,
+          }),
+          undoStack: pushUndo(state, `槓精開槓（${targetSeat} 號）`),
+        });
+        return { allowed: true, silencedVoterSeat: res.silencedVoterSeat };
+      },
+
+      triggerDetectiveReveal: () => {
+        const state = get();
+        const res = resolveDetectiveReveal(
+          state.seats,
+          state.finalBatchState ?? createInitialFinalBatchState(),
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const summary = `偵探（${res.detectiveSeat} 號）主動翻牌搶奪警徽！今日全體狼人無法自爆。`;
+        set({
+          finalBatchState: res.state,
+          sheriffState: {
+            ...state.sheriffState,
+            status: 'elected',
+            sheriffSeat: res.detectiveSeat,
+            badgeStatus: 'active',
+          },
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            actorSeat: res.detectiveSeat,
+          }),
+          undoStack: pushUndo(state, '偵探翻牌搶奪警徽'),
+        });
+        return { allowed: true };
+      },
+
+      detectiveExecutePlayer: (targetSeat) => {
+        const state = get();
+        const res = resolveDetectiveExecute(
+          state.seats,
+          state.finalBatchState ?? createInitialFinalBatchState(),
+          targetSeat,
+          state.round,
+        );
+        if (!res.allowed) return { allowed: false, reason: res.reason };
+        const victory = checkVictory(res.seats, state.ruleOverrides, undefined, {
+          conversionState: state.conversionState,
+          thirdPartySpecialState: state.thirdPartySpecialState,
+        });
+        const triggerGameOver = shouldTriggerAutoVictory(
+          victory,
+          state.forceContinueAfterVictory,
+        );
+        const summary = res.targetSurvivedInvincible
+          ? `偵探處決 ${targetSeat} 號，但目標處於怪盜狼王無敵狀態免死！（警犬今晚激活）`
+          : `偵探處決 ${targetSeat} 號出局（警犬今晚激活${res.targetWasWolf ? '查驗' : '撕咬'}技能）`;
+        set({
+          seats: res.seats,
+          finalBatchState: res.state,
+          dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
+            type: 'manual_judge',
+            summary,
+            targetSeat,
+          }),
+          winner: triggerGameOver ? victory.winner : state.winner,
+          winReason: triggerGameOver ? victory.winReason : state.winReason,
+          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
+          undoStack: pushUndo(state, `偵探處決 ${targetSeat} 號`),
+        });
+        return { allowed: true, targetWasWolf: res.targetWasWolf };
+      },
+
+      triggerWhiteNightRewind: () => {
+        const state = get();
+        const fbState = state.finalBatchState ?? createInitialFinalBatchState();
+        const check = canWhiteNightEnvoyRewind(state.seats, fbState, state.round);
+        if (!check.allowed) return { allowed: false, reason: check.reason };
+        // 從 undoStack 中尋找最近一次夜間結算前的快照（或還原前一晚死者並重回上一晚）
+        const nightSnapIdx = [...state.undoStack]
+          .reverse()
+          .findIndex((entry) => entry.label.includes('夜晚') || entry.label.includes('結算'));
+        if (nightSnapIdx !== -1) {
+          const targetEntry = state.undoStack[state.undoStack.length - 1 - nightSnapIdx];
+          const snap = targetEntry.data;
+          set({
+            ...snap,
+            phase: 'night',
+            currentStepIndex: 0,
+            currentNightDraft: createEmptyNightDraft(snap.round),
+            finalBatchState: {
+              ...(snap.finalBatchState ?? createInitialFinalBatchState()),
+              whiteNightEnvoyUsed: true,
+            },
+            undoStack: pushUndo(state, '白夜使者時間回溯重跑上一晚'),
+          });
+          return { allowed: true };
+        }
+        // 若無快照則直接復活當晚出局者並回到當晚第 0 步
+        const restoredSeats = state.seats.map((s) =>
+          !s.isAlive && s.deathRound === state.round
+            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+            : s,
+        );
+        set({
+          seats: restoredSeats,
+          phase: 'night',
+          currentStepIndex: 0,
+          currentNightDraft: createEmptyNightDraft(state.round),
+          finalBatchState: { ...fbState, whiteNightEnvoyUsed: true },
+          undoStack: pushUndo(state, '白夜使者時間回溯重跑上一晚'),
+        });
+        return { allowed: true };
+      },
+
       selfExplode: (wolfSeat) => {
         const state = get();
-        const result = resolveSelfExplode(state.seats, wolfSeat);
+        const result = resolveSelfExplode(state.seats, wolfSeat, state.finalBatchState);
         if (!result.allowed) {
           return { allowed: false, reason: result.reason };
         }

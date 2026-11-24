@@ -176,6 +176,8 @@ const ROLE_META_OVERRIDE: Record<
   lantern_seer: { faction: 'good', category: 'villager' },
   drunk_seer: { faction: 'good', category: 'villager' },
   old_rascal: { faction: 'good', category: 'villager' },
+  alpaca: { faction: 'good', category: 'villager' },
+  bunny: { faction: 'good', category: 'villager' },
   // 特殊／變形機制角色歸入 third_party 或對應陣營
   fanatic: { faction: 'third_party', category: 'third_party' },
   avenger: { faction: 'third_party', category: 'third_party' },
@@ -919,6 +921,20 @@ const AUTOMATED_ROLE_IDS = new Set([
   'medium',
   'butler',
   'wolf_maid',
+  // 第 6 批：最終 13 個角色（全量 130/130、143/143 100% 全自動結算達成）
+  'eclipse_maid',
+  'grey_wolf_boss',
+  'happy_sheep',
+  'phantom_wolf_king',
+  'sequence_prince',
+  'contrarian',
+  'detective',
+  'police_dog',
+  'white_night_envoy',
+  'little_girl',
+  'little_grey_wolf',
+  'alpaca',
+  'bunny',
 ]);
 
 function stripMarkdownFormatting(input: string): string {
@@ -1806,6 +1822,25 @@ function inferNightActionType(
   }
   if (combined.includes('幸運兒') && (combined.includes('技能') || combined.includes('使用'))) {
     return 'lucky_item_action';
+  }
+  // 第 6 批：最終 13 角色夜間步驟
+  if (actorRoleIds.includes('eclipse_maid') && actorRoleIds.length === 1) {
+    return 'eclipse_maid_devour';
+  }
+  if (actorRoleIds.includes('grey_wolf_boss') && actorRoleIds.length === 1) {
+    return 'grey_wolf_boss_steal';
+  }
+  if (actorRoleIds.includes('happy_sheep') && actorRoleIds.length === 1) {
+    return 'happy_sheep_action';
+  }
+  if (actorRoleIds.includes('phantom_wolf_king') && actorRoleIds.length === 1) {
+    return 'phantom_wolf_invincible';
+  }
+  if (actorRoleIds.includes('police_dog') && actorRoleIds.length === 1) {
+    return 'police_dog_action';
+  }
+  if (combined.includes('指認') && combined.includes('小女孩')) {
+    return 'little_girl_identify';
   }
 
   return 'confirm_only';

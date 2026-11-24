@@ -143,6 +143,12 @@ const VALID_NIGHT_ACTION_TYPES = new Set<NightActionType>([
   'butler_tea',
   'wolf_maid_tea',
   'lucky_item_action',
+  'eclipse_maid_devour',
+  'grey_wolf_boss_steal',
+  'happy_sheep_action',
+  'phantom_wolf_invincible',
+  'police_dog_action',
+  'little_girl_identify',
   'confirm_only',
 ]);
 

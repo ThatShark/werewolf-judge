@@ -8,10 +8,10 @@
 | --- | ---: | --- |
 | 板子總數（`ALL_BOARDS`） | **143** | 與 `docs/boards-raw.md` 原文對帳 100% 一致 |
 | 角色總數（`ROLE_LIST`） | **130** | 涵蓋狼人、好人、第三方陣營全部不重複角色 |
-| 清單 A：全自動結算角色 | **117** | 佔總角色數 90.0% |
-| 清單 B：僅台詞提示／需手動調整角色 | **13** | 佔總角色數 10.0%（含 1 名部分實作角色） |
-| 已達成「全角色 100% 自動結算」板子 | **125 / 143** | 佔總板子數 87.4% |
-| 尚待補齊之板子（含至少 1 名清單 B 角色） | **18 / 143** | 缺 1 角色：16 個板子 ／ 缺 3 角色：1 個板子 ／ 缺 4 角色：1 個板子 |
+| 清單 A：全自動結算角色 | **130** | 佔總角色數 100.0% |
+| 清單 B：僅台詞提示／需手動調整角色 | **0** | 佔總角色數 0.0%（含 1 名部分實作角色） |
+| 已達成「全角色 100% 自動結算」板子 | **143 / 143** | 佔總板子數 100.0% |
+| 尚待補齊之板子（含至少 1 名清單 B 角色） | **0 / 143** |  |
 
 ## 二、高優先度補齊排行榜（Top 15 熱門清單 B 角色）
 
@@ -19,21 +19,8 @@
 
 | 排名 | 角色名稱 | 角色 ID | 陣營 | 出現板子數 | 補齊可立即解鎖板子數 | 可立即解鎖之板子（僅差此角色） |
 | ---: | --- | --- | --- | ---: | ---: | --- |
-| 1 | **蝕日侍女** | `eclipse_maid` | 狼人 | 6 | **6** | 10 人局 - 獵日逐光、10 人局 - 千年之戀、12 人局 - 千年之戀、12 人局 - 無目之城、12 人局 - 獵日逐光、12 人局 - 沙龍之夜 |
-| 2 | **定序王子** | `sequence_prince` | 好人 | 3 | **3** | 10 人局 - 永序之輪、12 人局 - 永序之輪、12 人局 - 詭術之境 |
-| 3 | **羊駝** | `alpaca` | 好人 | 3 | **2** | 10 人局 - 動物夢境、12 人局 - 動物夢境 |
-| 4 | **兔兔** | `bunny` | 好人 | 2 | **2** | 12 人局 - 動物園、9 人局 - 動物園 |
-| 5 | **槓精** | `contrarian` | 好人 | 1 | **1** | 12 人局 - 針鋒相槓 |
-| 6 | **小女孩** | `little_girl` | 好人 | 1 | **1** | 12 人局 - 小女孩大野狼 |
-| 7 | **白夜使者** | `white_night_envoy` | 好人 | 1 | **1** | 12 人局 - 黑白使者 |
-| 8 | **偵探** | `detective` | 好人 | 1 | **0** | —（出現於多缺口板子） |
-| 9 | **灰太狼** | `grey_wolf_boss` | 狼人 | 1 | **0** | —（出現於多缺口板子） |
-| 10 | **喜羊羊** | `happy_sheep` | 好人 | 1 | **0** | —（出現於多缺口板子） |
-| 11 | **小小灰** | `little_grey_wolf` | 狼人 | 1 | **0** | —（出現於多缺口板子） |
-| 12 | **怪盜狼王** | `phantom_wolf_king` | 狼人 | 1 | **0** | —（出現於多缺口板子） |
-| 13 | **警犬** | `police_dog` | 好人 | 1 | **0** | —（出現於多缺口板子） |
 
-## 三、清單 A：全自動結算角色（共 117 個）
+## 三、清單 A：全自動結算角色（共 130 個）
 
 以下角色皆已在 `src/logic/` 完整實作自動生死／技能／查驗／勝負結算（依出現板子數由高到低排序）：
 
@@ -44,7 +31,7 @@
 | 3 | **女巫** | `witch` | 好人 | 126 | `nightResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts`, `thirdPartySpecialRoles.ts` | 解藥／毒藥互斥、自救規則（首夜／全程／不可）、同守同救奶穿、封鎖獵人與狼王開槍 |
 | 4 | **預言家** | `seer` | 好人 | 119 | `nightResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts`, `thirdPartySpecialRoles.ts` | 夜間陣營查驗（好人／狼人） |
 | 5 | **獵人** | `hunter` | 好人 | 80 | `nightResolution.ts`, `dayResolution.ts`, `topFiveRoles.ts`, `inspectionRoles.ts` | 夜死／放逐／狼王開槍觸發開槍資格、被毒或愛情破裂禁止開槍、連鎖開槍結算 |
-| 6 | **守衛** | `guard` | 好人 | 58 | `nightResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts`, `thirdPartySpecialRoles.ts` | 夜間守護防狼刀、不可連守、同守同救奶穿判定 |
+| 6 | **守衛** | `guard` | 好人 | 58 | `nightResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts`, `thirdPartySpecialRoles.ts`, `finalBatchRoles.ts` | 夜間守護防狼刀、不可連守、同守同救奶穿判定 |
 | 7 | **狼王** | `wolf_king` | 狼人 | 29 | `dayResolution.ts`, `topFiveRoles.ts`, `inspectionRoles.ts` | 夜死／放逐／獵人槍擊開槍資格、自爆／被毒／最後一狼禁止開槍、連鎖開槍結算 |
 | 8 | **攝夢人** | `dream_catcher` | 好人 | 21 | `nightResolution.ts`, `advancedRoles.ts`, `inspectionRoles.ts` | 每晚攝夢免疫夜間傷害、連夢致死、攝夢人夜死牽連共死 |
 | 9 | **白痴** | `idiot` | 好人 | 18 | `dayResolution.ts`, `thirdPartySpecialRoles.ts`, `victory.ts` | 白天首次放逐翻牌免死失投票權、追刀規則開關（idiotNeedsExtraKill） |
@@ -58,128 +45,128 @@
 | 17 | **通靈師** | `psychic` | 好人 | 8 | `nightResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts` | 夜間真實身分查驗（含機械狼學習前後與盜寶大師底牌變身） |
 | 18 | **種狼** | `seed_wolf` | 狼人 | 7 | `topFiveRoles.ts` | 整局限一次狼刀轉感染（女巫顯示空刀、守衛可擋感染）、目標當晚轉狼並即時失能、即時更新屠邊與感染隱狼轉查殺 |
 | 19 | **烏鴉** | `crow` | 好人 | 6 | `nightResolution.ts` | 每晚詛咒存活玩家（不可連選、禁選翻牌白痴），隔天白天放逐投票無條件 +1 票 |
-| 20 | **隱狼** | `hidden_wolf` | 狼人 | 6 | `dayResolution.ts`, `mechWolf.ts`, `topFiveRoles.ts` | 不可自爆、預言家查驗恆金水（通靈師驗隱狼）、場上其他狼人全滅自動入隊帶刀、屠邊須連同隱狼淘汰 |
-| 21 | **覺醒預言家** | `awakened_seer` | 好人 | 5 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚雙目標陣營查驗（雙金水／疑似狼人，可查自己），支援隱狼／雪狼／咒狐交互 |
-| 22 | **咒狐** | `cursed_fox` | 第三方 | 5 | `mechWolf.ts`, `inspectionRoles.ts`, `victory.ts` | 免疫狼刀、被陣營查驗顯示金水但死亡（攝夢保護不死）、被通靈師／純白驗為咒狐不死、結算時存活或同出局單獨勝 |
-| 23 | **魔術師** | `magician` | 好人 | 5 | `interferenceRoles.ts` | 每晚優先交換兩位存活玩家號碼牌（當晚所有技能目標對調，整局每號碼限 1 次，與詭術師同換抵銷） |
-| 24 | **機械狼** | `mech_wolf` | 狼人 | 5 | `dayResolution.ts`, `mechWolf.ts`, `advancedRoles.ts`, `inspectionRoles.ts` | 首夜學習身分、通靈師查驗偽裝、次夜起機械盾／單毒／通靈／入隊雙刀、不可自爆、自動入狼隊 |
-| 25 | **奇蹟商人** | `miracle_merchant` | 好人 | 5 | `nightResolution.ts` | 整局限一次贈送幸運兒查驗／毒／盾（盾可奶穿）；贈給狼人則不獲技且商人反噬出局（受攝夢免疫） |
-| 26 | **河豚** | `pufferfish` | 好人 | 5 | `nightResolution.ts`, `combatRoles.ts` | 整局限一次，放逐投票翻牌炸死所有投河豚者；吃狼刀翻牌使當天狼美人魅惑失效 |
-| 27 | **流光伯爵** | `radiant_earl` | 好人 | 5 | `interferenceRoles.ts` | 第二晚起每晚庇護非己一人（不可連庇），免疫所有夜間傷害（含連夢與攝夢共死） |
-| 28 | **蝕時狼妃** | `time_eclipse_consort` | 狼人 | 5 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚封鎖一人（不可連封），一次性將神職對其操作反彈至神職自己（女巫解藥不反彈） |
-| 29 | **戰狼** | `war_wolf` | 狼人 | 5 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；免疫所有神職技能傷害（毒藥／獵人開槍／騎士決鬥等），僅能透過白天放逐投票出局 |
-| 30 | **覺醒石像鬼** | `awakened_gargoyle` | 狼人 | 4 | `conversionRoles.ts` | 隨狼隊刀人與自爆；首夜轉化狼隊隔壁一名好人成為轉化者（計入狼人陣營、驗查殺） |
-| 31 | **覺醒狼王** | `awakened_wolf_king` | 狼人 | 4 | `combatRoles.ts` | 初始 2 槍，每晚可分 1 槍給小狼（小狼可持多槍，自爆／最後一狼不可開槍） |
-| 32 | **守墓人** | `gravekeeper` | 好人 | 4 | `inspectionRoles.ts` | 第二晚起自動顯示上一白天放逐出局者陣營（隱狼／南瓜鬼／雪狼顯狼、咒狐顯好人） |
-| 33 | **純白之女** | `pure_white_maiden` | 好人 | 4 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚查驗真實身分，第二晚起查驗狼人陣營使其當晚死亡（含機械狼學習偽裝與咒狐不死特例） |
-| 34 | **狼鴉之爪** | `wolf_raven_claw` | 狼人 | 4 | `combatRoles.ts` | 不可自爆、開局不入隊；存活狼數 ≤ 2 入隊並獲得一次性無敵額外刀（無視未明之霧與守衛） |
-| 35 | **煉金魔女** | `alchemy_witch` | 好人 | 3 | `nightResolution.ts`, `interferenceRoles.ts` | 未明之霧（限一次指定 3 人限狼刀且禁空刀）與法老之蛇（限一次於隔天發言後救活昨夜出局玩家） |
-| 36 | **覺醒狼美人** | `awakened_wolf_beauty` | 狼人 | 3 | `nightResolution.ts`, `combatRoles.ts` | 不可自刀自爆；每隔一晚魅惑一人，首次出局由被魅惑者替死（覺醒獵人夜槍無視替死） |
-| 37 | **血月使徒** | `blood_moon_apostle` | 狼人 | 3 | `nightResolution.ts`, `combatRoles.ts` | 白天自爆封印當晚所有好人技能；最後一狼被放逐翻牌免死並存活至下個天亮後出局 |
-| 38 | **邱比特** | `cupid` | 第三方 | 3 | `mechWolf.ts`, `conversionRoles.ts` | 被驗為好人；首夜連兩人成情侶同生共死（雙好跟好、雙狼跟狼、一好一狼組獨立第三方屠城） |
-| 39 | **惡靈騎士** | `evil_knight` | 狼人 | 3 | `dayResolution.ts`, `topFiveRoles.ts` | 不可自刀自爆、免疫夜間毒藥與夜死獵人開槍（白天放逐獵人可開槍）、一次性反傷（同晚同毒同驗依先行動者反傷） |
-| 40 | **石像鬼** | `gargoyle` | 狼人 | 3 | `dayResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts` | 不可自爆、初始不入狼隊（其餘狼全滅自動入隊帶刀）、每晚查驗具體真實身分並留存紀錄供南瓜鬼繼承 |
-| 41 | **企鵝** | `penguin` | 好人 | 3 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚冰凍一人（不可連凍）封鎖其當晚技能；冰凍任一狼人則當晚狼隊全體空刀 |
-| 42 | **尋香魅影** | `scent_phantom` | 狼人 | 3 | `conversionRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；每晚選兩人成鏈同生共死（限觸發一次） |
-| 43 | **高級平民** | `senior_villager` | 好人 | 3 | `nightResolution.ts`, `inspectionRoles.ts` | 平民邊，第一天死訊公布後自動公布高級平民座號（若首夜遭種狼感染轉狼則不公布） |
-| 44 | **寂夜導師** | `silent_night_mentor` | 狼人 | 3 | `dayResolution.ts`, `interferenceRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起增幅／削弱各一次（削弱狼人空刀、與白晝學者衝突致死、彼此免疫） |
-| 45 | **名媛** | `socialite` | 好人 | 3 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚寵幸一人（不可連選）；名媛存活時寵幸者被刀轉空刀（女巫不見刀口、種狼禁感染）；名媛死或被感染則寵幸者殉情 |
-| 46 | **白貓** | `white_cat` | 好人 | 3 | `dayResolution.ts`, `interferenceRoles.ts`, `combatRoles.ts` | 任何原因死亡皆可翻牌免疫本次死亡，並延遲至下一次放逐階段結束後才正式出局 |
-| 47 | **狼巫** | `wolf_witch` | 狼人 | 3 | `nightResolution.ts`, `inspectionRoles.ts` | 隨狼隊刀人與自爆、每晚單獨查驗真實身分，第二晚起查驗純白之女使其當晚死亡（同晚互驗依狼刀在先） |
-| 48 | **覺醒攝夢人** | `awakened_dream_catcher` | 好人 | 2 | `inspectionRoles.ts` | 每晚夢語一人免疫夜傷（不奶穿、不可連選、夜死不牽連），當晚最後自動判定是否行動並於第二晚起可選擇夢語出局且封技能 |
-| 49 | **覺醒獵人** | `awakened_hunter` | 好人 | 2 | `combatRoles.ts` | 無論何種方式死亡皆可選擇左／右方向開槍，擊殺該方向最近存活狼人 |
-| 50 | **覺醒白痴** | `awakened_idiot` | 好人 | 2 | `nightResolution.ts`, `dayResolution.ts`, `combatRoles.ts` | 白天首次放逐翻牌免死失投票權；夜間秘密之身保護目標抵擋一次死亡（未受傷轉護自己，生效或翻牌後失效） |
-| 51 | **覺醒孤獨少女** | `awakened_lonely_girl` | 第三方 | 2 | `victory.ts` | 首夜選偶像：偶像白天放逐則變身狼人入隊、夜死或非放逐出局則繼承偶像身分與勝利條件 |
-| 52 | **覺醒女巫** | `awakened_witch` | 好人 | 2 | `nightResolution.ts`, `interferenceRoles.ts` | 1 瓶解藥＋3 瓶毒藥（互斥）；第 1／2／3 瓶毒藥須選 1／2／3 位不重複協助者全部同意方生效 |
-| 53 | **蜂之狂獵** | `bee_wild_hunt` | 好人 | 2 | `nightResolution.ts`, `combatRoles.ts` | 第二晚起每晚選任意兩人蜂刺（皆狼同出局、一狼一好無事、皆好永久失能） |
-| 54 | **白晝學者** | `daylight_scholar` | 好人 | 2 | `interferenceRoles.ts` | 第二晚起增幅／削弱各一次（女巫增幅僅多毒、削弱仍可用解藥、與寂夜導師衝突致死、彼此免疫） |
-| 55 | **惡魔** | `demon_wolf` | 狼人 | 2 | `dayResolution.ts`, `inspectionRoles.ts` | 不可自刀自爆、免疫所有夜間傷害（毒藥／夜死獵人開槍）、每晚查驗非狼玩家為神職或平民 |
-| 56 | **蠱惑師** | `enchanter` | 好人 | 2 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚蠱惑一人；當晚蠱惑師死亡由被蠱惑者替死；連續兩晚蠱惑同一人則對方心智混亂出局 |
-| 57 | **狐狸** | `fox` | 好人 | 2 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚查驗目標及其左右存活鄰居（共 3 人）是否含狼；三人皆好人則永久失去查驗功能 |
-| 58 | **子狐** | `fox_cub` | 好人 | 2 | `nightResolution.ts`, `interferenceRoles.ts` | 整局限一次，第二晚起魅惑一人；魅惑狼人則當晚狼隊空刀（魅惑狼美人同時封鎖魅惑） |
-| 59 | **夜之貴族** | `night_noble` | 狼人 | 2 | `combatRoles.ts` | 隨狼隊刀人與自爆；第二晚起選一人當夜僕隔天出局（現有夜僕未死不可重選；遇獵魔人狩獵抵消） |
-| 60 | **毒師** | `poisoner` | 好人 | 2 | `nightResolution.ts`, `inspectionRoles.ts` | 夜間單瓶毒藥結算、機械盾可擋、封鎖獵人與狼王開槍 |
-| 61 | **猩紅狼王** | `scarlet_wolf_king` | 狼人 | 2 | `nightResolution.ts`, `combatRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；每晚附著猩紅之子（最多 3 人），被神職鎖定夜死，狼王出局全員連帶 |
-| 62 | **白蛇預言家** | `white_snake_seer` | 第三方 | 2 | `nightResolution.ts`, `mechWolf.ts`, `conversionRoles.ts` | 第三方屠城、驗為狼人；每晚查驗是否為許仙，驗中或許仙出局後改為每晚單獨靈襲 |
-| 63 | **狼兄** | `wolf_brother` | 狼人 | 2 | `mechWolf.ts`, `combatRoles.ts` | 隨狼隊刀人、不可自爆；首夜與狼弟互認，出局後觸發狼弟隔晚覺醒 |
-| 64 | **狼弟** | `wolf_younger_brother` | 狼人 | 2 | `mechWolf.ts`, `combatRoles.ts` | 可自爆、初始不入隊；狼兄死前預言家驗金水；狼兄死後第一晚覺醒無敵刀（不提前入隊），隔晚正式入隊 |
-| 65 | **許仙尋香魅影** | `xu_xian_phantom` | 第三方 | 2 | `nightResolution.ts`, `mechWolf.ts`, `conversionRoles.ts` | 第三方屠城、驗為狼人；每晚綁定兩人同生共死（限觸發一次，綁自己與白蛇雙死直接勝），狼全滅可額外靈襲 |
-| 66 | **殭屍** | `zombie` | 第三方 | 2 | `conversionRoles.ts` | 每晚感染 0～2 名非己存活未感染玩家（不受魔術師換人影響），全場其他存活者皆被感染則單獨勝 |
-| 67 | **阿努比斯** | `anubis` | 狼人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起天平對比一死一活（神>民>狼>神，每人限一次） |
-| 68 | **刺客** | `assassin_wolf` | 狼人 | 1 | `combatRoles.ts` | 隨狼隊刀人與自爆；第二晚起於狼隊前猜測目標準確身分刺殺（猜中擊殺、猜錯狼隊空刀） |
-| 69 | **復仇者** | `avenger` | 第三方 | 1 | `nightResolution.ts` | 陣營與影子主人對立，出局時刺殺一人（對立倒牌、同陣營不倒、選中未變身影子獨自勝利） |
-| 70 | **白澤** | `bai_ze` | 好人 | 1 | `nightResolution.ts` | 每晚清除目標標記；夜死或放逐翻牌指定繼承人（平民轉神民雙陣營、神職夜死延遲至下一放逐後） |
-| 71 | **大野狼** | `big_bad_wolf` | 狼人 | 1 | `combatRoles.ts` | 隨狼隊刀人與自爆；全狼存活時每晚於女巫後可額外刀一人，任一狼死亡失去額外刀 |
-| 72 | **大灰狼** | `big_grey_wolf` | 狼人 | 1 | `combatRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起整局限一次單獨擊殺（受占卜師限刀） |
-| 73 | **黑蝙蝠** | `black_bat` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚庇護一人（不可連庇），一次性反彈首位對被庇護者施放技能的玩家使其出局 |
-| 74 | **黑市商人** | `black_market_merchant` | 好人 | 1 | `nightResolution.ts` | 整局限一次贈送幸運兒查驗／毒／獵槍；贈給狼人則不獲技且商人反噬出局（受攝夢免疫） |
-| 75 | **管家** | `butler` | 好人 | 1 | `nightResolution.ts` | 第二晚起每晚上茶（每人限一次）：預言家驗狼殺、女巫多毒、守衛雙守護至白天、小狼空刀、平民 +1 票 |
-| 76 | **百變狼王** | `chameleon_wolf_king` | 狼人 | 1 | `conversionRoles.ts` | 開局將一名神職轉化為狼人陣營百變狼王（不可自爆、初始不入隊，其餘狼滅入隊） |
-| 77 | **舞者** | `dancer` | 好人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 第二晚起每晚選 3 名未進舞池存活者，陣營少數者出局；舞者在舞池中三人免疫當晚狼刀 |
-| 78 | **黑夜使者** | `dark_night_envoy` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚庇護一名狼人（不可連庇），免疫所有夜間傷害並反殺對其查驗／潑毒／雙攝的玩家 |
-| 79 | **酒鬼預言家** | `drunk_seer` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 平民邊、每晚陣營查驗結果隨機（支援法官手動覆寫金水／查殺），維持預言家 A／B 盲叫 |
-| 80 | **邪惡商人** | `evil_merchant` | 狼人 | 1 | `nightResolution.ts` | 不可自爆、隨狼刀；首夜贈小狼獵槍，白天無槍狼死可收回改贈毒藥，任一道具使用即永久失能 |
-| 81 | **異族王子** | `exotic_prince` | 好人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 平民不受睡眠影響（抽中則本場無睡美人）；第二晚起每晚查驗並喚醒睡美人清除全場睡眠 |
-| 82 | **愚言家** | `fool_seer` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚陣營查驗，白天發言階段可隨時翻牌自曝淘汰自己強制入夜（上警吞警徽） |
-| 83 | **占卜師** | `fortune_teller` | 好人 | 1 | `interferenceRoles.ts` | 整局限一次，每晚最先標記一號，限制當晚狼隊僅能從標記號碼與其左右兩側三人中選擇刀口 |
-| 84 | **鬼魂新娘** | `ghost_bride` | 第三方 | 1 | `conversionRoles.ts` | 首夜選新郎同生共死並共選證婚人，三人組獨立第三方屠城（狼全滅後新娘帶刀、情侶皆死證婚人帶刀） |
-| 85 | **鐵好人** | `iron_good` | 好人 | 1 | `inspectionRoles.ts` | 平民邊、白天發言階段可隨時翻牌自曝淘汰自己強制入夜（上警吞警徽） |
-| 86 | **開膛手傑克** | `jack_the_ripper` | 第三方 | 1 | `conversionRoles.ts` | 首夜指定狂熱粉（原身分失效）；任一方出局後每晚可無視解藥單獨擊殺一人 |
-| 87 | **燈影預言家** | `lantern_seer` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 平民邊、每晚陣營查驗結果自動反轉（好↔狼），維持預言家 A／B 盲叫不洩密 |
-| 88 | **蒙面人** | `masked_villager` | 好人 | 1 | `nightResolution.ts`, `treasureMaster.ts` | 夜間遭狼刀／毒藥／攝夢負傷延遲至隔日發言後出局、白天結算解除負傷並重算勝負 |
-| 89 | **假面** | `masked_wolf` | 狼人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；第二晚起每晚查驗是否在舞池並改判一人舞池陣營 |
-| 90 | **通靈者** | `medium` | 好人 | 1 | `nightResolution.ts` | 每晚將已死玩家技能（狼刀／查驗／毒／盾）通靈給非己存活者次夜一次性使用（每死／活人限一次） |
-| 91 | **梅杜莎** | `medusa` | 狼人 | 1 | `nightResolution.ts`, `dayResolution.ts`, `interferenceRoles.ts` | 不可自刀、可自爆（自爆不連帶）；每晚石化非己一人（不可連選），反彈女巫毒、禁技與禁投票（白痴不可翻牌），非自爆出局連帶石化者共死 |
-| 92 | **月靈狼** | `moon_spirit_wolf` | 狼人 | 1 | `inspectionRoles.ts` | 隨狼隊刀人與自爆；每晚狼隊行動前自動感知左右存活鄰居是否含神職並輸出嗥叫結果（遭夢魘恐懼不嗥叫） |
-| 93 | **禁言長老** | `mute_elder` | 好人 | 1 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚指定一人禁言，隔天白天於公告與發言區標記禁言提醒 |
-| 94 | **九尾狐** | `nine_tailed_fox` | 好人 | 1 | `inspectionRoles.ts` | 初始 9 條尾巴，依已公布死訊扣尾（神 -2、民 -1、狼不減，不含當晚未公布死訊），歸零自動死亡 |
-| 95 | **九尾** | `nine_tails_wolf` | 狼人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；每晚與投票標記玩家，白天獵殺時刻 A > B 全滅 B 方並入夜 |
-| 96 | **老流氓** | `old_rascal` | 好人 | 1 | `nightResolution.ts`, `advancedRoles.ts`, `combatRoles.ts` | 平民邊、免疫狼美人魅惑；被女巫毒殺或獵人射殺進入延遲死亡，隔天發言結束後才出局 |
-| 97 | **潘朵拉** | `pandora` | 第三方 | 1 | `nightResolution.ts`, `mechWolf.ts`, `thirdPartySpecialRoles.ts` | 驗為好人；共 5 魔盒（刀／毒／希望之光／2 日槍）每人限贈 1 次，3 條獨立勝利條件且優先於他陣營 |
-| 98 | **珀爾修斯** | `perseus` | 好人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 免疫梅杜莎石化；第二晚起整局限一次處決一人（處決到石化者則一同出局） |
-| 99 | **南瓜鬼** | `pumpkin_ghost` | 狼人 | 1 | `mechWolf.ts`, `inspectionRoles.ts` | 石像鬼死前預言家驗金水、死後轉查殺（守墓人恆驗狼），石像鬼出局後自動繼承歷史查驗紀錄與驗人能力 |
-| 100 | **傀儡** | `puppet_wolf` | 狼人 | 1 | `conversionRoles.ts` | 首夜開刀前選狼隊隔壁一人為傀儡（底牌不變但驗查殺、技能錯亂、不可自爆不入隊） |
-| 101 | **鏽劍騎士** | `rusty_sword_knight` | 好人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 被狼刀殺死的下一晚天亮，其左側最近第一位存活狼人直接出局 |
-| 102 | **影子** | `shadow` | 第三方 | 1 | `conversionRoles.ts` | 首夜選主人並跟隨其勝利條件，主人出局後繼承身分與技能（選中復仇者組帶刀第三方） |
-| 103 | **睡美人** | `sleeping_beauty` | 第三方 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 首夜隨機指定睡美人、次夜起左右擴散 1 格睡眠，封鎖熊／女巫毒／獵人槍／禁言，全狼睡眠空刀 |
-| 104 | **雪狼** | `snow_wolf` | 狼人 | 1 | `mechWolf.ts`, `inspectionRoles.ts` | 正常狼刀與自爆；被預言家／覺醒預言家／愚言家查驗恆顯示好人（金水） |
-| 105 | **超級黑市商人** | `super_black_market_merchant` | 好人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts`, `victory.ts` | 首夜選 3 名幸運兒分別交易查驗／毒／獵槍；若 3 人皆好人則天亮轉入狼人陣營（餘狼滅帶刀） |
-| 106 | **超級守墓人** | `super_gravekeeper` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 第二晚起得知上一白天放逐者陣營、每晚指定繼承者；出局當晚好人繼承者自動接手全部歷史放逐紀錄與後續查驗 |
-| 107 | **盜賊** | `thief` | 第三方 | 1 | `nightResolution.ts` | 首夜第一個睜眼從剩餘兩張底牌擇一（含狼必選狼、雙狼重開） |
-| 108 | **盜寶大師** | `treasure_master` | 第三方 | 1 | `nightResolution.ts`, `mechWolf.ts`, `treasureMaster.ts`, `victory.ts` | 首夜 3 底牌合法性與陣營歸屬、每晚切底牌且不可連選、通靈師查驗偽裝、盜寶狼入隊與最後一狼蒙面免放逐 |
-| 109 | **詭術師** | `trickster_wolf` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚交換兩位玩家號碼牌（不可連兩晚選同號），隔天白天放逐投票票數對調（與魔術師同換抵銷） |
-| 110 | **搗蛋鬼** | `troublemaker_wolf` | 狼人 | 1 | `dayResolution.ts`, `interferenceRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊帶刀）；每晚對非己玩家耍寶（不可連選），技能轉向自己（守衛連自守死、狼人自刀） |
-| 111 | **雙子** | `twins` | 好人 | 1 | `conversionRoles.ts` | 平民陣營、首夜互認、同生共死，出局下一晚可共同守護一名玩家免於狼刀 |
-| 112 | **典獄長** | `warden_wolf` | 狼人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 隨狼隊刀人與自爆；第二晚起每晚選兩人交易（每人限一次：雙交易免疫、雙背叛互轉、單交易出局、自參特殊判定） |
-| 113 | **野孩子** | `wild_child` | 第三方 | 1 | `victory.ts` | 首夜選榜樣：榜樣出局後立即變身狼人加入狼隊，否則屬平民跟隨好人勝利 |
-| 114 | **狼女孩** | `wolf_girl` | 狼人 | 1 | `wolfGirl.ts` | 首夜向非狼表白（表白平民成功同勝）、白天或放逐後自爆觸發愛情破裂帶走表白對象並作廢投票 |
-| 115 | **狼僕** | `wolf_maid` | 狼人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；第二晚起上茶：預／女出局、守衛首目標死、小狼多刀、平民 -1 票 |
-| 116 | **狼術師** | `wolf_warlock` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚交換兩位存活玩家號碼牌（當晚技能目標對調，整局每號碼限 1 次） |
-| 117 | **狂熱粉** | `fanatic` | 第三方 | 0 | `conversionRoles.ts` | 與開膛手傑克同屬第三方勝利條件，無擊殺能力 |
+| 20 | **蝕日侍女** | `eclipse_maid` | 狼人 | 6 | `nightResolution.ts`, `finalBatchRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；第二晚起每晚吞噬非狼玩家奪取其當晚技能並封鎖原主技能 |
+| 21 | **隱狼** | `hidden_wolf` | 狼人 | 6 | `dayResolution.ts`, `mechWolf.ts`, `topFiveRoles.ts` | 不可自爆、預言家查驗恆金水（通靈師驗隱狼）、場上其他狼人全滅自動入隊帶刀、屠邊須連同隱狼淘汰 |
+| 22 | **覺醒預言家** | `awakened_seer` | 好人 | 5 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚雙目標陣營查驗（雙金水／疑似狼人，可查自己），支援隱狼／雪狼／咒狐交互 |
+| 23 | **咒狐** | `cursed_fox` | 第三方 | 5 | `nightResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts`, `victory.ts` | 免疫狼刀、被陣營查驗顯示金水但死亡（攝夢保護不死）、被通靈師／純白驗為咒狐不死、結算時存活或同出局單獨勝 |
+| 24 | **魔術師** | `magician` | 好人 | 5 | `interferenceRoles.ts` | 每晚優先交換兩位存活玩家號碼牌（當晚所有技能目標對調，整局每號碼限 1 次，與詭術師同換抵銷） |
+| 25 | **機械狼** | `mech_wolf` | 狼人 | 5 | `dayResolution.ts`, `mechWolf.ts`, `advancedRoles.ts`, `inspectionRoles.ts` | 首夜學習身分、通靈師查驗偽裝、次夜起機械盾／單毒／通靈／入隊雙刀、不可自爆、自動入狼隊 |
+| 26 | **奇蹟商人** | `miracle_merchant` | 好人 | 5 | `nightResolution.ts` | 整局限一次贈送幸運兒查驗／毒／盾（盾可奶穿）；贈給狼人則不獲技且商人反噬出局（受攝夢免疫） |
+| 27 | **河豚** | `pufferfish` | 好人 | 5 | `nightResolution.ts`, `combatRoles.ts` | 整局限一次，放逐投票翻牌炸死所有投河豚者；吃狼刀翻牌使當天狼美人魅惑失效 |
+| 28 | **流光伯爵** | `radiant_earl` | 好人 | 5 | `interferenceRoles.ts` | 第二晚起每晚庇護非己一人（不可連庇），免疫所有夜間傷害（含連夢與攝夢共死） |
+| 29 | **蝕時狼妃** | `time_eclipse_consort` | 狼人 | 5 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚封鎖一人（不可連封），一次性將神職對其操作反彈至神職自己（女巫解藥不反彈） |
+| 30 | **戰狼** | `war_wolf` | 狼人 | 5 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；免疫所有神職技能傷害（毒藥／獵人開槍／騎士決鬥等），僅能透過白天放逐投票出局 |
+| 31 | **覺醒石像鬼** | `awakened_gargoyle` | 狼人 | 4 | `conversionRoles.ts` | 隨狼隊刀人與自爆；首夜轉化狼隊隔壁一名好人成為轉化者（計入狼人陣營、驗查殺） |
+| 32 | **覺醒狼王** | `awakened_wolf_king` | 狼人 | 4 | `combatRoles.ts` | 初始 2 槍，每晚可分 1 槍給小狼（小狼可持多槍，自爆／最後一狼不可開槍） |
+| 33 | **守墓人** | `gravekeeper` | 好人 | 4 | `inspectionRoles.ts` | 第二晚起自動顯示上一白天放逐出局者陣營（隱狼／南瓜鬼／雪狼顯狼、咒狐顯好人） |
+| 34 | **純白之女** | `pure_white_maiden` | 好人 | 4 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚查驗真實身分，第二晚起查驗狼人陣營使其當晚死亡（含機械狼學習偽裝與咒狐不死特例） |
+| 35 | **狼鴉之爪** | `wolf_raven_claw` | 狼人 | 4 | `combatRoles.ts` | 不可自爆、開局不入隊；存活狼數 ≤ 2 入隊並獲得一次性無敵額外刀（無視未明之霧與守衛） |
+| 36 | **煉金魔女** | `alchemy_witch` | 好人 | 3 | `nightResolution.ts`, `interferenceRoles.ts` | 未明之霧（限一次指定 3 人限狼刀且禁空刀）與法老之蛇（限一次於隔天發言後救活昨夜出局玩家） |
+| 37 | **羊駝** | `alpaca` | 好人 | 3 | `finalBatchRoles.ts` | 平民陣營（同平民）：無夜間技能，完整參與《動物夢境》／《青青草原》平民邊屠邊計數與放逐投票 |
+| 38 | **覺醒狼美人** | `awakened_wolf_beauty` | 狼人 | 3 | `nightResolution.ts`, `combatRoles.ts` | 不可自刀自爆；每隔一晚魅惑一人，首次出局由被魅惑者替死（覺醒獵人夜槍無視替死） |
+| 39 | **血月使徒** | `blood_moon_apostle` | 狼人 | 3 | `nightResolution.ts`, `combatRoles.ts` | 白天自爆封印當晚所有好人技能；最後一狼被放逐翻牌免死並存活至下個天亮後出局 |
+| 40 | **邱比特** | `cupid` | 第三方 | 3 | `mechWolf.ts`, `conversionRoles.ts` | 被驗為好人；首夜連兩人成情侶同生共死（雙好跟好、雙狼跟狼、一好一狼組獨立第三方屠城） |
+| 41 | **惡靈騎士** | `evil_knight` | 狼人 | 3 | `dayResolution.ts`, `topFiveRoles.ts` | 不可自刀自爆、免疫夜間毒藥與夜死獵人開槍（白天放逐獵人可開槍）、一次性反傷（同晚同毒同驗依先行動者反傷） |
+| 42 | **石像鬼** | `gargoyle` | 狼人 | 3 | `dayResolution.ts`, `mechWolf.ts`, `inspectionRoles.ts` | 不可自爆、初始不入狼隊（其餘狼全滅自動入隊帶刀）、每晚查驗具體真實身分並留存紀錄供南瓜鬼繼承 |
+| 43 | **企鵝** | `penguin` | 好人 | 3 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚冰凍一人（不可連凍）封鎖其當晚技能；冰凍任一狼人則當晚狼隊全體空刀 |
+| 44 | **尋香魅影** | `scent_phantom` | 狼人 | 3 | `conversionRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；每晚選兩人成鏈同生共死（限觸發一次） |
+| 45 | **高級平民** | `senior_villager` | 好人 | 3 | `nightResolution.ts`, `inspectionRoles.ts` | 平民邊，第一天死訊公布後自動公布高級平民座號（若首夜遭種狼感染轉狼則不公布） |
+| 46 | **定序王子** | `sequence_prince` | 好人 | 3 | `finalBatchRoles.ts` | 整局限一次：白天放逐投票後可翻牌觸發全員再發言一次並重新放逐投票 |
+| 47 | **寂夜導師** | `silent_night_mentor` | 狼人 | 3 | `dayResolution.ts`, `interferenceRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起增幅／削弱各一次（削弱狼人空刀、與白晝學者衝突致死、彼此免疫） |
+| 48 | **名媛** | `socialite` | 好人 | 3 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚寵幸一人（不可連選）；名媛存活時寵幸者被刀轉空刀（女巫不見刀口、種狼禁感染）；名媛死或被感染則寵幸者殉情 |
+| 49 | **白貓** | `white_cat` | 好人 | 3 | `dayResolution.ts`, `interferenceRoles.ts`, `combatRoles.ts` | 任何原因死亡皆可翻牌免疫本次死亡，並延遲至下一次放逐階段結束後才正式出局 |
+| 50 | **狼巫** | `wolf_witch` | 狼人 | 3 | `nightResolution.ts`, `inspectionRoles.ts` | 隨狼隊刀人與自爆、每晚單獨查驗真實身分，第二晚起查驗純白之女使其當晚死亡（同晚互驗依狼刀在先） |
+| 51 | **覺醒攝夢人** | `awakened_dream_catcher` | 好人 | 2 | `inspectionRoles.ts` | 每晚夢語一人免疫夜傷（不奶穿、不可連選、夜死不牽連），當晚最後自動判定是否行動並於第二晚起可選擇夢語出局且封技能 |
+| 52 | **覺醒獵人** | `awakened_hunter` | 好人 | 2 | `combatRoles.ts` | 無論何種方式死亡皆可選擇左／右方向開槍，擊殺該方向最近存活狼人 |
+| 53 | **覺醒白痴** | `awakened_idiot` | 好人 | 2 | `nightResolution.ts`, `dayResolution.ts`, `combatRoles.ts` | 白天首次放逐翻牌免死失投票權；夜間秘密之身保護目標抵擋一次死亡（未受傷轉護自己，生效或翻牌後失效） |
+| 54 | **覺醒孤獨少女** | `awakened_lonely_girl` | 第三方 | 2 | `victory.ts` | 首夜選偶像：偶像白天放逐則變身狼人入隊、夜死或非放逐出局則繼承偶像身分與勝利條件 |
+| 55 | **覺醒女巫** | `awakened_witch` | 好人 | 2 | `nightResolution.ts`, `interferenceRoles.ts` | 1 瓶解藥＋3 瓶毒藥（互斥）；第 1／2／3 瓶毒藥須選 1／2／3 位不重複協助者全部同意方生效 |
+| 56 | **蜂之狂獵** | `bee_wild_hunt` | 好人 | 2 | `nightResolution.ts`, `combatRoles.ts` | 第二晚起每晚選任意兩人蜂刺（皆狼同出局、一狼一好無事、皆好永久失能） |
+| 57 | **兔兔** | `bunny` | 好人 | 2 | `finalBatchRoles.ts` | 平民陣營（同平民）：無夜間技能，完整參與《動物園》平民邊屠邊計數與放逐投票 |
+| 58 | **白晝學者** | `daylight_scholar` | 好人 | 2 | `interferenceRoles.ts` | 第二晚起增幅／削弱各一次（女巫增幅僅多毒、削弱仍可用解藥、與寂夜導師衝突致死、彼此免疫） |
+| 59 | **惡魔** | `demon_wolf` | 狼人 | 2 | `dayResolution.ts`, `inspectionRoles.ts` | 不可自刀自爆、免疫所有夜間傷害（毒藥／夜死獵人開槍）、每晚查驗非狼玩家為神職或平民 |
+| 60 | **蠱惑師** | `enchanter` | 好人 | 2 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚蠱惑一人；當晚蠱惑師死亡由被蠱惑者替死；連續兩晚蠱惑同一人則對方心智混亂出局 |
+| 61 | **狐狸** | `fox` | 好人 | 2 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚查驗目標及其左右存活鄰居（共 3 人）是否含狼；三人皆好人則永久失去查驗功能 |
+| 62 | **子狐** | `fox_cub` | 好人 | 2 | `nightResolution.ts`, `interferenceRoles.ts` | 整局限一次，第二晚起魅惑一人；魅惑狼人則當晚狼隊空刀（魅惑狼美人同時封鎖魅惑） |
+| 63 | **夜之貴族** | `night_noble` | 狼人 | 2 | `combatRoles.ts` | 隨狼隊刀人與自爆；第二晚起選一人當夜僕隔天出局（現有夜僕未死不可重選；遇獵魔人狩獵抵消） |
+| 64 | **毒師** | `poisoner` | 好人 | 2 | `nightResolution.ts`, `inspectionRoles.ts` | 夜間單瓶毒藥結算、機械盾可擋、封鎖獵人與狼王開槍 |
+| 65 | **猩紅狼王** | `scarlet_wolf_king` | 狼人 | 2 | `nightResolution.ts`, `combatRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；每晚附著猩紅之子（最多 3 人），被神職鎖定夜死，狼王出局全員連帶 |
+| 66 | **白蛇預言家** | `white_snake_seer` | 第三方 | 2 | `nightResolution.ts`, `mechWolf.ts`, `conversionRoles.ts` | 第三方屠城、驗為狼人；每晚查驗是否為許仙，驗中或許仙出局後改為每晚單獨靈襲 |
+| 67 | **狼兄** | `wolf_brother` | 狼人 | 2 | `mechWolf.ts`, `combatRoles.ts` | 隨狼隊刀人、不可自爆；首夜與狼弟互認，出局後觸發狼弟隔晚覺醒 |
+| 68 | **狼弟** | `wolf_younger_brother` | 狼人 | 2 | `mechWolf.ts`, `combatRoles.ts` | 可自爆、初始不入隊；狼兄死前預言家驗金水；狼兄死後第一晚覺醒無敵刀（不提前入隊），隔晚正式入隊 |
+| 69 | **許仙尋香魅影** | `xu_xian_phantom` | 第三方 | 2 | `nightResolution.ts`, `mechWolf.ts`, `conversionRoles.ts` | 第三方屠城、驗為狼人；每晚綁定兩人同生共死（限觸發一次，綁自己與白蛇雙死直接勝），狼全滅可額外靈襲 |
+| 70 | **殭屍** | `zombie` | 第三方 | 2 | `conversionRoles.ts` | 每晚感染 0～2 名非己存活未感染玩家（不受魔術師換人影響），全場其他存活者皆被感染則單獨勝 |
+| 71 | **阿努比斯** | `anubis` | 狼人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起天平對比一死一活（神>民>狼>神，每人限一次） |
+| 72 | **刺客** | `assassin_wolf` | 狼人 | 1 | `combatRoles.ts` | 隨狼隊刀人與自爆；第二晚起於狼隊前猜測目標準確身分刺殺（猜中擊殺、猜錯狼隊空刀） |
+| 73 | **復仇者** | `avenger` | 第三方 | 1 | `nightResolution.ts` | 陣營與影子主人對立，出局時刺殺一人（對立倒牌、同陣營不倒、選中未變身影子獨自勝利） |
+| 74 | **白澤** | `bai_ze` | 好人 | 1 | `nightResolution.ts` | 每晚清除目標標記；夜死或放逐翻牌指定繼承人（平民轉神民雙陣營、神職夜死延遲至下一放逐後） |
+| 75 | **大野狼** | `big_bad_wolf` | 狼人 | 1 | `combatRoles.ts` | 隨狼隊刀人與自爆；全狼存活時每晚於女巫後可額外刀一人，任一狼死亡失去額外刀 |
+| 76 | **大灰狼** | `big_grey_wolf` | 狼人 | 1 | `combatRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊）；第二晚起整局限一次單獨擊殺（受占卜師限刀） |
+| 77 | **黑蝙蝠** | `black_bat` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚庇護一人（不可連庇），一次性反彈首位對被庇護者施放技能的玩家使其出局 |
+| 78 | **黑市商人** | `black_market_merchant` | 好人 | 1 | `nightResolution.ts` | 整局限一次贈送幸運兒查驗／毒／獵槍；贈給狼人則不獲技且商人反噬出局（受攝夢免疫） |
+| 79 | **管家** | `butler` | 好人 | 1 | `nightResolution.ts` | 第二晚起每晚上茶（每人限一次）：預言家驗狼殺、女巫多毒、守衛雙守護至白天、小狼空刀、平民 +1 票 |
+| 80 | **百變狼王** | `chameleon_wolf_king` | 狼人 | 1 | `conversionRoles.ts` | 開局將一名神職轉化為狼人陣營百變狼王（不可自爆、初始不入隊，其餘狼滅入隊） |
+| 81 | **槓精** | `contrarian` | 好人 | 1 | `finalBatchRoles.ts` | 整局限一次：白天翻牌中斷目標發言開槓投票（過半目標失投票權並奪其警徽，未過半槓精失本輪投票權） |
+| 82 | **舞者** | `dancer` | 好人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 第二晚起每晚選 3 名未進舞池存活者，陣營少數者出局；舞者在舞池中三人免疫當晚狼刀 |
+| 83 | **黑夜使者** | `dark_night_envoy` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚庇護一名狼人（不可連庇），免疫所有夜間傷害並反殺對其查驗／潑毒／雙攝的玩家 |
+| 84 | **偵探** | `detective` | 好人 | 1 | `finalBatchRoles.ts` | 整局限一次：白天翻牌搶奪警徽且當日禁狼自爆，發言結束後可直接處決一人並激活警犬當晚技能 |
+| 85 | **酒鬼預言家** | `drunk_seer` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 平民邊、每晚陣營查驗結果隨機（支援法官手動覆寫金水／查殺），維持預言家 A／B 盲叫 |
+| 86 | **邪惡商人** | `evil_merchant` | 狼人 | 1 | `nightResolution.ts` | 不可自爆、隨狼刀；首夜贈小狼獵槍，白天無槍狼死可收回改贈毒藥，任一道具使用即永久失能 |
+| 87 | **異族王子** | `exotic_prince` | 好人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 平民不受睡眠影響（抽中則本場無睡美人）；第二晚起每晚查驗並喚醒睡美人清除全場睡眠 |
+| 88 | **愚言家** | `fool_seer` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 每晚陣營查驗，白天發言階段可隨時翻牌自曝淘汰自己強制入夜（上警吞警徽） |
+| 89 | **占卜師** | `fortune_teller` | 好人 | 1 | `interferenceRoles.ts` | 整局限一次，每晚最先標記一號，限制當晚狼隊僅能從標記號碼與其左右兩側三人中選擇刀口 |
+| 90 | **鬼魂新娘** | `ghost_bride` | 第三方 | 1 | `conversionRoles.ts` | 首夜選新郎同生共死並共選證婚人，三人組獨立第三方屠城（狼全滅後新娘帶刀、情侶皆死證婚人帶刀） |
+| 91 | **灰太狼** | `grey_wolf_boss` | 狼人 | 1 | `finalBatchRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；每晚偷取一人技能當晚使用（每人限一次，受喜羊羊防盜阻斷） |
+| 92 | **喜羊羊** | `happy_sheep` | 好人 | 1 | `nightResolution.ts`, `finalBatchRoles.ts` | 每晚選擇防盜或守護一人（不可對同人連用同技；對自己視為同時防盜與守護） |
+| 93 | **鐵好人** | `iron_good` | 好人 | 1 | `inspectionRoles.ts` | 平民邊、白天發言階段可隨時翻牌自曝淘汰自己強制入夜（上警吞警徽） |
+| 94 | **開膛手傑克** | `jack_the_ripper` | 第三方 | 1 | `conversionRoles.ts` | 首夜指定狂熱粉（原身分失效）；任一方出局後每晚可無視解藥單獨擊殺一人 |
+| 95 | **燈影預言家** | `lantern_seer` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 平民邊、每晚陣營查驗結果自動反轉（好↔狼），維持預言家 A／B 盲叫不洩密 |
+| 96 | **小女孩** | `little_girl` | 好人 | 1 | `nightResolution.ts` | 每晚與狼隊同睜眼；第二晚起狼隊於選刀後有一次指認小女孩機會，指認成功由小女孩代替原刀口死亡 |
+| 97 | **小小灰** | `little_grey_wolf` | 狼人 | 1 | `nightResolution.ts`, `finalBatchRoles.ts` | 同小狼：與狼隊同睜眼點刀（可空刀／自刀），白天可隨時自爆於當晚點刀後正式死亡 |
+| 98 | **蒙面人** | `masked_villager` | 好人 | 1 | `nightResolution.ts`, `treasureMaster.ts` | 夜間遭狼刀／毒藥／攝夢負傷延遲至隔日發言後出局、白天結算解除負傷並重算勝負 |
+| 99 | **假面** | `masked_wolf` | 狼人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；第二晚起每晚查驗是否在舞池並改判一人舞池陣營 |
+| 100 | **通靈者** | `medium` | 好人 | 1 | `nightResolution.ts` | 每晚將已死玩家技能（狼刀／查驗／毒／盾）通靈給非己存活者次夜一次性使用（每死／活人限一次） |
+| 101 | **梅杜莎** | `medusa` | 狼人 | 1 | `nightResolution.ts`, `dayResolution.ts`, `interferenceRoles.ts` | 不可自刀、可自爆（自爆不連帶）；每晚石化非己一人（不可連選），反彈女巫毒、禁技與禁投票（白痴不可翻牌），非自爆出局連帶石化者共死 |
+| 102 | **月靈狼** | `moon_spirit_wolf` | 狼人 | 1 | `inspectionRoles.ts` | 隨狼隊刀人與自爆；每晚狼隊行動前自動感知左右存活鄰居是否含神職並輸出嗥叫結果（遭夢魘恐懼不嗥叫） |
+| 103 | **禁言長老** | `mute_elder` | 好人 | 1 | `nightResolution.ts`, `interferenceRoles.ts` | 每晚指定一人禁言，隔天白天於公告與發言區標記禁言提醒 |
+| 104 | **九尾狐** | `nine_tailed_fox` | 好人 | 1 | `inspectionRoles.ts` | 初始 9 條尾巴，依已公布死訊扣尾（神 -2、民 -1、狼不減，不含當晚未公布死訊），歸零自動死亡 |
+| 105 | **九尾** | `nine_tails_wolf` | 狼人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；每晚與投票標記玩家，白天獵殺時刻 A > B 全滅 B 方並入夜 |
+| 106 | **老流氓** | `old_rascal` | 好人 | 1 | `nightResolution.ts`, `advancedRoles.ts`, `combatRoles.ts` | 平民邊、免疫狼美人魅惑；被女巫毒殺或獵人射殺進入延遲死亡，隔天發言結束後才出局 |
+| 107 | **潘朵拉** | `pandora` | 第三方 | 1 | `nightResolution.ts`, `mechWolf.ts`, `thirdPartySpecialRoles.ts` | 驗為好人；共 5 魔盒（刀／毒／希望之光／2 日槍）每人限贈 1 次，3 條獨立勝利條件且優先於他陣營 |
+| 108 | **珀爾修斯** | `perseus` | 好人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 免疫梅杜莎石化；第二晚起整局限一次處決一人（處決到石化者則一同出局） |
+| 109 | **怪盜狼王** | `phantom_wolf_king` | 狼人 | 1 | `nightResolution.ts`, `dayResolution.ts`, `finalBatchRoles.ts` | 不可自刀、無敵失效後方可自爆；非最後一狼可於任意夜開一次無敵，至下次入夜前免疫一切日夜死亡 |
+| 110 | **警犬** | `police_dog` | 好人 | 1 | `finalBatchRoles.ts` | 偵探處決後的當晚激活（逾期失效）：處決好人激活夜間撕咬殺一人、處決狼人激活夜間陣營查驗 |
+| 111 | **南瓜鬼** | `pumpkin_ghost` | 狼人 | 1 | `mechWolf.ts`, `inspectionRoles.ts` | 石像鬼死前預言家驗金水、死後轉查殺（守墓人恆驗狼），石像鬼出局後自動繼承歷史查驗紀錄與驗人能力 |
+| 112 | **傀儡** | `puppet_wolf` | 狼人 | 1 | `conversionRoles.ts` | 首夜開刀前選狼隊隔壁一人為傀儡（底牌不變但驗查殺、技能錯亂、不可自爆不入隊） |
+| 113 | **鏽劍騎士** | `rusty_sword_knight` | 好人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 被狼刀殺死的下一晚天亮，其左側最近第一位存活狼人直接出局 |
+| 114 | **影子** | `shadow` | 第三方 | 1 | `conversionRoles.ts` | 首夜選主人並跟隨其勝利條件，主人出局後繼承身分與技能（選中復仇者組帶刀第三方） |
+| 115 | **睡美人** | `sleeping_beauty` | 第三方 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 首夜隨機指定睡美人、次夜起左右擴散 1 格睡眠，封鎖熊／女巫毒／獵人槍／禁言，全狼睡眠空刀 |
+| 116 | **雪狼** | `snow_wolf` | 狼人 | 1 | `mechWolf.ts`, `inspectionRoles.ts` | 正常狼刀與自爆；被預言家／覺醒預言家／愚言家查驗恆顯示好人（金水） |
+| 117 | **超級黑市商人** | `super_black_market_merchant` | 好人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts`, `victory.ts` | 首夜選 3 名幸運兒分別交易查驗／毒／獵槍；若 3 人皆好人則天亮轉入狼人陣營（餘狼滅帶刀） |
+| 118 | **超級守墓人** | `super_gravekeeper` | 好人 | 1 | `nightResolution.ts`, `inspectionRoles.ts` | 第二晚起得知上一白天放逐者陣營、每晚指定繼承者；出局當晚好人繼承者自動接手全部歷史放逐紀錄與後續查驗 |
+| 119 | **盜賊** | `thief` | 第三方 | 1 | `nightResolution.ts` | 首夜第一個睜眼從剩餘兩張底牌擇一（含狼必選狼、雙狼重開） |
+| 120 | **盜寶大師** | `treasure_master` | 第三方 | 1 | `nightResolution.ts`, `mechWolf.ts`, `treasureMaster.ts`, `victory.ts` | 首夜 3 底牌合法性與陣營歸屬、每晚切底牌且不可連選、通靈師查驗偽裝、盜寶狼入隊與最後一狼蒙面免放逐 |
+| 121 | **詭術師** | `trickster_wolf` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚交換兩位玩家號碼牌（不可連兩晚選同號），隔天白天放逐投票票數對調（與魔術師同換抵銷） |
+| 122 | **搗蛋鬼** | `troublemaker_wolf` | 狼人 | 1 | `dayResolution.ts`, `interferenceRoles.ts` | 不可自爆、初始不入隊（其餘狼滅入隊帶刀）；每晚對非己玩家耍寶（不可連選），技能轉向自己（守衛連自守死、狼人自刀） |
+| 123 | **雙子** | `twins` | 好人 | 1 | `conversionRoles.ts` | 平民陣營、首夜互認、同生共死，出局下一晚可共同守護一名玩家免於狼刀 |
+| 124 | **典獄長** | `warden_wolf` | 狼人 | 1 | `nightResolution.ts`, `combatRoles.ts` | 隨狼隊刀人與自爆；第二晚起每晚選兩人交易（每人限一次：雙交易免疫、雙背叛互轉、單交易出局、自參特殊判定） |
+| 125 | **白夜使者** | `white_night_envoy` | 好人 | 1 | `finalBatchRoles.ts` | 整局限一次：第二天起任意白天發言階段發動時間回溯，還原上一晚死者並重新執行夜間流程 |
+| 126 | **野孩子** | `wild_child` | 第三方 | 1 | `victory.ts` | 首夜選榜樣：榜樣出局後立即變身狼人加入狼隊，否則屬平民跟隨好人勝利 |
+| 127 | **狼女孩** | `wolf_girl` | 狼人 | 1 | `wolfGirl.ts` | 首夜向非狼表白（表白平民成功同勝）、白天或放逐後自爆觸發愛情破裂帶走表白對象並作廢投票 |
+| 128 | **狼僕** | `wolf_maid` | 狼人 | 1 | `nightResolution.ts`, `thirdPartySpecialRoles.ts` | 不可自爆、初始不入隊（餘狼滅入隊）；第二晚起上茶：預／女出局、守衛首目標死、小狼多刀、平民 -1 票 |
+| 129 | **狼術師** | `wolf_warlock` | 狼人 | 1 | `interferenceRoles.ts` | 隨狼隊刀人與自爆；每晚交換兩位存活玩家號碼牌（當晚技能目標對調，整局每號碼限 1 次） |
+| 130 | **狂熱粉** | `fanatic` | 第三方 | 0 | `conversionRoles.ts` | 與開膛手傑克同屬第三方勝利條件，無擊殺能力 |
 
-## 四、清單 B：僅台詞提示／需法官手動調整角色（共 13 個）
+## 四、清單 B：僅台詞提示／需法官手動調整角色（共 0 個）
 
 以下角色目前於夜間僅走睜閉眼提示（`confirm_only` 或共用狼刀步驟）或無完整自動結算邏輯，須由法官搭配「座位總覽／手動標記」輔助裁定（**依出現板子頻率由高到低排序**）：
 
 | # | 角色名稱 | 角色 ID | 陣營 | 出現板子數 | 現況說明 | 出現板子清單 |
 | ---: | --- | --- | --- | ---: | --- | --- |
-| 1 | **蝕日侍女** | `eclipse_maid` | 狼人 | 6 | 僅夜間睜閉眼台詞（wolf_kill, confirm_only），專屬技能需法官手動調整 | 10 人局 - 獵日逐光、10 人局 - 千年之戀、12 人局 - 獵日逐光、12 人局 - 無目之城、12 人局 - 沙龍之夜、12 人局 - 千年之戀 |
-| 2 | **羊駝** | `alpaca` | 好人 | 3 | 無專屬夜間互動步驟（被動／白天／特殊身分規則需法官手動調整） | 10 人局 - 動物夢境、12 人局 - 動物夢境、12 人局 - 青青草原 |
-| 3 | **定序王子** | `sequence_prince` | 好人 | 3 | 僅夜間睜閉眼台詞（confirm_only），專屬技能需法官手動調整 | 10 人局 - 永序之輪、12 人局 - 詭術之境、12 人局 - 永序之輪 |
-| 4 | **兔兔** | `bunny` | 好人 | 2 | 無專屬夜間互動步驟（被動／白天／特殊身分規則需法官手動調整） | 9 人局 - 動物園、12 人局 - 動物園 |
-| 5 | **槓精** | `contrarian` | 好人 | 1 | 僅夜間睜閉眼台詞（confirm_only），專屬技能需法官手動調整 | 12 人局 - 針鋒相槓 |
-| 6 | **偵探** | `detective` | 好人 | 1 | 僅夜間睜閉眼台詞（confirm_only），專屬技能需法官手動調整 | 12 人局 - 偵探怪盜 |
-| 7 | **灰太狼** | `grey_wolf_boss` | 狼人 | 1 | 僅夜間睜閉眼台詞（confirm_only, wolf_kill），專屬技能需法官手動調整 | 12 人局 - 青青草原 |
-| 8 | **喜羊羊** | `happy_sheep` | 好人 | 1 | 僅夜間睜閉眼台詞（confirm_only），專屬技能需法官手動調整 | 12 人局 - 青青草原 |
-| 9 | **小女孩** | `little_girl` | 好人 | 1 | 僅夜間睜閉眼台詞（wolf_kill），專屬技能需法官手動調整 | 12 人局 - 小女孩大野狼 |
-| 10 | **小小灰** | `little_grey_wolf` | 狼人 | 1 | 僅夜間睜閉眼台詞（wolf_kill），專屬技能需法官手動調整 | 12 人局 - 青青草原 |
-| 11 | **怪盜狼王** | `phantom_wolf_king` | 狼人 | 1 | 僅夜間睜閉眼台詞（confirm_only, wolf_kill），專屬技能需法官手動調整 | 12 人局 - 偵探怪盜 |
-| 12 | **警犬** | `police_dog` | 好人 | 1 | 僅夜間睜閉眼台詞（confirm_only），專屬技能需法官手動調整 | 12 人局 - 偵探怪盜 |
-| 13 | **白夜使者** | `white_night_envoy` | 好人 | 1 | 僅夜間睜閉眼台詞（confirm_only），專屬技能需法官手動調整 | 12 人局 - 黑白使者 |
 
 ## 五、全板子就緒度總表（共 143 個板子）
 
-### 5.1 已達成「全角色 100% 自動結算」之板子（共 125 個）
+### 5.1 已達成「全角色 100% 自動結算」之板子（共 143 個）
 
 | # | 板子名稱 | 板子 ID | 人數 | 配置角色（皆屬清單 A） |
 | ---: | --- | --- | ---: | --- |
@@ -194,144 +181,144 @@
 | 9 | **9 人局 - 種狼** | `9p-seed-wolf` | 9 | 小狼、種狼、平民、高級平民、熊、女巫、獵人 |
 | 10 | **9 人局 - 戰狼騎士** | `9p-war-wolf-knight` | 9 | 小狼、戰狼、平民、預言家、女巫、騎士 |
 | 11 | **9 人局 - 眾神之戰** | `9p-board-kxb4iz` | 9 | 狼王、白狼王、種狼、熊、女巫、獵人、企鵝、名媛、騎士 |
-| 12 | **9 人局 - 潘朵拉** | `9p-pandora` | 9 | 小狼、狼美人、平民、預言家、女巫、獵人、潘朵拉 |
-| 13 | **10 人局 - 經典** | `10p-classic` | 10 | 小狼、平民、預言家、女巫、獵人 |
-| 14 | **10 人局 - 白痴** | `10p-idiot` | 10 | 小狼、平民、預言家、女巫、獵人、白痴 |
-| 15 | **10 人局 - 假面之夜** | `10p-masked-wolf` | 10 | 小狼、平民、預言家、女巫、獵人、守衛、白痴 |
-| 16 | **10 人局 - 白狼王騎士** | `10p-wolf-king-white-wolf-king-knight` | 10 | 小狼、白狼王、平民、預言家、女巫、守衛、騎士 |
-| 17 | **10 人局 - 狼美人騎士** | `10p-wolf-beauty-knight` | 10 | 小狼、狼美人、平民、預言家、女巫、守衛、騎士 |
-| 18 | **10 人局 - 雪狼騎士** | `10p-snow-wolf-knight` | 10 | 小狼、雪狼、平民、預言家、女巫、獵人、騎士 |
-| 19 | **10 人局 - 隱狼騎士** | `10p-hidden-wolf-knight` | 10 | 小狼、隱狼、平民、預言家、女巫、獵人、騎士 |
-| 20 | **10 人局 - 血月獵魔** | `10p-board-13wywxf` | 10 | 小狼、血月使徒、平民、預言家、女巫、獵魔人、白痴 |
-| 21 | **10 人局 - 夢魘攝夢(網易版)** | `10p-nightmare` | 10 | 小狼、狼王、夢魘、平民、預言家、女巫、獵人、攝夢人 |
-| 22 | **10 人局 - 夢魘攝夢(私版)** | `10p-nightmare-2` | 10 | 小狼、夢魘、平民、預言家、女巫、獵人、攝夢人 |
-| 23 | **10 人局 - 機械狼通靈師 / 鏡隱迷蹤** | `10p-mech-wolf-psychic` | 10 | 小狼、機械狼、平民、通靈師、女巫、守衛 |
-| 24 | **10 人局 - 奇蹟商人** | `10p-miracle-merchant` | 10 | 小狼、平民、預言家、女巫、奇蹟商人 |
-| 25 | **10 人局 - 覺醒狼王奇商** | `10p-wolf-king-awakened-wolf-king` | 10 | 小狼、覺醒狼王、平民、預言家、女巫、奇蹟商人 |
-| 26 | **10 人局 - 尋香識命** | `10p-board-yjr1j3` | 10 | 小狼、尋香魅影、平民、覺醒預言家、女巫、守衛 |
-| 27 | **10 人局 - 暗夜星辰** | `10p-board-zm108y` | 10 | 小狼、覺醒狼美人、平民、預言家、女巫、覺醒獵人、白痴 |
-| 28 | **10 人局 - 覺石覺攝** | `10p-board-1468z48` | 10 | 狼王、覺醒石像鬼、平民、預言家、女巫、覺醒攝夢人、守墓人 |
-| 29 | **10 人局 - 覺醒女巫** | `10p-witch-awakened-witch` | 10 | 小狼、覺醒狼王、平民、預言家、覺醒女巫、守衛 |
-| 30 | **10 人局 - 覺醒之夜** | `10p-board-149pwdx` | 10 | 小狼、夜之貴族、平民、預言家、女巫、覺醒白痴 |
-| 31 | **10 人局 - 純白夜影** | `10p-board-12kdffu` | 10 | 小狼、狼巫、平民、純白之女、女巫、守衛 |
-| 32 | **10 人局 - 時波之亂** | `10p-board-znal43` | 10 | 小狼、寂夜導師、平民、預言家、女巫、白晝學者 |
-| 33 | **10 人局 - 猩紅蜂舞** | `10p-board-11cingk` | 10 | 小狼、猩紅狼王、平民、預言家、女巫、守衛、蜂之狂獵 |
-| 34 | **10 人局 - 迷霧鴉影** | `10p-misty-crow` | 10 | 小狼、狼鴉之爪、平民、預言家、煉金魔女、攝夢人 |
-| 35 | **10 人局 - 邱比特奇緣** | `10p-cupid` | 10 | 狼王、夢魘、蝕時狼妃、預言家、女巫、獵人、攝夢人、烏鴉、邱比特、混血兒 |
-| 36 | **10 人局 - 混血兒** | `10p-hybrid` | 10 | 小狼、平民、預言家、女巫、獵人、混血兒 |
-| 37 | **10 人局 - 風聲諜影** | `10p-wind-espionage` | 10 | 覺醒石像鬼、預言家、通靈師、熊、女巫、獵人、河豚、攝夢人、白貓 |
-| 38 | **10 人局 - 雲端追蹤** | `10p-board-15uqrqo` | 10 | 狼美人、機械狼、預言家、覺醒預言家、通靈師、純白之女、女巫、獵人、咒狐、混血兒 |
-| 39 | **10 人局 - 覺醒孤獨少女** | `10p-awakened-lonely-girl` | 10 | 小狼、平民、預言家、女巫、攝夢人、覺醒孤獨少女 |
-| 40 | **10 人局 - 咒狐** | `10p-cursed-fox` | 10 | 小狼、平民、預言家、女巫、獵人、咒狐 |
-| 41 | **10 人局 - 殭屍** | `10p-zombie` | 10 | 小狼、狼王、平民、預言家、女巫、魔術師、殭屍 |
-| 42 | **11 ~ 16 人局 - 影子 & 復仇者** | `multi-avenger-shadow` | 12 | 小狼、平民、預言家、女巫、獵人、白痴、守衛、影子、復仇者、混血兒 |
-| 43 | **12 人局 - 經典** | `12p-classic` | 12 | 小狼、平民、預言家、女巫、獵人、白痴 |
-| 44 | **12 人局 - 狼王守衛** | `12p-wolf-king-guard` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、守衛 |
-| 45 | **12 人局 - 狼王攝夢** | `12p-wolf-king` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、攝夢人 |
-| 46 | **12 人局 - 狼王騎士** | `12p-wolf-king-knight` | 12 | 小狼、狼王、平民、預言家、女巫、守衛、騎士 |
-| 47 | **12 人局 - 狼王魔術師** | `12p-wolf-king-magician` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、魔術師 |
-| 48 | **12 人局 - 白狼王守衛** | `12p-wolf-king-guard-white-wolf-king` | 12 | 小狼、白狼王、平民、預言家、女巫、獵人、守衛 |
-| 49 | **12 人局 - 白狼王騎士** | `12p-wolf-king-white-wolf-king-knight` | 12 | 小狼、白狼王、平民、預言家、女巫、守衛、騎士 |
-| 50 | **12 人局 - 狼美人騎士** | `12p-wolf-beauty-knight` | 12 | 小狼、狼美人、平民、預言家、女巫、守衛、騎士 |
-| 51 | **12 人局 - 狼美人獵騎** | `12p-wolf-beauty` | 12 | 小狼、狼美人、平民、預言家、女巫、獵人、騎士 |
-| 52 | **12 人局 - 狼美人獵守** | `12p-wolf-beauty-2` | 12 | 小狼、狼美人、平民、預言家、女巫、獵人、守衛 |
-| 53 | **12 人局 - 狼美人老流氓** | `12p-wolf-beauty-old-rascal` | 12 | 小狼、狼美人、平民、老流氓、預言家、女巫、獵人、守衛 |
-| 54 | **12 人局 - 惡靈騎士** | `12p-evil-knight-knight` | 12 | 小狼、惡靈騎士、平民、預言家、女巫、獵人、守衛 |
-| 55 | **12 人局 - 快言快語** | `12p-board-1ak9dbq` | 12 | 小狼、狼王、白狼王、惡靈騎士、平民、預言家、女巫、獵人、守衛、白痴 |
-| 56 | **12 人局 - 石像鬼守墓人** | `12p-gargoyle-gravekeeper` | 12 | 小狼、石像鬼、平民、預言家、女巫、獵人、守墓人 |
-| 57 | **12 人局 - 血月獵魔** | `12p-board-1fid5th` | 12 | 小狼、血月使徒、平民、預言家、女巫、獵魔人、白痴 |
-| 58 | **12 人局 - 刺客獵魔** | `12p-assassin-wolf` | 12 | 小狼、刺客、平民、預言家、女巫、獵魔人、白痴 |
-| 59 | **12 人局 - 戰狼獵魔** | `12p-war-wolf` | 12 | 小狼、狼王、戰狼、平民、預言家、女巫、獵魔人、守衛 |
-| 60 | **12 人局 - 夢魘攝夢** | `12p-nightmare` | 12 | 小狼、夢魘、平民、預言家、女巫、獵人、攝夢人 |
-| 61 | **12 人局 - 夢魘守衛** | `12p-guard-nightmare` | 12 | 小狼、夢魘、平民、預言家、女巫、獵人、守衛 |
-| 62 | **12 人局 - 夢魘惑心** | `12p-nightmare-2` | 12 | 小狼、夢魘、平民、預言家、女巫、蠱惑師、守衛 |
-| 63 | **12 人局 - 機械狼通靈師 / 鏡隱迷蹤** | `12p-mech-wolf-psychic` | 12 | 小狼、機械狼、平民、通靈師、女巫、獵人、守衛 |
-| 64 | **12 人局 - 狼兄弟守衛** | `12p-guard-wolf-brother` | 12 | 小狼、狼兄、狼弟、平民、預言家、女巫、獵人、守衛 |
-| 65 | **12 人局 - 狼兄弟黑市** | `12p-wolf-brother` | 12 | 小狼、狼兄、狼弟、平民、預言家、女巫、守衛、黑市商人 |
-| 66 | **12 人局 - 覺醒狼王奇商** | `12p-wolf-king-awakened-wolf-king` | 12 | 小狼、覺醒狼王、平民、預言家、女巫、攝夢人、奇蹟商人 |
-| 67 | **12 人局 - 烏鴉隱狼** | `12p-hidden-wolf-crow` | 12 | 小狼、隱狼、平民、預言家、女巫、獵人、烏鴉 |
-| 68 | **12 人局 - 熊隱狼** | `12p-hidden-wolf-bear` | 12 | 小狼、隱狼、平民、熊、女巫、獵人、白痴 |
-| 69 | **12 人局 - 尋香識命** | `12p-board-1a55af5` | 12 | 小狼、尋香魅影、平民、覺醒預言家、女巫、獵人、守衛 |
-| 70 | **12 人局 - 暗夜星辰** | `12p-board-1b7f950` | 12 | 小狼、覺醒狼美人、平民、預言家、女巫、覺醒獵人、白痴 |
-| 71 | **12 人局 - 百變狼王** | `12p-wolf-king-chameleon-wolf-king` | 12 | 小狼、百變狼王、平民、預言家、熊、女巫、獵人、攝夢人 |
-| 72 | **12 人局 - 魔幻對決** | `12p-board-1hvme02` | 12 | 小狼、狼術師、平民、預言家、女巫、獵人、魔術師 |
-| 73 | **12 人局 - 覺石覺攝** | `12p-board-1frn80a` | 12 | 小狼、狼王、覺醒石像鬼、平民、預言家、女巫、獵人、覺醒攝夢人、守墓人 |
-| 74 | **12 人局 - 覺醒女巫** | `12p-witch-awakened-witch` | 12 | 小狼、覺醒狼王、平民、預言家、覺醒女巫、獵人、守衛 |
-| 75 | **12 人局 - 假面舞會** | `12p-masked-wolf` | 12 | 小狼、假面、平民、預言家、女巫、白痴、舞者 |
-| 76 | **12 人局 - 覺醒之夜** | `12p-board-1fv459z` | 12 | 小狼、夜之貴族、平民、預言家、女巫、獵魔人、覺醒白痴 |
-| 77 | **12 人局 - 純白夜影** | `12p-board-1e5robw` | 12 | 小狼、狼巫、平民、純白之女、女巫、獵人、守衛 |
-| 78 | **12 人局 - 時波之亂** | `12p-board-1b8ou05` | 12 | 小狼、寂夜導師、平民、預言家、女巫、守衛、白晝學者 |
-| 79 | **12 人局 - 猩紅蜂舞** | `12p-board-1cxwwcm` | 12 | 小狼、猩紅狼王、平民、預言家、女巫、守衛、蜂之狂獵 |
-| 80 | **12 人局 - 鬧鬧派對** | `12p-noisy-party` | 12 | 狼王、白狼王、狼美人、血月使徒、預言家、女巫、獵人、河豚、守衛 |
-| 81 | **12 人局 - 迷霧鴉影** | `12p-misty-crow` | 12 | 小狼、狼鴉之爪、平民、預言家、煉金魔女、攝夢人、白痴 |
-| 82 | **12 人局 - 無目之夜** | `12p-board-1cnivrg` | 12 | 小狼、隱狼、石像鬼、狼鴉之爪、平民、預言家、女巫、獵人、攝夢人 |
-| 83 | **12 人局 - 雙生幻想** | `12p-twin-fantasy` | 12 | 小狼、平民、雙子、預言家、女巫、獵人、白痴 |
-| 84 | **12 人局 - 燈影** | `12p-lantern-shadow` | 12 | 小狼、狼王、平民、燈影預言家、預言家、女巫、守衛、騎士 |
-| 85 | **12 人局 - 酒鬼預言家** | `12p-seer-drunk-seer` | 12 | 小狼、狼王、平民、酒鬼預言家、預言家、女巫、守衛、騎士 |
-| 86 | **12 人局 - 自曝愚言家** | `12p-fool-seer` | 12 | 小狼、狼王、平民、鐵好人、愚言家、女巫、獵人、守衛 |
-| 87 | **12 人局 - 種狼(飯局版)** | `12p-seed-wolf` | 12 | 小狼、種狼、平民、高級平民、熊、女巫、狐狸、鏽劍騎士 |
-| 88 | **12 人局 - 種狼(京城版)** | `12p-seed-wolf-2` | 12 | 小狼、種狼、平民、預言家、女巫、守衛、騎士 |
-| 89 | **12 人局 - 種狼(娛百版)** | `12p-seed-wolf-3` | 12 | 小狼、種狼、隱狼、平民、預言家、女巫、獵人、守衛 |
-| 90 | **12 人局 - 種狼(私版)** | `12p-seed-wolf-4` | 12 | 小狼、種狼、平民、預言家、女巫、獵人、守衛 |
-| 91 | **12 人局 - 唯鄰是從** | `12p-neighbor-only` | 12 | 小狼、狼王、傀儡、平民、預言家、女巫、獵人、守衛 |
-| 92 | **12 人局 - 狼美人惑騎** | `12p-wolf-beauty-3` | 12 | 戰狼、種狼、狼美人、平民、高級平民、熊、女巫、蠱惑師、騎士 |
-| 93 | **12 人局 - 大灰狼占卜師** | `12p-big-grey-wolf-fortune-teller` | 12 | 小狼、大灰狼、平民、預言家、女巫、獵人、占卜師 |
-| 94 | **12 人局 - 九尾狐** | `12p-nine-tails-wolf-nine-tailed-fox` | 12 | 小狼、平民、預言家、女巫、獵人、九尾狐 |
-| 95 | **12 人局 - 名媛** | `12p-socialite` | 12 | 小狼、戰狼、平民、預言家、女巫、獵人、名媛、混血兒 |
-| 96 | **12 人局 - 通靈者** | `12p-medium` | 12 | 小狼、狼王、戰狼、平民、預言家、女巫、守衛、通靈者 |
-| 97 | **12 人局 - 月靈狼** | `12p-moon-spirit-wolf` | 12 | 小狼、月靈狼、夢魘、平民、熊、女巫、名媛、騎士 |
-| 98 | **12 人局 - 惡魔** | `12p-demon-wolf` | 12 | 小狼、惡魔、平民、預言家、女巫、獵人、守衛 |
-| 99 | **12 人局 - 搗蛋鬼** | `12p-troublemaker-wolf` | 12 | 小狼、搗蛋鬼、平民、預言家、女巫、獵人、守衛 |
-| 100 | **12 人局 - 孤注一擲** | `12p-board-19vcnl0` | 12 | 小狼、典獄長、平民、預言家、女巫、獵人、攝夢人 |
-| 101 | **12 人局 - 胡夫地平線** | `12p-khufu-horizon` | 12 | 小狼、阿努比斯、平民、預言家、煉金魔女、獵人、攝夢人 |
-| 102 | **12 人局 - 梅杜莎之眼** | `12p-medusa` | 12 | 小狼、梅杜莎、平民、預言家、女巫、珀爾修斯、白痴 |
-| 103 | **12 人局 - 黑蝙蝠** | `12p-black-bat` | 12 | 小狼、黑蝙蝠、平民、預言家、女巫、獵人、守衛 |
-| 104 | **12 人局 - 狼女孩** | `12p-wolf-girl` | 12 | 小狼、狼女孩、平民、預言家、毒師、獵人、守衛 |
-| 105 | **12 人局 - 青丘夜影** | `12p-board-1hb0a89` | 12 | 小狼、九尾、平民、預言家、女巫、守衛、白澤 |
-| 106 | **12 人局 - 南瓜鬼** | `12p-pumpkin-ghost` | 12 | 小狼、石像鬼、南瓜鬼、平民、預言家、女巫、獵人、超級守墓人 |
-| 107 | **12 人局 - 邪惡商人** | `12p-evil-merchant` | 12 | 小狼、邪惡商人、平民、預言家、女巫、獵人、守衛 |
-| 108 | **12 人局 - 超級黑市商人** | `12p-super-black-market-merchant-black-market-merchant` | 12 | 小狼、狼王、平民、預言家、女巫、守衛、超級黑市商人 |
-| 109 | **12 人局 - 一盞榮枯** | `12p-board-18851fx` | 12 | 小狼、狼僕、平民、預言家、女巫、守衛、管家 |
-| 110 | **12 人局 - 開膛手傑克** | `12p-jack-the-ripper` | 12 | 小狼、平民、預言家、女巫、獵人、守衛、開膛手傑克 |
-| 111 | **12 人局 - 開膛手傑克 (第二身分)** | `12p-jack-the-ripper-2` | 12 | 小狼、惡魔、平民、預言家、女巫、獵人、守衛 |
-| 112 | **12 人局 - 睡美人** | `12p-sleeping-beauty` | 12 | 小狼、平民、異族王子、熊、女巫、獵人、禁言長老、睡美人 |
-| 113 | **12 人局 - 盜賊邱比特** | `12p-cupid-thief` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、白痴、盜賊、邱比特 |
-| 114 | **12 人局 - 邱比特奇緣** | `12p-cupid` | 12 | 狼王、夢魘、狼巫、蝕時狼妃、預言家、女巫、獵人、攝夢人、白痴、烏鴉、邱比特、混血兒 |
-| 115 | **12 人局 - 烏鴉咒狐** | `12p-crow-cursed-fox` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、烏鴉、咒狐 |
-| 116 | **12 人局 - 混血兒** | `12p-hybrid` | 12 | 小狼、平民、預言家、女巫、獵人、守衛、混血兒 |
-| 117 | **12 人局 - 風聲諜影** | `12p-wind-espionage` | 12 | 機械狼、覺醒石像鬼、預言家、通靈師、熊、女巫、獵人、河豚、攝夢人、白貓、混血兒 |
-| 118 | **12 人局 - 雲端探查** | `12p-board-1hfx9f2` | 12 | 狼美人、機械狼、隱狼、預言家、覺醒預言家、通靈師、純白之女、女巫、獵人、守墓人、咒狐、混血兒 |
-| 119 | **12 人局 - 覺醒孤獨少女** | `12p-awakened-lonely-girl` | 12 | 小狼、平民、預言家、女巫、獵人、攝夢人、覺醒孤獨少女 |
-| 120 | **12 人局 - 野孩子** | `12p-wild-child` | 12 | 小狼、平民、預言家、女巫、獵人、守衛、野孩子 |
-| 121 | **12 人局 - 鬼魂新娘** | `12p-ghost-bride` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、守衛、鬼魂新娘 |
-| 122 | **12 人局 - 殭屍** | `12p-zombie` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、魔術師、殭屍 |
-| 123 | **12 人局 - 盜寶大師** | `12p-treasure-master` | 12 | 小狼、狼王、平民、通靈師、毒師、獵人、攝夢人、蒙面人、盜寶大師 |
-| 124 | **娛樂局 - 獵殺潛狼 / 獵人局** | `multi-hunter` | 6 | 小狼、獵人 |
-| 125 | **娛樂局 - 連連看** | `multi-lianliankan` | 10 | 尋香魅影、獵魔人 |
+| 12 | **9 人局 - 動物園** | `9p-board-e9uyvs` | 9 | 小狼、狼王、兔兔、熊、企鵝、烏鴉 |
+| 13 | **9 人局 - 潘朵拉** | `9p-pandora` | 9 | 小狼、狼美人、平民、預言家、女巫、獵人、潘朵拉 |
+| 14 | **10 人局 - 經典** | `10p-classic` | 10 | 小狼、平民、預言家、女巫、獵人 |
+| 15 | **10 人局 - 白痴** | `10p-idiot` | 10 | 小狼、平民、預言家、女巫、獵人、白痴 |
+| 16 | **10 人局 - 假面之夜** | `10p-masked-wolf` | 10 | 小狼、平民、預言家、女巫、獵人、守衛、白痴 |
+| 17 | **10 人局 - 白狼王騎士** | `10p-wolf-king-white-wolf-king-knight` | 10 | 小狼、白狼王、平民、預言家、女巫、守衛、騎士 |
+| 18 | **10 人局 - 狼美人騎士** | `10p-wolf-beauty-knight` | 10 | 小狼、狼美人、平民、預言家、女巫、守衛、騎士 |
+| 19 | **10 人局 - 雪狼騎士** | `10p-snow-wolf-knight` | 10 | 小狼、雪狼、平民、預言家、女巫、獵人、騎士 |
+| 20 | **10 人局 - 隱狼騎士** | `10p-hidden-wolf-knight` | 10 | 小狼、隱狼、平民、預言家、女巫、獵人、騎士 |
+| 21 | **10 人局 - 血月獵魔** | `10p-board-13wywxf` | 10 | 小狼、血月使徒、平民、預言家、女巫、獵魔人、白痴 |
+| 22 | **10 人局 - 夢魘攝夢(網易版)** | `10p-nightmare` | 10 | 小狼、狼王、夢魘、平民、預言家、女巫、獵人、攝夢人 |
+| 23 | **10 人局 - 夢魘攝夢(私版)** | `10p-nightmare-2` | 10 | 小狼、夢魘、平民、預言家、女巫、獵人、攝夢人 |
+| 24 | **10 人局 - 機械狼通靈師 / 鏡隱迷蹤** | `10p-mech-wolf-psychic` | 10 | 小狼、機械狼、平民、通靈師、女巫、守衛 |
+| 25 | **10 人局 - 奇蹟商人** | `10p-miracle-merchant` | 10 | 小狼、平民、預言家、女巫、奇蹟商人 |
+| 26 | **10 人局 - 覺醒狼王奇商** | `10p-wolf-king-awakened-wolf-king` | 10 | 小狼、覺醒狼王、平民、預言家、女巫、奇蹟商人 |
+| 27 | **10 人局 - 尋香識命** | `10p-board-yjr1j3` | 10 | 小狼、尋香魅影、平民、覺醒預言家、女巫、守衛 |
+| 28 | **10 人局 - 暗夜星辰** | `10p-board-zm108y` | 10 | 小狼、覺醒狼美人、平民、預言家、女巫、覺醒獵人、白痴 |
+| 29 | **10 人局 - 覺石覺攝** | `10p-board-1468z48` | 10 | 狼王、覺醒石像鬼、平民、預言家、女巫、覺醒攝夢人、守墓人 |
+| 30 | **10 人局 - 覺醒女巫** | `10p-witch-awakened-witch` | 10 | 小狼、覺醒狼王、平民、預言家、覺醒女巫、守衛 |
+| 31 | **10 人局 - 永序之輪** | `10p-board-10c9sqq` | 10 | 小狼、蝕時狼妃、平民、預言家、女巫、定序王子 |
+| 32 | **10 人局 - 獵日逐光** | `10p-board-11aiiid` | 10 | 小狼、蝕日侍女、平民、預言家、女巫、流光伯爵 |
+| 33 | **10 人局 - 覺醒之夜** | `10p-board-149pwdx` | 10 | 小狼、夜之貴族、平民、預言家、女巫、覺醒白痴 |
+| 34 | **10 人局 - 純白夜影** | `10p-board-12kdffu` | 10 | 小狼、狼巫、平民、純白之女、女巫、守衛 |
+| 35 | **10 人局 - 時波之亂** | `10p-board-znal43` | 10 | 小狼、寂夜導師、平民、預言家、女巫、白晝學者 |
+| 36 | **10 人局 - 猩紅蜂舞** | `10p-board-11cingk` | 10 | 小狼、猩紅狼王、平民、預言家、女巫、守衛、蜂之狂獵 |
+| 37 | **10 人局 - 迷霧鴉影** | `10p-misty-crow` | 10 | 小狼、狼鴉之爪、平民、預言家、煉金魔女、攝夢人 |
+| 38 | **10 人局 - 動物夢境** | `10p-animal-dream` | 10 | 小狼、狼美人、羊駝、熊、子狐、河豚 |
+| 39 | **10 人局 - 邱比特奇緣** | `10p-cupid` | 10 | 狼王、夢魘、蝕時狼妃、預言家、女巫、獵人、攝夢人、烏鴉、邱比特、混血兒 |
+| 40 | **10 人局 - 混血兒** | `10p-hybrid` | 10 | 小狼、平民、預言家、女巫、獵人、混血兒 |
+| 41 | **10 人局 - 風聲諜影** | `10p-wind-espionage` | 10 | 覺醒石像鬼、預言家、通靈師、熊、女巫、獵人、河豚、攝夢人、白貓 |
+| 42 | **10 人局 - 雲端追蹤** | `10p-board-15uqrqo` | 10 | 狼美人、機械狼、預言家、覺醒預言家、通靈師、純白之女、女巫、獵人、咒狐、混血兒 |
+| 43 | **10 人局 - 覺醒孤獨少女** | `10p-awakened-lonely-girl` | 10 | 小狼、平民、預言家、女巫、攝夢人、覺醒孤獨少女 |
+| 44 | **10 人局 - 咒狐** | `10p-cursed-fox` | 10 | 小狼、平民、預言家、女巫、獵人、咒狐 |
+| 45 | **10 人局 - 千年之戀** | `10p-board-x6xglu` | 10 | 小狼、蝕日侍女、平民、預言家、女巫、流光伯爵、白蛇預言家、許仙尋香魅影 |
+| 46 | **10 人局 - 殭屍** | `10p-zombie` | 10 | 小狼、狼王、平民、預言家、女巫、魔術師、殭屍 |
+| 47 | **11 ~ 16 人局 - 影子 & 復仇者** | `multi-avenger-shadow` | 12 | 小狼、平民、預言家、女巫、獵人、白痴、守衛、影子、復仇者、混血兒 |
+| 48 | **12 人局 - 經典** | `12p-classic` | 12 | 小狼、平民、預言家、女巫、獵人、白痴 |
+| 49 | **12 人局 - 狼王守衛** | `12p-wolf-king-guard` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、守衛 |
+| 50 | **12 人局 - 狼王攝夢** | `12p-wolf-king` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、攝夢人 |
+| 51 | **12 人局 - 狼王騎士** | `12p-wolf-king-knight` | 12 | 小狼、狼王、平民、預言家、女巫、守衛、騎士 |
+| 52 | **12 人局 - 狼王魔術師** | `12p-wolf-king-magician` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、魔術師 |
+| 53 | **12 人局 - 白狼王守衛** | `12p-wolf-king-guard-white-wolf-king` | 12 | 小狼、白狼王、平民、預言家、女巫、獵人、守衛 |
+| 54 | **12 人局 - 白狼王騎士** | `12p-wolf-king-white-wolf-king-knight` | 12 | 小狼、白狼王、平民、預言家、女巫、守衛、騎士 |
+| 55 | **12 人局 - 狼美人騎士** | `12p-wolf-beauty-knight` | 12 | 小狼、狼美人、平民、預言家、女巫、守衛、騎士 |
+| 56 | **12 人局 - 狼美人獵騎** | `12p-wolf-beauty` | 12 | 小狼、狼美人、平民、預言家、女巫、獵人、騎士 |
+| 57 | **12 人局 - 狼美人獵守** | `12p-wolf-beauty-2` | 12 | 小狼、狼美人、平民、預言家、女巫、獵人、守衛 |
+| 58 | **12 人局 - 狼美人老流氓** | `12p-wolf-beauty-old-rascal` | 12 | 小狼、狼美人、平民、老流氓、預言家、女巫、獵人、守衛 |
+| 59 | **12 人局 - 惡靈騎士** | `12p-evil-knight-knight` | 12 | 小狼、惡靈騎士、平民、預言家、女巫、獵人、守衛 |
+| 60 | **12 人局 - 快言快語** | `12p-board-1ak9dbq` | 12 | 小狼、狼王、白狼王、惡靈騎士、平民、預言家、女巫、獵人、守衛、白痴 |
+| 61 | **12 人局 - 石像鬼守墓人** | `12p-gargoyle-gravekeeper` | 12 | 小狼、石像鬼、平民、預言家、女巫、獵人、守墓人 |
+| 62 | **12 人局 - 血月獵魔** | `12p-board-1fid5th` | 12 | 小狼、血月使徒、平民、預言家、女巫、獵魔人、白痴 |
+| 63 | **12 人局 - 刺客獵魔** | `12p-assassin-wolf` | 12 | 小狼、刺客、平民、預言家、女巫、獵魔人、白痴 |
+| 64 | **12 人局 - 戰狼獵魔** | `12p-war-wolf` | 12 | 小狼、狼王、戰狼、平民、預言家、女巫、獵魔人、守衛 |
+| 65 | **12 人局 - 夢魘攝夢** | `12p-nightmare` | 12 | 小狼、夢魘、平民、預言家、女巫、獵人、攝夢人 |
+| 66 | **12 人局 - 夢魘守衛** | `12p-guard-nightmare` | 12 | 小狼、夢魘、平民、預言家、女巫、獵人、守衛 |
+| 67 | **12 人局 - 夢魘惑心** | `12p-nightmare-2` | 12 | 小狼、夢魘、平民、預言家、女巫、蠱惑師、守衛 |
+| 68 | **12 人局 - 機械狼通靈師 / 鏡隱迷蹤** | `12p-mech-wolf-psychic` | 12 | 小狼、機械狼、平民、通靈師、女巫、獵人、守衛 |
+| 69 | **12 人局 - 狼兄弟守衛** | `12p-guard-wolf-brother` | 12 | 小狼、狼兄、狼弟、平民、預言家、女巫、獵人、守衛 |
+| 70 | **12 人局 - 狼兄弟黑市** | `12p-wolf-brother` | 12 | 小狼、狼兄、狼弟、平民、預言家、女巫、守衛、黑市商人 |
+| 71 | **12 人局 - 覺醒狼王奇商** | `12p-wolf-king-awakened-wolf-king` | 12 | 小狼、覺醒狼王、平民、預言家、女巫、攝夢人、奇蹟商人 |
+| 72 | **12 人局 - 烏鴉隱狼** | `12p-hidden-wolf-crow` | 12 | 小狼、隱狼、平民、預言家、女巫、獵人、烏鴉 |
+| 73 | **12 人局 - 熊隱狼** | `12p-hidden-wolf-bear` | 12 | 小狼、隱狼、平民、熊、女巫、獵人、白痴 |
+| 74 | **12 人局 - 尋香識命** | `12p-board-1a55af5` | 12 | 小狼、尋香魅影、平民、覺醒預言家、女巫、獵人、守衛 |
+| 75 | **12 人局 - 暗夜星辰** | `12p-board-1b7f950` | 12 | 小狼、覺醒狼美人、平民、預言家、女巫、覺醒獵人、白痴 |
+| 76 | **12 人局 - 百變狼王** | `12p-wolf-king-chameleon-wolf-king` | 12 | 小狼、百變狼王、平民、預言家、熊、女巫、獵人、攝夢人 |
+| 77 | **12 人局 - 詭術之境** | `12p-board-1fwxong` | 12 | 小狼、詭術師、平民、預言家、女巫、魔術師、定序王子 |
+| 78 | **12 人局 - 魔幻對決** | `12p-board-1hvme02` | 12 | 小狼、狼術師、平民、預言家、女巫、獵人、魔術師 |
+| 79 | **12 人局 - 覺石覺攝** | `12p-board-1frn80a` | 12 | 小狼、狼王、覺醒石像鬼、平民、預言家、女巫、獵人、覺醒攝夢人、守墓人 |
+| 80 | **12 人局 - 覺醒女巫** | `12p-witch-awakened-witch` | 12 | 小狼、覺醒狼王、平民、預言家、覺醒女巫、獵人、守衛 |
+| 81 | **12 人局 - 假面舞會** | `12p-masked-wolf` | 12 | 小狼、假面、平民、預言家、女巫、白痴、舞者 |
+| 82 | **12 人局 - 永序之輪** | `12p-board-1bxo1ms` | 12 | 小狼、蝕時狼妃、平民、預言家、女巫、守衛、定序王子 |
+| 83 | **12 人局 - 獵日逐光** | `12p-board-1cvwref` | 12 | 小狼、蝕日侍女、平民、預言家、女巫、攝夢人、流光伯爵 |
+| 84 | **12 人局 - 覺醒之夜** | `12p-board-1fv459z` | 12 | 小狼、夜之貴族、平民、預言家、女巫、獵魔人、覺醒白痴 |
+| 85 | **12 人局 - 純白夜影** | `12p-board-1e5robw` | 12 | 小狼、狼巫、平民、純白之女、女巫、獵人、守衛 |
+| 86 | **12 人局 - 時波之亂** | `12p-board-1b8ou05` | 12 | 小狼、寂夜導師、平民、預言家、女巫、守衛、白晝學者 |
+| 87 | **12 人局 - 猩紅蜂舞** | `12p-board-1cxwwcm` | 12 | 小狼、猩紅狼王、平民、預言家、女巫、守衛、蜂之狂獵 |
+| 88 | **12 人局 - 動物園** | `12p-board-1g1jcg` | 12 | 小狼、白狼王、兔兔、熊、狐狸、企鵝、烏鴉 |
+| 89 | **12 人局 - 動物夢境** | `12p-animal-dream` | 12 | 小狼、狼美人、羊駝、熊、子狐、河豚、白貓 |
+| 90 | **12 人局 - 鬧鬧派對** | `12p-noisy-party` | 12 | 狼王、白狼王、狼美人、血月使徒、預言家、女巫、獵人、河豚、守衛 |
+| 91 | **12 人局 - 迷霧鴉影** | `12p-misty-crow` | 12 | 小狼、狼鴉之爪、平民、預言家、煉金魔女、攝夢人、白痴 |
+| 92 | **12 人局 - 無目之夜** | `12p-board-1cnivrg` | 12 | 小狼、隱狼、石像鬼、狼鴉之爪、平民、預言家、女巫、獵人、攝夢人 |
+| 93 | **12 人局 - 無目之城** | `12p-board-1cnivi6` | 12 | 小狼、蝕日侍女、狼鴉之爪、寂夜導師、平民、預言家、女巫、獵魔人、流光伯爵 |
+| 94 | **12 人局 - 雙生幻想** | `12p-twin-fantasy` | 12 | 小狼、平民、雙子、預言家、女巫、獵人、白痴 |
+| 95 | **12 人局 - 燈影** | `12p-lantern-shadow` | 12 | 小狼、狼王、平民、燈影預言家、預言家、女巫、守衛、騎士 |
+| 96 | **12 人局 - 酒鬼預言家** | `12p-seer-drunk-seer` | 12 | 小狼、狼王、平民、酒鬼預言家、預言家、女巫、守衛、騎士 |
+| 97 | **12 人局 - 自曝愚言家** | `12p-fool-seer` | 12 | 小狼、狼王、平民、鐵好人、愚言家、女巫、獵人、守衛 |
+| 98 | **12 人局 - 小女孩大野狼** | `12p-big-bad-wolf-little-girl` | 12 | 小狼、大野狼、平民、小女孩、女巫、獵人、守衛 |
+| 99 | **12 人局 - 種狼(飯局版)** | `12p-seed-wolf` | 12 | 小狼、種狼、平民、高級平民、熊、女巫、狐狸、鏽劍騎士 |
+| 100 | **12 人局 - 種狼(京城版)** | `12p-seed-wolf-2` | 12 | 小狼、種狼、平民、預言家、女巫、守衛、騎士 |
+| 101 | **12 人局 - 種狼(娛百版)** | `12p-seed-wolf-3` | 12 | 小狼、種狼、隱狼、平民、預言家、女巫、獵人、守衛 |
+| 102 | **12 人局 - 種狼(私版)** | `12p-seed-wolf-4` | 12 | 小狼、種狼、平民、預言家、女巫、獵人、守衛 |
+| 103 | **12 人局 - 唯鄰是從** | `12p-neighbor-only` | 12 | 小狼、狼王、傀儡、平民、預言家、女巫、獵人、守衛 |
+| 104 | **12 人局 - 狼美人惑騎** | `12p-wolf-beauty-3` | 12 | 戰狼、種狼、狼美人、平民、高級平民、熊、女巫、蠱惑師、騎士 |
+| 105 | **12 人局 - 大灰狼占卜師** | `12p-big-grey-wolf-fortune-teller` | 12 | 小狼、大灰狼、平民、預言家、女巫、獵人、占卜師 |
+| 106 | **12 人局 - 九尾狐** | `12p-nine-tails-wolf-nine-tailed-fox` | 12 | 小狼、平民、預言家、女巫、獵人、九尾狐 |
+| 107 | **12 人局 - 針鋒相槓** | `12p-board-1gwfsm6` | 12 | 小狼、平民、預言家、女巫、獵人、槓精 |
+| 108 | **12 人局 - 名媛** | `12p-socialite` | 12 | 小狼、戰狼、平民、預言家、女巫、獵人、名媛、混血兒 |
+| 109 | **12 人局 - 通靈者** | `12p-medium` | 12 | 小狼、狼王、戰狼、平民、預言家、女巫、守衛、通靈者 |
+| 110 | **12 人局 - 月靈狼** | `12p-moon-spirit-wolf` | 12 | 小狼、月靈狼、夢魘、平民、熊、女巫、名媛、騎士 |
+| 111 | **12 人局 - 惡魔** | `12p-demon-wolf` | 12 | 小狼、惡魔、平民、預言家、女巫、獵人、守衛 |
+| 112 | **12 人局 - 搗蛋鬼** | `12p-troublemaker-wolf` | 12 | 小狼、搗蛋鬼、平民、預言家、女巫、獵人、守衛 |
+| 113 | **12 人局 - 孤注一擲** | `12p-board-19vcnl0` | 12 | 小狼、典獄長、平民、預言家、女巫、獵人、攝夢人 |
+| 114 | **12 人局 - 胡夫地平線** | `12p-khufu-horizon` | 12 | 小狼、阿努比斯、平民、預言家、煉金魔女、獵人、攝夢人 |
+| 115 | **12 人局 - 黑白使者** | `12p-board-1iex5ls` | 12 | 小狼、狼王、黑夜使者、平民、預言家、女巫、攝夢人、白夜使者 |
+| 116 | **12 人局 - 梅杜莎之眼** | `12p-medusa` | 12 | 小狼、梅杜莎、平民、預言家、女巫、珀爾修斯、白痴 |
+| 117 | **12 人局 - 黑蝙蝠** | `12p-black-bat` | 12 | 小狼、黑蝙蝠、平民、預言家、女巫、獵人、守衛 |
+| 118 | **12 人局 - 狼女孩** | `12p-wolf-girl` | 12 | 小狼、狼女孩、平民、預言家、毒師、獵人、守衛 |
+| 119 | **12 人局 - 青丘夜影** | `12p-board-1hb0a89` | 12 | 小狼、九尾、平民、預言家、女巫、守衛、白澤 |
+| 120 | **12 人局 - 南瓜鬼** | `12p-pumpkin-ghost` | 12 | 小狼、石像鬼、南瓜鬼、平民、預言家、女巫、獵人、超級守墓人 |
+| 121 | **12 人局 - 邪惡商人** | `12p-evil-merchant` | 12 | 小狼、邪惡商人、平民、預言家、女巫、獵人、守衛 |
+| 122 | **12 人局 - 超級黑市商人** | `12p-super-black-market-merchant-black-market-merchant` | 12 | 小狼、狼王、平民、預言家、女巫、守衛、超級黑市商人 |
+| 123 | **12 人局 - 偵探怪盜** | `12p-detective` | 12 | 小狼、怪盜狼王、平民、偵探、女巫、警犬、守衛 |
+| 124 | **12 人局 - 青青草原** | `12p-board-1hlxijo` | 12 | 小小灰、灰太狼、羊駝、預言家、女巫、獵人、喜羊羊 |
+| 125 | **12 人局 - 一盞榮枯** | `12p-board-18851fx` | 12 | 小狼、狼僕、平民、預言家、女巫、守衛、管家 |
+| 126 | **12 人局 - 開膛手傑克** | `12p-jack-the-ripper` | 12 | 小狼、平民、預言家、女巫、獵人、守衛、開膛手傑克 |
+| 127 | **12 人局 - 開膛手傑克 (第二身分)** | `12p-jack-the-ripper-2` | 12 | 小狼、惡魔、平民、預言家、女巫、獵人、守衛 |
+| 128 | **12 人局 - 睡美人** | `12p-sleeping-beauty` | 12 | 小狼、平民、異族王子、熊、女巫、獵人、禁言長老、睡美人 |
+| 129 | **12 人局 - 盜賊邱比特** | `12p-cupid-thief` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、白痴、盜賊、邱比特 |
+| 130 | **12 人局 - 邱比特奇緣** | `12p-cupid` | 12 | 狼王、夢魘、狼巫、蝕時狼妃、預言家、女巫、獵人、攝夢人、白痴、烏鴉、邱比特、混血兒 |
+| 131 | **12 人局 - 烏鴉咒狐** | `12p-crow-cursed-fox` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、烏鴉、咒狐 |
+| 132 | **12 人局 - 混血兒** | `12p-hybrid` | 12 | 小狼、平民、預言家、女巫、獵人、守衛、混血兒 |
+| 133 | **12 人局 - 風聲諜影** | `12p-wind-espionage` | 12 | 機械狼、覺醒石像鬼、預言家、通靈師、熊、女巫、獵人、河豚、攝夢人、白貓、混血兒 |
+| 134 | **12 人局 - 雲端探查** | `12p-board-1hfx9f2` | 12 | 狼美人、機械狼、隱狼、預言家、覺醒預言家、通靈師、純白之女、女巫、獵人、守墓人、咒狐、混血兒 |
+| 135 | **12 人局 - 沙龍之夜** | `12p-salon-night` | 12 | 小狼、覺醒狼美人、蝕日侍女、蝕時狼妃、覺醒預言家、通靈師、女巫、獵魔人、攝夢人、奇蹟商人、咒狐 |
+| 136 | **12 人局 - 覺醒孤獨少女** | `12p-awakened-lonely-girl` | 12 | 小狼、平民、預言家、女巫、獵人、攝夢人、覺醒孤獨少女 |
+| 137 | **12 人局 - 野孩子** | `12p-wild-child` | 12 | 小狼、平民、預言家、女巫、獵人、守衛、野孩子 |
+| 138 | **12 人局 - 千年之戀** | `12p-board-18sbphw` | 12 | 小狼、蝕日侍女、平民、預言家、女巫、獵人、流光伯爵、白蛇預言家、許仙尋香魅影 |
+| 139 | **12 人局 - 鬼魂新娘** | `12p-ghost-bride` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、守衛、鬼魂新娘 |
+| 140 | **12 人局 - 殭屍** | `12p-zombie` | 12 | 小狼、狼王、平民、預言家、女巫、獵人、魔術師、殭屍 |
+| 141 | **12 人局 - 盜寶大師** | `12p-treasure-master` | 12 | 小狼、狼王、平民、通靈師、毒師、獵人、攝夢人、蒙面人、盜寶大師 |
+| 142 | **娛樂局 - 獵殺潛狼 / 獵人局** | `multi-hunter` | 6 | 小狼、獵人 |
+| 143 | **娛樂局 - 連連看** | `multi-lianliankan` | 10 | 尋香魅影、獵魔人 |
 
-### 5.2 尚待補齊之板子（共 18 個，依缺口角色數由少到多、缺口角色出現頻率由高到低排序）
+### 5.2 尚待補齊之板子（共 0 個，依缺口角色數由少到多、缺口角色出現頻率由高到低排序）
 
 | # | 板子名稱 | 板子 ID | 人數 | 缺口數 | 缺少之清單 B 角色（括號為該角色總出現板子數） |
 | ---: | --- | --- | ---: | ---: | --- |
-| 1 | 10 人局 - 獵日逐光 | `10p-board-11aiiid` | 10 | 1 | **蝕日侍女** `eclipse_maid` (6) |
-| 2 | 10 人局 - 千年之戀 | `10p-board-x6xglu` | 10 | 1 | **蝕日侍女** `eclipse_maid` (6) |
-| 3 | 12 人局 - 千年之戀 | `12p-board-18sbphw` | 12 | 1 | **蝕日侍女** `eclipse_maid` (6) |
-| 4 | 12 人局 - 無目之城 | `12p-board-1cnivi6` | 12 | 1 | **蝕日侍女** `eclipse_maid` (6) |
-| 5 | 12 人局 - 獵日逐光 | `12p-board-1cvwref` | 12 | 1 | **蝕日侍女** `eclipse_maid` (6) |
-| 6 | 12 人局 - 沙龍之夜 | `12p-salon-night` | 12 | 1 | **蝕日侍女** `eclipse_maid` (6) |
-| 7 | 10 人局 - 動物夢境 | `10p-animal-dream` | 10 | 1 | **羊駝** `alpaca` (3) |
-| 8 | 10 人局 - 永序之輪 | `10p-board-10c9sqq` | 10 | 1 | **定序王子** `sequence_prince` (3) |
-| 9 | 12 人局 - 動物夢境 | `12p-animal-dream` | 12 | 1 | **羊駝** `alpaca` (3) |
-| 10 | 12 人局 - 永序之輪 | `12p-board-1bxo1ms` | 12 | 1 | **定序王子** `sequence_prince` (3) |
-| 11 | 12 人局 - 詭術之境 | `12p-board-1fwxong` | 12 | 1 | **定序王子** `sequence_prince` (3) |
-| 12 | 12 人局 - 動物園 | `12p-board-1g1jcg` | 12 | 1 | **兔兔** `bunny` (2) |
-| 13 | 9 人局 - 動物園 | `9p-board-e9uyvs` | 9 | 1 | **兔兔** `bunny` (2) |
-| 14 | 12 人局 - 小女孩大野狼 | `12p-big-bad-wolf-little-girl` | 12 | 1 | **小女孩** `little_girl` (1) |
-| 15 | 12 人局 - 針鋒相槓 | `12p-board-1gwfsm6` | 12 | 1 | **槓精** `contrarian` (1) |
-| 16 | 12 人局 - 黑白使者 | `12p-board-1iex5ls` | 12 | 1 | **白夜使者** `white_night_envoy` (1) |
-| 17 | 12 人局 - 偵探怪盜 | `12p-detective` | 12 | 3 | **偵探** `detective` (1)、**怪盜狼王** `phantom_wolf_king` (1)、**警犬** `police_dog` (1) |
-| 18 | 12 人局 - 青青草原 | `12p-board-1hlxijo` | 12 | 4 | **羊駝** `alpaca` (3)、**灰太狼** `grey_wolf_boss` (1)、**喜羊羊** `happy_sheep` (1)、**小小灰** `little_grey_wolf` (1) |
 
 ---
 
-*自動稽核校驗：共盤點 143 / 143 個板子、130 / 130 個角色，0 筆遺漏。高頻角色摘要（Top 5）：蝕日侍女(6板)、羊駝(3板)、定序王子(3板)、兔兔(2板)、槓精(1板)。*
+*自動稽核校驗：共盤點 143 / 143 個板子、130 / 130 個角色，0 筆遺漏。高頻角色摘要（Top 5）：。*

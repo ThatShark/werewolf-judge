@@ -623,7 +623,7 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
               {hasAnyMerchant && (
                 <div className="space-y-2.5 py-2.5">
                   <div className="text-[14px] font-medium text-primary">
-                    幸運兒第一晚是否就能使用技能
+                    幸運兒首夜可使用技能
                   </div>
 
                   {hasBlackMarketMerchant && (

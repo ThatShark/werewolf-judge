@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import { isSeatEffectiveWolf } from '../../logic';
-import { formatNotebookExportText, hasNotebookContent } from '../../logic/notebook';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { SlideDrawer } from '../common/SlideDrawer';
@@ -16,15 +15,10 @@ import {
   getRoleBadgeClasses,
 } from '../common/displayHelpers';
 
-type ReplayDrawerTab = 'identities' | 'timeline' | 'notes';
+type ReplayDrawerTab = 'identities' | 'timeline';
 
-interface GameOverScreenProps {
-  onOpenNotebook?: () => void;
-}
-
-export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
+export function GameOverScreen() {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
-  const hostMode = useGameStore((s) => s.hostMode);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
   const winner = useGameStore((s) => s.winner);
@@ -50,7 +44,6 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
   const [confirmDissolveOpen, setConfirmDissolveOpen] = useState(false);
 
   const board = getBoardById(selectedBoardId);
-  const noteHasContent = useMemo(() => hasNotebookContent(notebook), [notebook]);
 
   const winningSeats = useMemo(() => {
     if (!winner || winner === 'draw') return seats;
@@ -146,15 +139,6 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
     ],
   );
 
-  const notebookPreviewText = useMemo(
-    () =>
-      formatNotebookExportText(notebook, seats, board?.name, {
-        round,
-        enableSheriff: ruleOverrides.enableSheriff,
-      }),
-    [notebook, seats, board?.name, round, ruleOverrides.enableSheriff],
-  );
-
   const handleCopyReplay = async () => {
     try {
       await navigator.clipboard.writeText(replayText);
@@ -210,17 +194,10 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
     ? (getRoleById(mechWolfState.learnedRoleId)?.name ?? mechWolfState.learnedRoleId)
     : null;
 
-  const showNotesTab = hostMode.judgeMode !== 'physical_judge';
-  const replayTabs: Array<{ id: ReplayDrawerTab; label: string }> = showNotesTab
-    ? [
-        { id: 'identities', label: `全場身分 (${seats.length})` },
-        { id: 'timeline', label: '時間軸' },
-        { id: 'notes', label: '筆記' },
-      ]
-    : [
-        { id: 'identities', label: `全場身分 (${seats.length})` },
-        { id: 'timeline', label: '時間軸' },
-      ];
+  const replayTabs: Array<{ id: ReplayDrawerTab; label: string }> = [
+    { id: 'identities', label: `全場身分 (${seats.length})` },
+    { id: 'timeline', label: '時間軸' },
+  ];
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
@@ -319,9 +296,7 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
             <nav
               role="tablist"
               aria-label="復盤分頁"
-              className={`grid flex-1 gap-1 rounded-md border border-subtle bg-canvas p-1 ${
-                showNotesTab ? 'grid-cols-3' : 'grid-cols-2'
-              }`}
+              className="grid flex-1 grid-cols-2 gap-1 rounded-md border border-subtle bg-canvas p-1"
             >
               {replayTabs.map((t) => (
                 <button
@@ -437,27 +412,6 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
                   )}
                 </div>
               ))}
-            </div>
-          )}
-
-          {showNotesTab && replayTab === 'notes' && (
-            <div className="space-y-2 py-1">
-              {noteHasContent ? (
-                <pre className="whitespace-pre-wrap font-sans text-[12px] leading-5 text-secondary">
-                  {notebookPreviewText}
-                </pre>
-              ) : (
-                <p className="py-6 text-center text-[14px] text-muted">尚無筆記內容。</p>
-              )}
-              {onOpenNotebook && (
-                <button
-                  type="button"
-                  onClick={onOpenNotebook}
-                  className="min-h-11 w-full rounded-md border border-subtle bg-canvas text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
-                >
-                  開啟筆記本編輯
-                </button>
-              )}
             </div>
           )}
         </div>

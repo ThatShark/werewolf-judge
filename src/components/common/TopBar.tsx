@@ -8,13 +8,11 @@ interface TopBarProps {
   phase: GamePhase;
   round: number;
   board?: BoardDefinition;
-  showNotebook?: boolean;
   canUndo?: boolean;
   undoLabel?: string;
   onUndo?: () => void;
   onGoHome: () => void;
   onOpenQA: () => void;
-  onOpenNotebook: () => void;
   onOpenHistory: () => void;
   onOpenRestart: () => void;
 }
@@ -30,13 +28,11 @@ export function TopBar({
   phase,
   round,
   board,
-  showNotebook = false,
   canUndo = false,
   undoLabel,
   onUndo,
   onGoHome,
   onOpenQA,
-  onOpenNotebook,
   onOpenHistory,
   onOpenRestart,
 }: TopBarProps) {
@@ -104,15 +100,6 @@ export function TopBar({
                 className="min-h-11 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff transition hover:bg-elevated"
               >
                 撤銷
-              </button>
-            )}
-            {showNotebook && (
-              <button
-                type="button"
-                onClick={onOpenNotebook}
-                className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
-              >
-                筆記
               </button>
             )}
             {showHistory && (

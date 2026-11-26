@@ -22,7 +22,7 @@ function formatSec(sec: number): string {
 export function InlineCountdownTimer({
   title,
   initialSeconds = 90,
-  presets = [60, 90, 120],
+  presets = [60, 90, 120, 150],
   currentSpeakerLabel,
   canPrev = false,
   canNext = false,
@@ -152,7 +152,7 @@ export function InlineCountdownTimer({
                 : 'border border-subtle bg-canvas text-secondary hover:border-strong'
             }`}
           >
-            {sec}s
+            {sec}秒
           </button>
         ))}
         <button
@@ -164,36 +164,32 @@ export function InlineCountdownTimer({
         </button>
       </div>
 
-      {(onPrev || onNext) && (
-        <div className="grid grid-cols-2 gap-1.5 border-t border-subtle pt-2">
-          {onPrev && (
-            <button
-              type="button"
-              disabled={!canPrev}
-              onClick={() => {
-                resetTimer();
-                onPrev();
-              }}
-              className="min-h-11 rounded-md border border-subtle bg-canvas px-3 text-[12px] font-semibold text-secondary hover:border-strong hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ← 上一位
-            </button>
-          )}
-          {onNext && (
-            <button
-              type="button"
-              disabled={!canNext}
-              onClick={() => {
-                resetTimer();
-                onNext();
-              }}
-              className={`${onPrev ? '' : 'col-span-2'} min-h-11 rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40`}
-            >
-              下一位 →
-            </button>
-          )}
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-1.5 border-t border-subtle pt-2">
+        <button
+          type="button"
+          disabled={!onPrev || !canPrev}
+          onClick={() => {
+            if (!onPrev) return;
+            resetTimer();
+            onPrev();
+          }}
+          className="min-h-11 rounded-md border border-subtle bg-canvas px-3 text-[12px] font-semibold text-secondary hover:border-strong hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← 上一位
+        </button>
+        <button
+          type="button"
+          disabled={!onNext || !canNext}
+          onClick={() => {
+            if (!onNext) return;
+            resetTimer();
+            onNext();
+          }}
+          className="min-h-11 rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          下一位 →
+        </button>
+      </div>
     </div>
   );
 }

@@ -178,6 +178,8 @@ const ROLE_META_OVERRIDE: Record<
   old_rascal: { faction: 'good', category: 'villager' },
   alpaca: { faction: 'good', category: 'villager' },
   bunny: { faction: 'good', category: 'villager' },
+  twins: { faction: 'good', category: 'villager' },
+  exotic_prince: { faction: 'good', category: 'villager' },
   // 特殊／變形機制角色歸入 third_party 或對應陣營
   fanatic: { faction: 'third_party', category: 'third_party' },
   avenger: { faction: 'third_party', category: 'third_party' },
@@ -721,16 +723,15 @@ const MVP_BOARD_DEFINITIONS: Record<string, BoardDefinition> = {
           judgeTips: ['不可連續兩晚守護同一名玩家。'],
         },
         {
-          stepId: 'mech_wolf_night_action',
+          stepId: 'mech_wolf_join_check',
           actorLabel: '機械狼',
           actorRoleIds: ['mech_wolf'],
-          actionType: 'mech_wolf_night_action',
+          actionType: 'confirm_only',
           openPrompt: '機械狼請睜眼',
-          actionPrompt: '今晚的入隊手勢為...\n請問你要使用技能嗎？',
+          actionPrompt: '今晚的入隊手勢為...',
           closePrompt: '機械狼請閉眼',
           judgeTips: [
             '所有小狼皆淘汰後比出已入隊手勢並解鎖狼刀（若學到小狼則同時解鎖雙刀）。',
-            '學女巫僅 1 瓶毒；學守衛之機械盾可擋女巫毒藥且不可連守。',
           ],
         },
         {
@@ -762,6 +763,18 @@ const MVP_BOARD_DEFINITIONS: Record<string, BoardDefinition> = {
           actionPrompt: '請選擇要查驗的玩家，他的身分是...',
           closePrompt: '通靈師請閉眼',
           judgeTips: ['查驗存活玩家真實身分；已學習之機械狼顯示其所學角色身分。'],
+        },
+        {
+          stepId: 'mech_wolf_night_action',
+          actorLabel: '機械狼',
+          actorRoleIds: ['mech_wolf'],
+          actionType: 'mech_wolf_night_action',
+          openPrompt: '機械狼請睜眼',
+          actionPrompt: '請問你要使用技能嗎？',
+          closePrompt: '機械狼請閉眼',
+          judgeTips: [
+            '學女巫僅 1 瓶毒；學守衛之機械盾可擋女巫毒藥且不可連守。',
+          ],
         },
       ],
     },
@@ -1230,8 +1243,11 @@ function inferNightActionType(
     if (actionPrompt.includes('學習到的技能') || actionPrompt.includes('學到的技能')) {
       return 'mech_wolf_reveal_skill';
     }
-    if (actionPrompt.includes('入隊手勢') || actionPrompt.includes('使用技能')) {
+    if (actionPrompt.includes('使用技能')) {
       return 'mech_wolf_night_action';
+    }
+    if (actionPrompt.includes('入隊手勢')) {
+      return 'confirm_only';
     }
     return 'confirm_only';
   }
@@ -2213,9 +2229,31 @@ function main() {
         new Set([...(roleAliasMap.get(name) ?? []), ...(override?.extraAliases ?? [])]),
       );
       const descriptions = roleDescriptions.get(name) ?? [];
-      // 挑選資訊最完整但不過長的第一則或最長描述
-      const bestDesc =
+      // 挑選資訊最完整但不過長的第一則或最長描述（開膛手傑克完整並列主身分版與第二身分版）
+      let bestDesc =
         descriptions.sort((a, b) => b.length - a.length)[0] ?? `${name}，請依該板子規則使用技能。`;
+      if (id === 'jack_the_ripper') {
+        const mainDesc =
+          descriptions.find((d) => d.includes('每天晚上必須選擇自己以外')) ??
+          '每天晚上必須選擇自己以外的一位玩家擊殺，此刀無法被女巫解藥解救。被預言家查驗顯示為好人。當場上只剩下一種性別，則開膛手傑克勝利。';
+        const secondDesc =
+          descriptions.find((d) => d.includes('狂熱粉')) ??
+          '第一晚會選擇一位偵探當狂熱粉，該玩家偵探身分自動失效，兩人可以在第一天討論戰術。只要當狂熱粉或開膛手傑克其中一方死亡，之後的晚上無論自己出局與否，都可以選擇自己以外的一位玩家擊殺，但此刀無法被女巫解藥解救。當場上只剩下一種性別，則開膛手傑克與狂熱粉勝利。';
+        const fanaticDesc =
+          roleDescriptions.get('狂熱粉')?.[0] ?? '勝利條件與開膛手傑克相同，但是狂熱粉無法擊殺玩家。';
+        const detectiveDesc =
+          roleDescriptions.get('偵探')?.find((d) => d.includes('集結指證')) ??
+          '所有已出局的偵探，擁有一次集結指證開膛手傑克的機會，集結須滿足兩人以上，且至少半數同意集結才能指證。若指證開膛手傑克成功，則第三方陣營失敗。';
+        bestDesc = [
+          '【主身分版】',
+          mainDesc,
+          '',
+          '【第二身分版（含狂熱粉與偵探集結指證）】',
+          secondDesc,
+          `• 狂熱粉：${fanaticDesc}`,
+          `• 偵探集結指證：${detectiveDesc}`,
+        ].join('\n');
+      }
       const warnings = Array.from(roleWarnings.get(name) ?? []).slice(0, 3);
 
       rolesById[id] = {

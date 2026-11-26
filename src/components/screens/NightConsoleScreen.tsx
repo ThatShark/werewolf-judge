@@ -5,6 +5,10 @@ import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import {
   applyMechWolfLearn,
+  buildNightEndSpeech,
+  buildNightStartSpeech,
+  buildStepCloseSpeech,
+  buildStepOpenSpeech,
   formatChineseDay,
   formatChineseNight,
   canAwakenedDreamCatcherDream,
@@ -83,19 +87,24 @@ import {
   getPsychicCheckResult,
   getPumpkinGhostCheckResult,
   getPureWhiteCheckResult,
+  getSeatTouchConfirmView,
   getSeerCheckResult,
   getStepClaimSummary,
+  getTouchConfirmEventAfterStep,
+  getTouchConfirmSeatOrder,
   getUnclaimedSeatNumbers,
   getWolfWitchCheckResult,
   isFirstNightNoWolfKillBoard,
   isJackSecondIdentityBoard,
-  isLuckySkillAllowedOnRound,
   isSeatWolfFaction,
+  resolveActiveLuckyActorForNight,
+  type TouchConfirmEvent,
 } from '../../logic';
 import type { ActionCheckResult, MerchantGiftItem } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { InfoFlashcardModal, type InfoFlashcardData } from '../common/InfoFlashcardModal';
+import { OnlineWolfRosterBar } from '../common/OnlineWolfRosterBar';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SlideDrawer } from '../common/SlideDrawer';
 import {
@@ -104,6 +113,7 @@ import {
   getRoleBadgeClasses,
   splitSeatsIntoSymmetricColumns,
 } from '../common/displayHelpers';
+import { NightStepMetroBar } from '../night/NightStepMetroBar';
 import {
   OnlineJudgeOverlay,
   type OnlineJudgeOverlayMode,
@@ -260,12 +270,38 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const [scriptDrawerOpen, setScriptDrawerOpen] = useState(false);
   const [flashcardData, setFlashcardData] = useState<InfoFlashcardData | null>(null);
 
-  // 線上法官防窺過渡狀態機（使用 closeToOpenDelaySeconds 作為閉眼→睜眼靜音緩衝）
-  const [onlinePhase, setOnlinePhase] = useState<'blackout' | 'active' | 'buffer' | 'dawn'>(() =>
-    isOnlineJudge ? 'blackout' : 'active',
-  );
+  // 線上法官防窺過渡狀態機（含每晚開頭「天黑請閉眼」、輪流認附加身分、閉眼→睜眼緩衝與結尾倒數）
   const closeToOpenDelay = onlineJudgeSettings.closeToOpenDelaySeconds ?? 3;
+  const [onlinePhase, setOnlinePhase] = useState<'active' | OnlineJudgeOverlayMode>(() =>
+    isOnlineJudge ? (currentStepIndex === 0 ? 'night_intro' : 'blackout') : 'active',
+  );
   const [bufferRemaining, setBufferRemaining] = useState(closeToOpenDelay);
+  const [touchConfirmEvent, setTouchConfirmEvent] = useState<TouchConfirmEvent | null>(null);
+  const [touchConfirmIdx, setTouchConfirmIdx] = useState(0);
+  const [bufferTarget, setBufferTarget] = useState<'next_step' | 'touch_confirm' | 'first_step'>(
+    () => (isOnlineJudge && currentStepIndex === 0 ? 'first_step' : 'next_step'),
+  );
+  const [dawnCountdownDigit, setDawnCountdownDigit] = useState<number | null>(null);
+  const [introShownForRound, setIntroShownForRound] = useState<number | null>(() =>
+    isOnlineJudge && currentStepIndex === 0 ? round : null,
+  );
+
+  const touchConfirmSeats = useMemo(() => getTouchConfirmSeatOrder(seats), [seats]);
+  const activeTouchConfirmSeat =
+    touchConfirmEvent && touchConfirmIdx < touchConfirmSeats.length
+      ? touchConfirmSeats[touchConfirmIdx]
+      : null;
+  const activeTouchConfirmView = useMemo(
+    () =>
+      touchConfirmEvent && activeTouchConfirmSeat != null
+        ? getSeatTouchConfirmView(activeTouchConfirmSeat, touchConfirmEvent)
+        : null,
+    [touchConfirmEvent, activeTouchConfirmSeat],
+  );
+  const dawnSpeechPlan = useMemo(
+    () => buildNightEndSpeech(round, ruleOverrides.enableSheriff),
+    [round, ruleOverrides.enableSheriff],
+  );
 
   const claimSummary = useMemo(() => {
     if (!board || !currentStep || !isPhysicalDealFirstNight) return null;
@@ -355,7 +391,23 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     setClaimError(null);
     setForceEditClaims(false);
     setFlashcardData(null);
-    setOnlinePhase(isOnlineJudge ? 'blackout' : 'active');
+    setTouchConfirmEvent(null);
+    setTouchConfirmIdx(0);
+    setDawnCountdownDigit(null);
+    if (isOnlineJudge) {
+      if (currentStepIndex === 0 && introShownForRound !== round) {
+        setIntroShownForRound(round);
+        setBufferTarget('first_step');
+        setBufferRemaining(closeToOpenDelay);
+        setOnlinePhase('night_intro');
+      } else if (currentStepIndex === 0 && onlinePhase === 'night_intro') {
+        // 初次掛載已處於 night_intro，維持不動
+      } else {
+        setOnlinePhase('blackout');
+      }
+    } else {
+      setOnlinePhase('active');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round, currentStepIndex, isOnlineJudge]);
 
@@ -374,24 +426,55 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     }
   }, [claimSummary, activeClaimRoleId]);
 
-  // 線上法官：進入 blackout / dawn 時自動 TTS 播報
+  // 線上法官：進入 night_intro / blackout / touch_confirm_blackout / dawn 時自動 TTS 播報
   useEffect(() => {
     if (!isOnlineJudge || !currentStep) return;
-    if (onlinePhase === 'blackout') {
-      ttsEngine.speak(currentStep.openPrompt, {
+    if (onlinePhase === 'night_intro') {
+      ttsEngine.speak(buildNightStartSpeech(), {
+        enabled: onlineJudgeSettings.ttsEnabled,
+        rate: onlineJudgeSettings.ttsRate,
+        warmupDelayMs: 300,
+      });
+    } else if (onlinePhase === 'blackout') {
+      ttsEngine.speak(buildStepOpenSpeech(currentStep), {
+        enabled: onlineJudgeSettings.ttsEnabled,
+        rate: onlineJudgeSettings.ttsRate,
+      });
+    } else if (onlinePhase === 'touch_confirm_blackout' && activeTouchConfirmSeat != null) {
+      ttsEngine.speak(`${formatSeatNum(activeTouchConfirmSeat)} 號請睜眼`, {
         enabled: onlineJudgeSettings.ttsEnabled,
         rate: onlineJudgeSettings.ttsRate,
       });
     } else if (onlinePhase === 'dawn') {
-      ttsEngine.speak('天亮了，請睜眼', {
-        enabled: onlineJudgeSettings.ttsEnabled,
-        rate: onlineJudgeSettings.ttsRate,
-      });
+      setDawnCountdownDigit(null);
+      ttsEngine.speakSequence(
+        [
+          { text: dawnSpeechPlan.introText, delayAfterMs: 1000 },
+          { text: dawnSpeechPlan.countdown[0], delayAfterMs: 1000 },
+          { text: dawnSpeechPlan.countdown[1], delayAfterMs: 1000 },
+          { text: dawnSpeechPlan.countdown[2], delayAfterMs: 600 },
+        ],
+        {
+          enabled: onlineJudgeSettings.ttsEnabled,
+          rate: onlineJudgeSettings.ttsRate,
+          onItemStart: (idx) => {
+            if (idx === 0) setDawnCountdownDigit(null);
+            else if (idx === 1) setDawnCountdownDigit(3);
+            else if (idx === 2) setDawnCountdownDigit(2);
+            else if (idx === 3) setDawnCountdownDigit(1);
+          },
+          onEnd: () => {
+            setDawnCountdownDigit(null);
+          },
+        },
+      );
     }
   }, [
     isOnlineJudge,
     onlinePhase,
     currentStep,
+    activeTouchConfirmSeat,
+    dawnSpeechPlan,
     onlineJudgeSettings.ttsEnabled,
     onlineJudgeSettings.ttsRate,
   ]);
@@ -408,17 +491,26 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const isLastStep = currentStepIndex >= steps.length - 1;
 
   const completeBufferTransition = useCallback(() => {
+    if (bufferTarget === 'first_step') {
+      setBufferTarget('next_step');
+      setOnlinePhase('blackout');
+      return;
+    }
+    if (bufferTarget === 'touch_confirm') {
+      setOnlinePhase('touch_confirm_blackout');
+      return;
+    }
     if (isLastStep) {
       setOnlinePhase('dawn');
     } else {
       nextNightStep();
       setOnlinePhase('blackout');
     }
-  }, [isLastStep, nextNightStep]);
+  }, [bufferTarget, isLastStep, nextNightStep]);
 
-  // 線上法官：閉眼緩衝倒數計時
+  // 線上法官：開頭「天黑請閉眼」與閉眼緩衝倒數計時
   useEffect(() => {
-    if (!isOnlineJudge || onlinePhase !== 'buffer') return;
+    if (!isOnlineJudge || (onlinePhase !== 'buffer' && onlinePhase !== 'night_intro')) return;
     if (bufferRemaining <= 0) {
       completeBufferTransition();
       return;
@@ -493,7 +585,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     if (!isOnlineJudge || !isSkillLocked || onlinePhase !== 'active' || !currentStep) return;
     const waitMs = Math.max(1, onlineJudgeSettings.stepBufferSeconds) * 1000;
     const timer = window.setTimeout(() => {
-      ttsEngine.speak(currentStep.closePrompt, {
+      ttsEngine.speak(buildStepCloseSpeech(currentStep), {
         enabled: onlineJudgeSettings.ttsEnabled,
         rate: onlineJudgeSettings.ttsRate,
       });
@@ -554,6 +646,17 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const dreamCatcherSeat = seats.find((s) => s.roleId === 'dream_catcher');
   const hunterSeat = seats.find((s) => s.roleId === 'hunter');
 
+  const activeLuckyActor = useMemo(
+    () =>
+      resolveActiveLuckyActorForNight(
+        currentNightDraft,
+        thirdPartySpecialState,
+        round,
+        ruleOverrides,
+      ),
+    [currentNightDraft, thirdPartySpecialState, round, ruleOverrides],
+  );
+
   const isInfoRevealStep =
     currentStep.actionType === 'seer_check' ||
     currentStep.actionType === 'psychic_check' ||
@@ -567,6 +670,9 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     currentStep.actionType === 'pure_white_check' ||
     currentStep.actionType === 'demon_wolf_check' ||
     currentStep.actionType === 'pumpkin_ghost_check' ||
+    (currentStep.actionType === 'lucky_item_action' &&
+      activeLuckyActor?.item === 'seer_check' &&
+      activeLuckyActor.allowedThisRound) ||
     (currentStep.actionType === 'mech_wolf_night_action' &&
       mechWolfState.learnedRoleId === 'psychic');
 
@@ -684,6 +790,15 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   // 查驗即時結果（僅於點擊「確認紀錄」鎖定後揭曉）
   const seerOutcome =
     currentStep.actionType === 'seer_check' && revealConfirmed && pendingTarget !== null
+      ? getSeerCheckResult(seats, pendingTarget, { conversionState, thirdPartySpecialState })
+      : null;
+
+  const luckySeerOutcome =
+    currentStep.actionType === 'lucky_item_action' &&
+    activeLuckyActor?.item === 'seer_check' &&
+    activeLuckyActor.allowedThisRound &&
+    revealConfirmed &&
+    pendingTarget !== null
       ? getSeerCheckResult(seats, pendingTarget, { conversionState, thirdPartySpecialState })
       : null;
 
@@ -1501,27 +1616,8 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       case 'butler_tea':
       case 'wolf_maid_tea':
       case 'lucky_item_action': {
-        let luckyNight1Blocked = false;
-        if (round === 1) {
-          if (currentNightDraft.miracleMerchantItem) {
-            luckyNight1Blocked = !isLuckySkillAllowedOnRound(
-              'miracle',
-              currentNightDraft.miracleMerchantItem,
-              round,
-              ruleOverrides,
-            );
-          } else if (currentNightDraft.blackMarketItem) {
-            luckyNight1Blocked = !isLuckySkillAllowedOnRound(
-              'blackMarket',
-              currentNightDraft.blackMarketItem,
-              round,
-              ruleOverrides,
-            );
-          } else if (currentNightDraft.superBlackMarketTargets) {
-            const cfg = ruleOverrides.luckyFirstNightSkills.superBlackMarket;
-            luckyNight1Blocked = !cfg.seer_check && !cfg.witch_poison && !cfg.hunter_gun;
-          }
-        }
+        const luckyNight1Blocked =
+          round === 1 && activeLuckyActor !== null && !activeLuckyActor.allowedThisRound;
         return {
           selected: !luckyNight1Blocked && pendingTarget === seatNumber,
           disabled: !isAlive || luckyNight1Blocked,
@@ -1949,6 +2045,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         break;
       case 'lucky_item_action': {
         const luckyActorSeat =
+          activeLuckyActor?.actorSeat ??
           thirdPartySpecialState?.miracleLuckySeat ??
           thirdPartySpecialState?.blackMarketLuckySeat ??
           thirdPartySpecialState?.superBlackMarketGifts.find((g) => !g.used)?.seat ??
@@ -2009,10 +2106,25 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     }
 
     if (isOnlineJudge) {
-      ttsEngine.speakFromGesture(currentStep.closePrompt, {
+      const latestDraft = useGameStore.getState().currentNightDraft;
+      const touchEvt = getTouchConfirmEventAfterStep(currentStep, latestDraft, round, board.id);
+      ttsEngine.speakFromGesture(buildStepCloseSpeech(currentStep), {
         enabled: onlineJudgeSettings.ttsEnabled,
         rate: onlineJudgeSettings.ttsRate,
       });
+      if (touchEvt && touchConfirmSeats.length > 0) {
+        setTouchConfirmEvent(touchEvt);
+        setTouchConfirmIdx(0);
+        setBufferTarget('touch_confirm');
+        if (closeToOpenDelay <= 0) {
+          setOnlinePhase('touch_confirm_blackout');
+        } else {
+          setBufferRemaining(closeToOpenDelay);
+          setOnlinePhase('buffer');
+        }
+        return;
+      }
+      setBufferTarget('next_step');
       if (closeToOpenDelay <= 0) {
         completeBufferTransition();
       } else {
@@ -2090,13 +2202,48 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     advanceAfterCommit();
   };
 
-  // 線上法官：點擊全黑防窺畫面亮起操作盤（於使用者手勢內同步解鎖並播報）
+  // 線上法官：點擊全黑防窺畫面亮起操作盤（只唸睜眼與閉眼，不唸中間操作提示）
   const handleWakeOnlineScreen = () => {
     setOnlinePhase('active');
-    ttsEngine.speakFromGesture(currentStep.actionPrompt, {
+  };
+
+  // 線上法官：輪流確認附加身分（點亮查看 → 確認並閉眼 → 下一位或結束）
+  const handleWakeTouchConfirm = () => {
+    setOnlinePhase('touch_confirm_reveal');
+  };
+
+  const handleCloseTouchConfirm = () => {
+    if (activeTouchConfirmSeat == null) return;
+    ttsEngine.speakFromGesture(`${formatSeatNum(activeTouchConfirmSeat)} 號請閉眼`, {
       enabled: onlineJudgeSettings.ttsEnabled,
       rate: onlineJudgeSettings.ttsRate,
     });
+    const nextIdx = touchConfirmIdx + 1;
+    if (nextIdx < touchConfirmSeats.length) {
+      setTouchConfirmIdx(nextIdx);
+      setBufferTarget('touch_confirm');
+      if (closeToOpenDelay <= 0) {
+        setOnlinePhase('touch_confirm_blackout');
+      } else {
+        setBufferRemaining(closeToOpenDelay);
+        setOnlinePhase('buffer');
+      }
+    } else {
+      setTouchConfirmEvent(null);
+      setTouchConfirmIdx(0);
+      setBufferTarget('next_step');
+      if (closeToOpenDelay <= 0) {
+        if (isLastStep) {
+          setOnlinePhase('dawn');
+        } else {
+          nextNightStep();
+          setOnlinePhase('blackout');
+        }
+      } else {
+        setBufferRemaining(closeToOpenDelay);
+        setOnlinePhase('buffer');
+      }
+    }
   };
 
   const handleToggleTts = () => {
@@ -2113,14 +2260,47 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   const handleReplayTts = () => {
     if (!onlineJudgeSettings.ttsEnabled) return;
+    if (onlinePhase === 'night_intro') {
+      ttsEngine.speakFromGesture(buildNightStartSpeech(), {
+        enabled: true,
+        rate: onlineJudgeSettings.ttsRate,
+        warmupDelayMs: 300,
+      });
+      return;
+    }
+    if (onlinePhase === 'dawn') {
+      ttsEngine.speakSequence(
+        [
+          { text: dawnSpeechPlan.introText, delayAfterMs: 1000 },
+          { text: dawnSpeechPlan.countdown[0], delayAfterMs: 1000 },
+          { text: dawnSpeechPlan.countdown[1], delayAfterMs: 1000 },
+          { text: dawnSpeechPlan.countdown[2], delayAfterMs: 600 },
+        ],
+        {
+          enabled: true,
+          rate: onlineJudgeSettings.ttsRate,
+          onItemStart: (idx) => {
+            if (idx === 0) setDawnCountdownDigit(null);
+            else if (idx === 1) setDawnCountdownDigit(3);
+            else if (idx === 2) setDawnCountdownDigit(2);
+            else if (idx === 3) setDawnCountdownDigit(1);
+          },
+          onEnd: () => setDawnCountdownDigit(null),
+        },
+      );
+      return;
+    }
+    if (onlinePhase === 'touch_confirm_blackout' && activeTouchConfirmSeat != null) {
+      ttsEngine.speakFromGesture(`${formatSeatNum(activeTouchConfirmSeat)} 號請睜眼`, {
+        enabled: true,
+        rate: onlineJudgeSettings.ttsRate,
+      });
+      return;
+    }
     const textToSpeak =
-      onlinePhase === 'blackout'
-        ? currentStep.openPrompt
-        : onlinePhase === 'buffer'
-          ? currentStep.closePrompt
-          : onlinePhase === 'dawn'
-            ? '天亮了，請睜眼'
-            : currentStep.actionPrompt;
+      onlinePhase === 'buffer'
+        ? buildStepCloseSpeech(currentStep)
+        : buildStepOpenSpeech(currentStep);
     ttsEngine.speakFromGesture(textToSpeak, {
       enabled: true,
       rate: onlineJudgeSettings.ttsRate,
@@ -2221,15 +2401,23 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       (sn) => seats.find((s) => s.seatNumber === sn)?.roleId === activeClaimRoleId,
     );
 
-  // 產生「放大展示給玩家看」全屏遮罩卡資料（適用查驗結果、獵人開槍狀態、商人贈禮、女巫刀口、機械狼習得）
+  // 產生資訊結果與「放大展示給玩家看」資料（適用實體法官與線上語音法官）
   const currentFlashcardCandidate: InfoFlashcardData | null = useMemo(() => {
-    if (isClaimStage || isOnlineJudge) return null;
+    if (isClaimStage) return null;
     if (seerOutcome) {
       return {
         eyebrow: '預言家查驗結果',
         subject: `${formatSeatNum(seerOutcome.targetSeat)} 號`,
         headline: seerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）',
         tone: seerOutcome.faction === 'wolf' ? 'wolf' : 'good',
+      };
+    }
+    if (luckySeerOutcome) {
+      return {
+        eyebrow: '幸運兒查驗結果',
+        subject: `${formatSeatNum(luckySeerOutcome.targetSeat)} 號`,
+        headline: luckySeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）',
+        tone: luckySeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
     if (psychicOutcome) {
@@ -2375,8 +2563,8 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     return null;
   }, [
     isClaimStage,
-    isOnlineJudge,
     seerOutcome,
+    luckySeerOutcome,
     psychicOutcome,
     mechWolfPsychicOutcome,
     awakenedSeerOutcome,
@@ -2571,12 +2759,13 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      {/* 1. 頂部極簡狀態列：當晚階段進度（例如：第 2 / 7 階段） */}
+      {/* 1. 頂部「捷運站點式」夜間階段進度列 ＋ 快捷鍵 */}
       <section className="flex shrink-0 items-center justify-between gap-2 border-b border-subtle pb-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <h1 className="truncate text-[18px] font-semibold leading-6 tabular-nums text-primary">
-            第 {currentStepIndex + 1} / {steps.length} 階段
-          </h1>
+          <NightStepMetroBar steps={steps} currentStepIndex={currentStepIndex} />
+          <span className="shrink-0 text-[12px] font-semibold tabular-nums text-muted">
+            {currentStepIndex + 1}/{steps.length}
+          </span>
           {isClaimStage && (
             <span className="shrink-0 rounded-md border border-sheriff-border bg-sheriff-tint px-1.5 py-0.5 text-[12px] font-semibold text-sheriff">
               認領
@@ -2642,6 +2831,43 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           )}
         </div>
       </section>
+
+      {/* 1.2 線上法官常駐顯示「狼隊名單（座號＋具體角色身分）」 */}
+      {isOnlineJudge && <OnlineWolfRosterBar seats={seats} />}
+
+      {/* 1.3 線上法官：查驗／開槍／贈禮資訊放大並置於上方醒目位置 */}
+      {isOnlineJudge && !isClaimStage && currentFlashcardCandidate && (
+        <section className="shrink-0 rounded-md border border-strong bg-surface px-4 py-3">
+          <div className="text-[12px] font-semibold text-secondary">
+            {currentFlashcardCandidate.eyebrow}
+          </div>
+          <div className="mt-1 flex flex-wrap items-baseline gap-2">
+            {currentFlashcardCandidate.subject && (
+              <span className="text-[20px] font-bold leading-7 tabular-nums text-primary">
+                {currentFlashcardCandidate.subject}
+              </span>
+            )}
+            <span
+              className={`text-[22px] font-bold leading-7 tabular-nums ${
+                currentFlashcardCandidate.tone === 'wolf'
+                  ? 'text-wolf'
+                  : currentFlashcardCandidate.tone === 'good'
+                    ? 'text-good'
+                    : currentFlashcardCandidate.tone === 'third'
+                      ? 'text-third'
+                      : 'text-sheriff'
+              }`}
+            >
+              {currentFlashcardCandidate.headline}
+            </span>
+          </div>
+          {currentFlashcardCandidate.detail && (
+            <div className="mt-1 text-[14px] text-secondary">
+              {currentFlashcardCandidate.detail}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* 1.5 實體認領主提示區（認領時不顯示台詞）或實體法官三段台詞提詞區（睜眼／行動／閉眼） */}
       {isClaimStage && claimSummary && (
@@ -3813,26 +4039,19 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
             {currentStep.actionType === 'lucky_item_action' && round === 1 && (
               <div className="rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-2 text-xs text-sheriff">
-                第一晚幸運兒可用技能（依房規）：
-                {currentNightDraft.miracleMerchantItem
-                  ? isLuckySkillAllowedOnRound(
-                      'miracle',
-                      currentNightDraft.miracleMerchantItem,
-                      1,
-                      ruleOverrides,
-                    )
-                    ? '奇蹟商人幸運兒首夜可使用此技能'
-                    : '奇蹟商人幸運兒此技能首夜禁用（次夜起生效），請直接跳過'
-                  : currentNightDraft.blackMarketItem
-                    ? isLuckySkillAllowedOnRound(
-                        'blackMarket',
-                        currentNightDraft.blackMarketItem,
-                        1,
-                        ruleOverrides,
-                      )
-                      ? '黑市商人幸運兒首夜可使用此技能'
-                      : '黑市商人幸運兒此技能首夜禁用（次夜起生效），請直接跳過'
-                    : '請依房規「幸運兒第一晚是否就能使用技能」勾選狀態主持'}
+                {activeLuckyActor ? (
+                  activeLuckyActor.allowedThisRound ? (
+                    <>
+                      幸運兒（{formatSeatNum(activeLuckyActor.actorSeat)} 號）首夜可使用此技能
+                    </>
+                  ) : (
+                    <>
+                      幸運兒（{formatSeatNum(activeLuckyActor.actorSeat)} 號）此技能依房規首夜禁用（次夜起生效），請直接跳過
+                    </>
+                  )
+                ) : (
+                  '尚未指定幸運兒（或無首夜可用技能），可直接跳過'
+                )}
               </div>
             )}
 
@@ -4135,7 +4354,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         </div>
       </section>
 
-      {/* 線上法官全黑防窺／緩衝／天亮過渡畫面 */}
+      {/* 線上法官全黑防窺／開頭／輪流認身分／緩衝／天亮過渡畫面 */}
       {isOnlineJudge && onlinePhase !== 'active' && (
         <OnlineJudgeOverlay
           mode={onlinePhase as OnlineJudgeOverlayMode}
@@ -4145,8 +4364,17 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           isLastStep={isLastStep}
           ttsEnabled={onlineJudgeSettings.ttsEnabled}
           ttsSupported={ttsSupported}
+          dawnText={dawnSpeechPlan.fullText}
+          dawnCountdownDigit={dawnCountdownDigit}
+          touchConfirmSeat={activeTouchConfirmSeat}
+          touchConfirmIndex={touchConfirmIdx}
+          touchConfirmTotal={touchConfirmSeats.length}
+          touchConfirmTitle={touchConfirmEvent?.title}
+          touchConfirmView={activeTouchConfirmView}
           onWakeScreen={handleWakeOnlineScreen}
           onSkipBuffer={completeBufferTransition}
+          onWakeTouchConfirm={handleWakeTouchConfirm}
+          onCloseTouchConfirm={handleCloseTouchConfirm}
           onConfirmDawn={() => {
             ttsEngine.cancel();
             ttsEngine.stopKeepAlive();

@@ -1,3 +1,4 @@
+import { getBoardById } from '../data/boards';
 import { getRoleById } from '../data/roles';
 import type {
   AmbientAudioSettings,
@@ -119,7 +120,11 @@ export function getDefaultRuleOverridesForBoard(boardId?: string | null): RuleOv
   if (boardId === '12p-board-1hlxijo') {
     base.witchSelfSave = 'always';
   }
-  if (boardId === '12p-fool-seer') {
+  const board = getBoardById(boardId);
+  const totalWolfCount = board
+    ? board.composition.wolf.reduce((sum, slot) => sum + slot.count, 0)
+    : 0;
+  if (totalWolfCount === 2 || boardId === '12p-fool-seer') {
     base.badgeSwallowRule = 'single_explode';
   }
   return base;

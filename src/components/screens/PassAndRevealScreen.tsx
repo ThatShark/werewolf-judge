@@ -7,7 +7,6 @@ import {
   formatFactionLabel,
   formatSeatNum,
   getRoleBadgeClasses,
-  getRoleShortSummary,
 } from '../common/displayHelpers';
 
 export function PassAndRevealScreen() {
@@ -45,17 +44,6 @@ export function PassAndRevealScreen() {
   const allConfirmed =
     seats.length > 0 && confirmedSeats.length >= seats.length && !overrideSeatNumber;
   const activeRole = activeSeat ? getRoleById(activeSeat.roleId) : undefined;
-
-  const wolfTeammateSeats = useMemo(() => {
-    if (!activeSeat || activeRole?.faction !== 'wolf') return [];
-    return seats
-      .filter((s) => {
-        if (s.seatNumber === activeSeat.seatNumber) return false;
-        const r = getRoleById(s.roleId);
-        return r?.faction === 'wolf';
-      })
-      .map((s) => s.seatNumber);
-  }, [activeSeat, activeRole, seats]);
 
   const handleConfirmAndHide = () => {
     if (!activeSeat) return;
@@ -143,8 +131,8 @@ export function PassAndRevealScreen() {
       <section className="flex min-h-0 flex-1 flex-col justify-center overflow-hidden">
         {allConfirmed ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-good-border bg-surface p-6 text-center">
-            <div className="text-[12px] font-semibold uppercase tracking-widest text-good">
-              READY
+            <div className="text-[12px] font-semibold tracking-widest text-good">
+              準備就緒
             </div>
             <h2 className="mt-2 text-[18px] font-semibold tabular-nums text-primary">
               全體 {seats.length} 位玩家已確認
@@ -159,8 +147,8 @@ export function PassAndRevealScreen() {
           </div>
         ) : activeSeat && !isCardVisible ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-subtle bg-surface p-6 text-center">
-            <div className="text-[12px] font-semibold uppercase tracking-widest text-secondary">
-              PASS DEVICE TO
+            <div className="text-[14px] font-semibold tracking-wide text-secondary">
+              請將手機交給
             </div>
             <div className="mt-3 text-[36px] font-bold leading-none tabular-nums text-sheriff">
               {formatSeatNum(activeSeat.seatNumber)}
@@ -191,19 +179,9 @@ export function PassAndRevealScreen() {
               )}
             </div>
 
-            <div className="mt-4 text-[32px] font-bold leading-tight tracking-tight text-primary">
+            <div className="mt-4 text-[36px] font-bold leading-tight tracking-tight text-primary">
               {activeRole?.name ?? activeSeat.roleId ?? '未分配'}
             </div>
-
-            <p className="mt-2 text-[14px] font-medium text-secondary">
-              {getRoleShortSummary(activeSeat.roleId)}
-            </p>
-
-            {wolfTeammateSeats.length > 0 && (
-              <div className="mt-4 border-l-2 border-wolf bg-wolf-tint px-3 py-2 text-[14px] font-semibold tabular-nums text-wolf">
-                狼隊友：{wolfTeammateSeats.map((n) => `${formatSeatNum(n)}號`).join('、')}
-              </div>
-            )}
 
             <button
               type="button"

@@ -4,6 +4,7 @@ import { formatChineseDay, formatChineseNight, getExitResolutionStage } from '..
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { InlineCountdownTimer } from '../common/InlineCountdownTimer';
+import { OnlineWolfRosterBar } from '../common/OnlineWolfRosterBar';
 import { PendingShooterCard } from '../common/PendingShooterCard';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SheriffBadgeTransferCard } from '../common/SheriffBadgeTransferCard';
@@ -25,6 +26,7 @@ export function DayVoteScreen() {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);
+  const hostMode = useGameStore((s) => s.hostMode);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const pendingShooters = useGameStore((s) => s.pendingShooters);
@@ -84,6 +86,9 @@ export function DayVoteScreen() {
         onOpenSeatDrawer={() => setSeatDrawerOpen(true)}
       />
 
+      {/* 線上法官常駐顯示狼隊名單 */}
+      {hostMode.judgeMode === 'online_judge' && <OnlineWolfRosterBar seats={seats} />}
+
       {/* 2. 白天四階段嚴格進度條（鎖定在階段四：放逐投票） */}
       <DayStageStepper currentStage="exile_vote" showSheriffStage={showSheriffStage} round={round} />
 
@@ -132,6 +137,9 @@ export function DayVoteScreen() {
               {exitStage === 'last_words' && exileResolvedToday.seat !== null && (
                 <InlineCountdownTimer
                   title={`${formatSeatNum(exileResolvedToday.seat)} 號放逐遺言倒數`}
+                  initialSeconds={90}
+                  presets={[60, 90, 120, 150]}
+                  currentSpeakerLabel={`${formatSeatNum(exileResolvedToday.seat)} 號（放逐遺言）`}
                 />
               )}
 

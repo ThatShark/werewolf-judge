@@ -3,7 +3,7 @@ import { ALL_BOARDS, filterBoards } from '../../data/boards';
 import { ROLE_LIST, getRoleById } from '../../data/roles';
 import type { BoardDefinition, PlayerCountFilter, RoleCategory } from '../../logic/types';
 import { SlideDrawer } from '../common/SlideDrawer';
-import { formatBoardCompositionShort, getRoleBadgeClasses } from '../common/displayHelpers';
+import { formatBoardRoleList, getRoleBadgeClasses } from '../common/displayHelpers';
 
 type AtlasTab = 'boards' | 'roles';
 
@@ -141,18 +141,13 @@ export function RulesAtlasScreen() {
                 key={board.id}
                 type="button"
                 onClick={() => setSelectedBoard(board)}
-                className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-elevated"
+                className="flex min-h-14 w-full flex-col gap-1 px-3 py-2.5 text-left transition hover:bg-elevated"
               >
                 <span className="truncate text-[14px] font-semibold text-primary">
                   {board.name}
                 </span>
-                <div className="flex shrink-0 items-center gap-2 text-[12px] tabular-nums">
-                  <span className="text-secondary">{formatBoardCompositionShort(board)}</span>
-                  <span className="w-11 text-right font-semibold text-sheriff">
-                    {board.playerCountRange
-                      ? `${board.playerCountRange[0]}~${board.playerCountRange[1]}人`
-                      : `${board.playerCount}人`}
-                  </span>
+                <div className="line-clamp-2 text-[12px] leading-4 text-secondary">
+                  {formatBoardRoleList(board)}
                 </div>
               </button>
             ))

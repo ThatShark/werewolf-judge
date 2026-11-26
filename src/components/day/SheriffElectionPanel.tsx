@@ -265,7 +265,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         <InlineCountdownTimer
           title="警上競選發言倒數"
           initialSeconds={120}
-          presets={[60, 90, 120]}
+          presets={[60, 90, 120, 150]}
           currentSpeakerLabel={
             currentSeat !== null
               ? `${formatSeatNum(currentSeat)} 號（第 ${clampedIdx + 1} / ${order.length} 位）`
@@ -352,7 +352,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         <InlineCountdownTimer
           title="警長平票 PK 發言倒數"
           initialSeconds={60}
-          presets={[30, 60, 90]}
+          presets={[30, 60, 90, 150]}
           currentSpeakerLabel={
             currentPkSeat !== null
               ? `${formatSeatNum(currentPkSeat)} 號（第 ${clampedPkIdx + 1} / ${pkOrder.length} 位）`

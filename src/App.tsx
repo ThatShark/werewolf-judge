@@ -6,7 +6,6 @@ import { useGameStore } from './store/gameStore';
 import { useWakeLock } from './utils/wakeLock';
 import { ConfirmModal } from './components/common/ConfirmModal';
 import { HistoryDrawer } from './components/common/HistoryDrawer';
-import { NotebookDrawer } from './components/common/NotebookDrawer';
 import { QADrawer } from './components/common/QADrawer';
 import { RestartModal } from './components/common/RestartModal';
 import { TopBar } from './components/common/TopBar';
@@ -42,7 +41,6 @@ function App() {
   const restartGame = useGameStore((s) => s.restartGame);
 
   const [qaOpen, setQaOpen] = useState(false);
-  const [notebookOpen, setNotebookOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [restartOpen, setRestartOpen] = useState(false);
   const [confirmUndoOpen, setConfirmUndoOpen] = useState(false);
@@ -58,7 +56,6 @@ function App() {
   const board = getBoardById(selectedBoardId);
   const hasActiveGame =
     Boolean(selectedBoardId) || (phase !== 'host_setup' && phase !== 'board_select');
-  const showNotebook = hostMode.judgeMode !== 'physical_judge';
 
   useEffect(() => {
     const shouldAutoPlay =
@@ -110,11 +107,7 @@ function App() {
       case 'day_vote':
         return <DayVoteScreen />;
       case 'game_over':
-        return (
-          <GameOverScreen
-            onOpenNotebook={showNotebook ? () => setNotebookOpen(true) : undefined}
-          />
-        );
+        return <GameOverScreen />;
     }
   };
 
@@ -170,13 +163,11 @@ function App() {
             phase={phase}
             round={round}
             board={board}
-            showNotebook={showNotebook}
             canUndo={undoStack.length > 0}
             undoLabel={latestUndoLabel}
             onUndo={() => setConfirmUndoOpen(true)}
             onGoHome={() => setActiveView('home')}
             onOpenQA={() => setQaOpen(true)}
-            onOpenNotebook={() => setNotebookOpen(true)}
             onOpenHistory={() => setHistoryOpen(true)}
             onOpenRestart={() => setRestartOpen(true)}
           />
@@ -211,10 +202,6 @@ function App() {
         }}
         onCancel={() => setConfirmUndoOpen(false)}
       />
-
-      {showNotebook && (
-        <NotebookDrawer open={notebookOpen} onClose={() => setNotebookOpen(false)} />
-      )}
 
       <HistoryDrawer
         open={historyOpen}

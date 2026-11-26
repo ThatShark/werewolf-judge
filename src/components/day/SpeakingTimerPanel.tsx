@@ -50,6 +50,7 @@ export function SpeakingTimerPanel() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [selectedDeadAnchor, setSelectedDeadAnchor] = useState<number | null>(null);
   const [manualStartSeat, setManualStartSeat] = useState<number | null>(null);
+  const [manualPresetSec, setManualPresetSec] = useState<number | null>(null);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -136,6 +137,16 @@ export function SpeakingTimerPanel() {
     currentSpeakerSeat !== null ? seats.find((s) => s.seatNumber === currentSpeakerSeat) : undefined;
   const isSpeakingFinished =
     speakingQueue.length > 0 && currentSpeakerIndex >= speakingQueue.length;
+  const isCurrentSpeakerSheriff =
+    activeSheriffSeat !== null && currentSpeakerSeat === activeSheriffSeat;
+
+  // 切換發言者時重設手動秒數覆蓋，讓警長發言自動高亮 150 秒、一般玩家高亮預設秒數
+  useEffect(() => {
+    setManualPresetSec(null);
+  }, [currentSpeakerSeat]);
+
+  const activePresetSec =
+    manualPresetSec ?? (isCurrentSpeakerSheriff ? SHERIFF_SPEAK_DURATION_SEC : defaultSpeakDurationSec);
 
   const handleGenerate = (mode: SpeakingOrderMode) => {
     setTimerRunning(false);
@@ -172,9 +183,6 @@ export function SpeakingTimerPanel() {
     }
     setTimerRunning((prev) => !prev);
   };
-
-  const isRecommended = (mode: SpeakingOrderMode) =>
-    !electionActive && ruleRecommendation.recommendedModes.includes(mode);
 
   return (
     <section className="space-y-3">
@@ -251,15 +259,16 @@ export function SpeakingTimerPanel() {
               type="button"
               onClick={() => {
                 setTimerRunning(false);
+                setManualPresetSec(sec);
                 setDefaultSpeakDuration(sec);
               }}
               className={`min-h-10 rounded-md text-[12px] font-semibold tabular-nums transition ${
-                defaultSpeakDurationSec === sec
+                activePresetSec === sec
                   ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
                   : 'border border-subtle bg-canvas text-secondary hover:border-strong'
               }`}
             >
-              {sec}s
+              {sec}秒
             </button>
           ))}
         </div>
@@ -312,7 +321,7 @@ export function SpeakingTimerPanel() {
           </div>
         )}
 
-        {/* 有警長時顯示警左／警右（單死且房規允許時同步顯示死左／死右）；無警長時支援自動抽選與手動指定起點方向 */}
+        {/* 有警長時顯示警左／警右（單死且房規允許時同步顯示死左／死右）；僅目前被選取按鈕亮起高亮鑲框，未選取保持無框極簡樣式 */}
         <div
           className={`grid gap-1.5 ${
             activeSheriffSeat !== null
@@ -327,9 +336,9 @@ export function SpeakingTimerPanel() {
               type="button"
               onClick={() => handleGenerate('random')}
               className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-                electionActive || isRecommended('random')
+                speakingMeta?.mode === 'random'
                   ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
-                  : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                  : 'border border-transparent bg-surface text-secondary hover:bg-elevated hover:text-primary'
               }`}
             >
               隨機抽序
@@ -341,9 +350,9 @@ export function SpeakingTimerPanel() {
                 type="button"
                 onClick={() => handleGenerate('sheriff_left')}
                 className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-                  speakingMeta?.mode === 'sheriff_left' || isRecommended('sheriff_left')
+                  speakingMeta?.mode === 'sheriff_left'
                     ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
-                    : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                    : 'border border-transparent bg-surface text-secondary hover:bg-elevated hover:text-primary'
                 }`}
               >
                 警左（順時針）
@@ -352,9 +361,9 @@ export function SpeakingTimerPanel() {
                 type="button"
                 onClick={() => handleGenerate('sheriff_right')}
                 className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
-                  speakingMeta?.mode === 'sheriff_right' || isRecommended('sheriff_right')
+                  speakingMeta?.mode === 'sheriff_right'
                     ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
-                    : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                    : 'border border-transparent bg-surface text-secondary hover:bg-elevated hover:text-primary'
                 }`}
               >
                 警右（逆時針）
@@ -369,10 +378,10 @@ export function SpeakingTimerPanel() {
                 onClick={() => handleGenerate('dead_left')}
                 className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
                   effectiveDeadAnchor === null
-                    ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
-                    : speakingMeta?.mode === 'dead_left' || isRecommended('dead_left')
+                    ? 'cursor-not-allowed border border-transparent bg-canvas text-muted opacity-45'
+                    : speakingMeta?.mode === 'dead_left'
                       ? 'border-selected-wolf bg-wolf-tint text-wolf'
-                      : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                      : 'border border-transparent bg-surface text-secondary hover:bg-elevated hover:text-primary'
                 }`}
               >
                 死左
@@ -383,10 +392,10 @@ export function SpeakingTimerPanel() {
                 onClick={() => handleGenerate('dead_right')}
                 className={`min-h-11 rounded-md px-1 text-[12px] font-semibold transition ${
                   effectiveDeadAnchor === null
-                    ? 'cursor-not-allowed border border-subtle bg-canvas text-muted opacity-45'
-                    : speakingMeta?.mode === 'dead_right' || isRecommended('dead_right')
+                    ? 'cursor-not-allowed border border-transparent bg-canvas text-muted opacity-45'
+                    : speakingMeta?.mode === 'dead_right'
                       ? 'border-selected-wolf bg-wolf-tint text-wolf'
-                      : 'border border-subtle bg-surface text-secondary hover:border-strong'
+                      : 'border border-transparent bg-surface text-secondary hover:bg-elevated hover:text-primary'
                 }`}
               >
                 死右
@@ -420,7 +429,11 @@ export function SpeakingTimerPanel() {
                   aliveSeatNumbers[(idx - 1 + aliveSeatNumbers.length) % aliveSeatNumbers.length];
                 generateSpeakingOrder({ mode: 'dead_left', referenceDeadSeat: prevSeat });
               }}
-              className="min-h-9 rounded-md border border-subtle bg-canvas px-2.5 font-semibold text-primary hover:border-strong"
+              className={`min-h-9 rounded-md px-2.5 font-semibold transition ${
+                speakingMeta?.direction === 'clockwise'
+                  ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                  : 'border border-transparent bg-canvas text-secondary hover:bg-elevated hover:text-primary'
+              }`}
             >
               順時針
             </button>
@@ -432,7 +445,11 @@ export function SpeakingTimerPanel() {
                 const nextSeat = aliveSeatNumbers[(idx + 1) % aliveSeatNumbers.length];
                 generateSpeakingOrder({ mode: 'dead_right', referenceDeadSeat: nextSeat });
               }}
-              className="min-h-9 rounded-md border border-subtle bg-canvas px-2.5 font-semibold text-primary hover:border-strong"
+              className={`min-h-9 rounded-md px-2.5 font-semibold transition ${
+                speakingMeta?.direction === 'counterclockwise'
+                  ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                  : 'border border-transparent bg-canvas text-secondary hover:bg-elevated hover:text-primary'
+              }`}
             >
               逆時針
             </button>

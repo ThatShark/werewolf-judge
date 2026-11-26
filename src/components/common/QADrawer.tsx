@@ -181,7 +181,7 @@ export function QADrawer({
             )}
             {hasMerchant && (
               <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
-                首夜幸運兒：<span className="font-semibold text-primary">{luckySummary}</span>
+                幸運兒首夜可使用技能：<span className="font-semibold text-primary">{luckySummary}</span>
               </span>
             )}
           </div>

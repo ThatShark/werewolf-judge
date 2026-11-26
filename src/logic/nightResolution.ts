@@ -1928,15 +1928,38 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     effectiveWolfTarget = null;
   }
 
-  const luckyShieldSeat =
+  const night1MiracleAlive = updatedSeats.find(
+    (s) => s.isAlive && s.roleId === 'miracle_merchant',
+  );
+  const night1MiracleTargetObj =
+    night1MiracleAlive &&
+    !nextThirdPartySpecialState.miracleMerchantUsed &&
+    draft.miracleMerchantTarget != null &&
+    draft.miracleMerchantTarget !== night1MiracleAlive.seatNumber &&
+    draft.miracleMerchantItem === 'guard_shield'
+      ? updatedSeats.find((s) => s.seatNumber === draft.miracleMerchantTarget)
+      : undefined;
+  const night1MiracleValidLuckySeat =
+    night1MiracleTargetObj && !isSeatWolfFaction(night1MiracleTargetObj)
+      ? night1MiracleTargetObj.seatNumber
+      : null;
+
+  const isExistingMiracleShield =
     draft.luckyItemActorSeat != null &&
     draft.luckyItemTargetSeat != null &&
     nextThirdPartySpecialState.miracleLuckySeat === draft.luckyItemActorSeat &&
     nextThirdPartySpecialState.miracleLuckyItem === 'guard_shield' &&
     !nextThirdPartySpecialState.miracleLuckyItemUsed &&
-    isLuckySkillAllowedOnRound('miracle', 'guard_shield', round, ruleOverrides)
-      ? draft.luckyItemTargetSeat
-      : null;
+    isLuckySkillAllowedOnRound('miracle', 'guard_shield', round, ruleOverrides);
+
+  const isNight1MiracleShield =
+    draft.luckyItemActorSeat != null &&
+    draft.luckyItemTargetSeat != null &&
+    night1MiracleValidLuckySeat === draft.luckyItemActorSeat &&
+    isLuckySkillAllowedOnRound('miracle', 'guard_shield', round, ruleOverrides);
+
+  const luckyShieldSeat =
+    isExistingMiracleShield || isNight1MiracleShield ? draft.luckyItemTargetSeat! : null;
 
   const mediumShieldEntry =
     draft.mediumSkillActionSeat != null && draft.mediumSkillTargetSeat != null

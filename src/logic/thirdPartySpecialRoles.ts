@@ -717,6 +717,150 @@ export function findLuckyGiftForSeat(
   return null;
 }
 
+export interface ActiveLuckyNightActor {
+  actorSeat: number;
+  source: LuckyMerchantSource;
+  item: MerchantGiftItem;
+  allowedThisRound: boolean;
+}
+
+/**
+ * 解析當晚輪到幸運兒行動（lucky_item_action）時的有效幸運兒與道具：
+ * - 第 2 晚起直接從 thirdPartySpecialState 讀取尚未使用的幸運兒。
+ * - 第 1 晚由於商人剛在同一晚贈禮（尚未結算寫入 thirdPartySpecialState），
+ *   自動回退讀取 currentNightDraft 中的當晚贈禮目標與道具。
+ */
+export function resolveActiveLuckyActorForNight(
+  draft: {
+    miracleMerchantTarget?: number | null;
+    miracleMerchantItem?: MerchantGiftItem | null;
+    blackMarketTarget?: number | null;
+    blackMarketItem?: MerchantGiftItem | null;
+    superBlackMarketTargets?: {
+      seer_check?: number | null;
+      witch_poison?: number | null;
+      hunter_gun?: number | null;
+    } | null;
+  },
+  state: ThirdPartySpecialRuntimeState | undefined,
+  round: number,
+  ruleOverrides?: Pick<RuleOverrides, 'luckyFirstNightSkills'>,
+): ActiveLuckyNightActor | null {
+  // 1. 優先檢查已結算寫入的狀態（次夜起或跨夜保留）
+  if (state) {
+    if (
+      state.miracleLuckySeat != null &&
+      state.miracleLuckyItem &&
+      !state.miracleLuckyItemUsed
+    ) {
+      return {
+        actorSeat: state.miracleLuckySeat,
+        source: 'miracle',
+        item: state.miracleLuckyItem,
+        allowedThisRound: isLuckySkillAllowedOnRound(
+          'miracle',
+          state.miracleLuckyItem,
+          round,
+          ruleOverrides,
+        ),
+      };
+    }
+    if (
+      state.blackMarketLuckySeat != null &&
+      state.blackMarketLuckyItem &&
+      !state.blackMarketLuckyItemUsed
+    ) {
+      return {
+        actorSeat: state.blackMarketLuckySeat,
+        source: 'blackMarket',
+        item: state.blackMarketLuckyItem,
+        allowedThisRound: isLuckySkillAllowedOnRound(
+          'blackMarket',
+          state.blackMarketLuckyItem,
+          round,
+          ruleOverrides,
+        ),
+      };
+    }
+    const unusedSuper =
+      state.superBlackMarketGifts.find(
+        (g) => !g.used && isLuckySkillAllowedOnRound('superBlackMarket', g.item, round, ruleOverrides),
+      ) ?? state.superBlackMarketGifts.find((g) => !g.used);
+    if (unusedSuper) {
+      return {
+        actorSeat: unusedSuper.seat,
+        source: 'superBlackMarket',
+        item: unusedSuper.item,
+        allowedThisRound: isLuckySkillAllowedOnRound(
+          'superBlackMarket',
+          unusedSuper.item,
+          round,
+          ruleOverrides,
+        ),
+      };
+    }
+  }
+
+  // 2. 第一晚（或當晚剛贈禮尚未結算）即時從當晚草稿讀取
+  if (draft.miracleMerchantTarget != null && draft.miracleMerchantItem) {
+    return {
+      actorSeat: draft.miracleMerchantTarget,
+      source: 'miracle',
+      item: draft.miracleMerchantItem,
+      allowedThisRound: isLuckySkillAllowedOnRound(
+        'miracle',
+        draft.miracleMerchantItem,
+        round,
+        ruleOverrides,
+      ),
+    };
+  }
+  if (draft.blackMarketTarget != null && draft.blackMarketItem) {
+    return {
+      actorSeat: draft.blackMarketTarget,
+      source: 'blackMarket',
+      item: draft.blackMarketItem,
+      allowedThisRound: isLuckySkillAllowedOnRound(
+        'blackMarket',
+        draft.blackMarketItem,
+        round,
+        ruleOverrides,
+      ),
+    };
+  }
+  if (draft.superBlackMarketTargets) {
+    const candidates: Array<{ item: MerchantGiftItem; seat: number }> = [];
+    if (draft.superBlackMarketTargets.seer_check != null) {
+      candidates.push({ item: 'seer_check', seat: draft.superBlackMarketTargets.seer_check });
+    }
+    if (draft.superBlackMarketTargets.witch_poison != null) {
+      candidates.push({ item: 'witch_poison', seat: draft.superBlackMarketTargets.witch_poison });
+    }
+    if (draft.superBlackMarketTargets.hunter_gun != null) {
+      candidates.push({ item: 'hunter_gun', seat: draft.superBlackMarketTargets.hunter_gun });
+    }
+    const picked =
+      candidates.find((c) =>
+        isLuckySkillAllowedOnRound('superBlackMarket', c.item, round, ruleOverrides),
+      ) ?? candidates[0];
+    if (picked) {
+      return {
+        actorSeat: picked.seat,
+        source: 'superBlackMarket',
+        item: picked.item,
+        allowedThisRound: isLuckySkillAllowedOnRound(
+          'superBlackMarket',
+          picked.item,
+          round,
+          ruleOverrides,
+        ),
+      };
+    }
+  }
+
+  return null;
+}
+
 export function getChannelableSkillForRole(roleId: string | null): MediumSkillType | null {
   if (!roleId) return null;
   if (roleId === 'seer') return 'seer_check';

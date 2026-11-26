@@ -10,6 +10,7 @@ import {
 } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { InlineCountdownTimer } from '../common/InlineCountdownTimer';
+import { OnlineWolfRosterBar } from '../common/OnlineWolfRosterBar';
 import { PendingShooterCard } from '../common/PendingShooterCard';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SheriffBadgeTransferCard } from '../common/SheriffBadgeTransferCard';
@@ -72,6 +73,7 @@ export function DayAnnouncementScreen() {
   const [victoryModalOpen, setVictoryModalOpen] = useState(false);
   const [burstDrawerOpen, setBurstDrawerOpen] = useState(false);
   const [delayedSkillsDrawerOpen, setDelayedSkillsDrawerOpen] = useState(false);
+  const [lastWordsIdx, setLastWordsIdx] = useState(0);
   // 防法官唸錯鐵律：預設隱藏真實死因，點擊該列或圖示才顯示
   const [revealedDeathKeys, setRevealedDeathKeys] = useState<Record<string, boolean>>({});
 
@@ -194,6 +196,9 @@ export function DayAnnouncementScreen() {
         currentSpeakerSeat={dayStage === 'speaking' ? currentSpeakerSeat : null}
         onOpenSeatDrawer={() => setSeatDrawerOpen(true)}
       />
+
+      {/* 線上法官常駐顯示狼隊名單 */}
+      {isOnlineJudge && <OnlineWolfRosterBar seats={seats} />}
 
       {/* 2. 白天四階段嚴格進度條 */}
       <DayStageStepper currentStage={dayStage} showSheriffStage={showSheriffStage} round={round} />
@@ -397,14 +402,33 @@ export function DayAnnouncementScreen() {
                   <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-2 text-[12px] font-semibold text-sheriff">
                     請先完成上方出局技能與警徽移交／撕毀，結算完畢後再進入發表遺言。
                   </div>
-                ) : exitStage === 'last_words' ? (
-                  <div className="space-y-2">
-                    <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">
-                      首夜遺言：請 {deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')} 發表遺言
+                ) : exitStage === 'last_words' ? (() => {
+                  const clampedLastWordsIdx = Math.min(lastWordsIdx, Math.max(0, deaths.length - 1));
+                  const activeLastWordsSeat = deaths[clampedLastWordsIdx]?.seat ?? null;
+                  return (
+                    <div className="space-y-2">
+                      <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">
+                        首夜遺言：請 {deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')} 發表遺言
+                      </div>
+                      <InlineCountdownTimer
+                        title="首夜死者遺言倒數"
+                        initialSeconds={90}
+                        presets={[60, 90, 120, 150]}
+                        currentSpeakerLabel={
+                          activeLastWordsSeat !== null
+                            ? `${formatSeatNum(activeLastWordsSeat)} 號（第 ${clampedLastWordsIdx + 1} / ${deaths.length} 位）`
+                            : undefined
+                        }
+                        canPrev={clampedLastWordsIdx > 0}
+                        canNext={clampedLastWordsIdx < deaths.length - 1}
+                        onPrev={() => setLastWordsIdx((prev) => Math.max(0, prev - 1))}
+                        onNext={() =>
+                          setLastWordsIdx((prev) => Math.min(deaths.length - 1, prev + 1))
+                        }
+                      />
                     </div>
-                    <InlineCountdownTimer title="首夜死者遺言倒數" />
-                  </div>
-                ) : (
+                  );
+                })() : (
                   <div className="border-l-2 border-subtle bg-canvas px-3 py-1.5 text-[12px] font-medium text-secondary">
                     {formatChineseNight(round)}夜死無遺言（可直接進入白天發言）
                   </div>

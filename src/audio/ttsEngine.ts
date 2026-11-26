@@ -11,14 +11,25 @@
 export interface SpeakOptions {
   enabled: boolean;
   rate?: number;
+  /** 播放前暖機緩衝毫秒數（例如 300ms 防止「天黑請閉眼」首字被截斷） */
+  warmupDelayMs?: number;
   onStart?: () => void;
   onEnd?: () => void;
+}
+
+export interface SpeakSequenceItem {
+  text: string;
+  /** 該段念完後停頓的毫秒數（再念下一段或觸發整體 onEnd） */
+  delayAfterMs?: number;
 }
 
 class TtsEngine {
   private lastSpokenText = '';
   private unlocked = false;
   private previewTimerId: ReturnType<typeof setTimeout> | null = null;
+  private warmupTimerId: ReturnType<typeof setTimeout> | null = null;
+  private sequenceTimerId: ReturnType<typeof setTimeout> | null = null;
+  private sequenceToken = 0;
 
   // Web Audio keep-alive（防止 iOS Safari 夜間語音通道進入休眠）
   private keepAliveCtx: AudioContext | null = null;
@@ -157,16 +168,22 @@ class TtsEngine {
     }
   }
 
-  speak(text: string, options: SpeakOptions): void {
-    const cleaned = text.trim();
-    if (!cleaned) return;
-    this.lastSpokenText = cleaned;
-
-    if (!options.enabled || !this.isSupported()) {
-      options.onEnd?.();
-      return;
+  private clearTimers(): void {
+    if (this.previewTimerId !== null) {
+      clearTimeout(this.previewTimerId);
+      this.previewTimerId = null;
     }
+    if (this.warmupTimerId !== null) {
+      clearTimeout(this.warmupTimerId);
+      this.warmupTimerId = null;
+    }
+    if (this.sequenceTimerId !== null) {
+      clearTimeout(this.sequenceTimerId);
+      this.sequenceTimerId = null;
+    }
+  }
 
+  private speakImmediate(cleaned: string, options: SpeakOptions): void {
     try {
       if (this.keepAliveCtx?.state === 'suspended') {
         void this.keepAliveCtx.resume().catch(() => {});
@@ -186,6 +203,106 @@ class TtsEngine {
     } catch {
       options.onEnd?.();
     }
+  }
+
+  speak(text: string, options: SpeakOptions): void {
+    const cleaned = text.trim();
+    if (!cleaned) return;
+    this.lastSpokenText = cleaned;
+    this.sequenceToken += 1;
+    this.clearTimers();
+
+    if (!options.enabled || !this.isSupported()) {
+      options.onEnd?.();
+      return;
+    }
+
+    const warmupDelayMs = Math.max(0, options.warmupDelayMs ?? 0);
+    if (warmupDelayMs > 0) {
+      try {
+        if (this.keepAliveCtx?.state === 'suspended') {
+          void this.keepAliveCtx.resume().catch(() => {});
+        }
+        window.speechSynthesis.cancel();
+      } catch {
+        // ignore
+      }
+      this.warmupTimerId = setTimeout(() => {
+        this.warmupTimerId = null;
+        this.speakImmediate(cleaned, options);
+      }, warmupDelayMs);
+      return;
+    }
+
+    this.speakImmediate(cleaned, options);
+  }
+
+  /**
+   * 依序播報多段語音並於每段間精準停頓（例如天亮前「三、二、一」每秒倒數）。
+   */
+  speakSequence(
+    items: SpeakSequenceItem[],
+    options: Omit<SpeakOptions, 'onStart'> & { onItemStart?: (index: number) => void },
+  ): void {
+    this.sequenceToken += 1;
+    const token = this.sequenceToken;
+    this.clearTimers();
+
+    if (items.length === 0) {
+      options.onEnd?.();
+      return;
+    }
+
+    this.lastSpokenText = items.map((i) => i.text.trim()).filter(Boolean).join('，');
+
+    const runStep = (idx: number) => {
+      if (token !== this.sequenceToken) return;
+      if (idx >= items.length) {
+        options.onEnd?.();
+        return;
+      }
+      const item = items[idx];
+      options.onItemStart?.(idx);
+
+      const proceedNext = () => {
+        if (token !== this.sequenceToken) return;
+        const delayMs = Math.max(0, item.delayAfterMs ?? 0);
+        if (delayMs > 0) {
+          this.sequenceTimerId = setTimeout(() => {
+            this.sequenceTimerId = null;
+            runStep(idx + 1);
+          }, delayMs);
+        } else {
+          runStep(idx + 1);
+        }
+      };
+
+      if (!options.enabled || !this.isSupported()) {
+        proceedNext();
+        return;
+      }
+
+      const warmup = idx === 0 ? Math.max(0, options.warmupDelayMs ?? 0) : 0;
+      if (warmup > 0) {
+        this.warmupTimerId = setTimeout(() => {
+          this.warmupTimerId = null;
+          if (token !== this.sequenceToken) return;
+          this.speakImmediate(item.text.trim(), {
+            enabled: true,
+            rate: options.rate,
+            onEnd: proceedNext,
+          });
+        }, warmup);
+      } else {
+        this.speakImmediate(item.text.trim(), {
+          enabled: true,
+          rate: options.rate,
+          onEnd: proceedNext,
+        });
+      }
+    };
+
+    runStep(0);
   }
 
   /**
@@ -236,10 +353,8 @@ class TtsEngine {
   }
 
   cancel(): void {
-    if (this.previewTimerId !== null) {
-      clearTimeout(this.previewTimerId);
-      this.previewTimerId = null;
-    }
+    this.sequenceToken += 1;
+    this.clearTimers();
     if (!this.isSupported()) return;
     try {
       window.speechSynthesis.cancel();

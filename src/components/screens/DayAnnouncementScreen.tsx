@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
-import { checkCanShoot, isSheriffElectionActive } from '../../logic';
+import { checkCanShoot, isSheriffElectionActive, shouldNightDeathHaveLastWords } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
+import { InlineCountdownTimer } from '../common/InlineCountdownTimer';
 import { PendingShooterCard } from '../common/PendingShooterCard';
 import { SeatStatusDrawer } from '../common/SeatStatusDrawer';
 import { SheriffBadgeTransferCard } from '../common/SheriffBadgeTransferCard';
@@ -216,9 +217,16 @@ export function DayAnnouncementScreen() {
                     </h1>
                   </div>
 
-                  {round === 1 && (
-                    <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">
-                      首夜遺言：請 {deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')} 發表遺言
+                  {shouldNightDeathHaveLastWords(round) ? (
+                    <div className="space-y-2">
+                      <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">
+                        首夜遺言：請 {deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')} 發表遺言
+                      </div>
+                      <InlineCountdownTimer title="首夜死者遺言倒數" />
+                    </div>
+                  ) : (
+                    <div className="border-l-2 border-subtle bg-canvas px-3 py-1.5 text-[12px] font-medium text-secondary">
+                      第 {round} 晚夜死無遺言（處理完警徽／死亡技能後直接進入白天發言）
                     </div>
                   )}
 

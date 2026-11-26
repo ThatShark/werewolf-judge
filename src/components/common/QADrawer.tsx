@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { getRoleById } from '../../data/roles';
-import { DEFAULT_RULE_OVERRIDES } from '../../logic';
+import { DEFAULT_RULE_OVERRIDES, getBoardRoleIdSet } from '../../logic';
 import type { BoardDefinition, RuleOverrides } from '../../logic/types';
 import { SlideDrawer } from './SlideDrawer';
 import { getRoleBadgeClasses } from './displayHelpers';
@@ -81,6 +81,48 @@ export function QADrawer({
   const witchSelfSaveLabel = getWitchSelfSaveLabel(ruleOverrides.witchSelfSave);
   const victoryModeLabel = ruleOverrides.victoryMode === 'slaughter_all' ? '屠城' : '屠邊';
 
+  const boardRoleIdSet = useMemo(
+    () => (board ? getBoardRoleIdSet(board) : new Set<string>()),
+    [board],
+  );
+  const hasWitch = boardRoleIdSet.has('witch') || boardRoleIdSet.has('awakened_witch');
+  const hasMechWolf = boardRoleIdSet.has('mech_wolf');
+  const hasBlackMarket = boardRoleIdSet.has('black_market_merchant');
+  const hasMiracle = boardRoleIdSet.has('miracle_merchant');
+  const hasSuperBlackMarket = boardRoleIdSet.has('super_black_market_merchant');
+  const hasMerchant = hasBlackMarket || hasMiracle || hasSuperBlackMarket;
+
+  const luckySummary = useMemo(() => {
+    if (!hasMerchant) return '';
+    const cfg = ruleOverrides.luckyFirstNightSkills;
+    const parts: string[] = [];
+    if (hasBlackMarket) {
+      const enabled = [
+        cfg.blackMarket.seer_check ? '查' : null,
+        cfg.blackMarket.witch_poison ? '毒' : null,
+        cfg.blackMarket.hunter_gun ? '槍' : null,
+      ].filter(Boolean);
+      parts.push(`黑市:${enabled.length > 0 ? enabled.join('/') : '皆禁'}`);
+    }
+    if (hasMiracle) {
+      const enabled = [
+        cfg.miracle.seer_check ? '查' : null,
+        cfg.miracle.witch_poison ? '毒' : null,
+        cfg.miracle.guard_shield ? '守' : null,
+      ].filter(Boolean);
+      parts.push(`奇蹟:${enabled.length > 0 ? enabled.join('/') : '皆禁'}`);
+    }
+    if (hasSuperBlackMarket) {
+      const enabled = [
+        cfg.superBlackMarket.seer_check ? '查' : null,
+        cfg.superBlackMarket.witch_poison ? '毒' : null,
+        cfg.superBlackMarket.hunter_gun ? '槍' : null,
+      ].filter(Boolean);
+      parts.push(`超黑市:${enabled.length > 0 ? enabled.join('/') : '皆禁'}`);
+    }
+    return parts.join(' · ');
+  }, [hasMerchant, hasBlackMarket, hasMiracle, hasSuperBlackMarket, ruleOverrides.luckyFirstNightSkills]);
+
   return (
     <SlideDrawer
       open={open}
@@ -112,9 +154,6 @@ export function QADrawer({
           </h3>
           <div className="flex flex-wrap gap-1.5 text-[12px]">
             <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
-              女巫自救：<span className="font-semibold text-primary">{witchSelfSaveLabel}</span>
-            </span>
-            <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
               勝負：<span className="font-semibold text-good">{victoryModeLabel}</span>
             </span>
             <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
@@ -127,12 +166,24 @@ export function QADrawer({
                     : '單爆吞徽'}
               </span>
             </span>
-            <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
-              機械狼首夜學：
-              <span className="font-semibold text-primary">
-                {ruleOverrides.mechWolfForceLearnNight1 ? '強制' : '可跳過'}
+            {hasWitch && (
+              <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
+                女巫自救：<span className="font-semibold text-primary">{witchSelfSaveLabel}</span>
               </span>
-            </span>
+            )}
+            {hasMechWolf && (
+              <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
+                機械狼首夜學：
+                <span className="font-semibold text-primary">
+                  {ruleOverrides.mechWolfForceLearnNight1 ? '強制' : '可跳過'}
+                </span>
+              </span>
+            )}
+            {hasMerchant && (
+              <span className="rounded-md border border-subtle bg-canvas px-2 py-1 text-secondary">
+                首夜幸運兒：<span className="font-semibold text-primary">{luckySummary}</span>
+              </span>
+            )}
           </div>
         </section>
 

@@ -7,6 +7,8 @@ import type {
   GameState,
   GameWinner,
   MechWolfRuntimeState,
+  NightActionDraft,
+  NightHistoryEntry,
   NotebookState,
   PlayerSeat,
   RuleOverrides,
@@ -227,10 +229,10 @@ export function formatBoardRoleList(board: BoardDefinition): string {
     }
   }
   if (plainWolfCount > 0) {
-    parts.push(`${plainWolfCount}狼`);
+    parts.push(`${plainWolfCount}小狼`);
   }
 
-  // 4. 平民（普通平民顯示「N民」，特殊平民列名稱）
+  // 4. 平民（普通平民顯示「N平民」，特殊平民列名稱）
   let plainVillagerCount = 0;
   for (const slot of villagerSlots) {
     if (slot.roleId === 'villager') {
@@ -242,7 +244,7 @@ export function formatBoardRoleList(board: BoardDefinition): string {
     }
   }
   if (plainVillagerCount > 0) {
-    parts.push(`${plainVillagerCount}民`);
+    parts.push(`${plainVillagerCount}平民`);
   }
 
   return parts.join('、');
@@ -502,4 +504,247 @@ export function splitSeatsIntoSymmetricColumns<T>(seats: T[]): { left: T[]; righ
     left: seats.slice(0, half),
     right: seats.slice(half),
   };
+}
+
+/**
+ * 將單一夜晚的行動草稿與結算結果轉為完整易讀的紀錄條目，供 HistoryDrawer 與復盤查閱每一晚技能對象與結果。
+ */
+export function formatNightActionLogs(
+  draft: NightActionDraft,
+  entry?: Partial<NightHistoryEntry>,
+  pendingSelfExplodeSeat?: number | null,
+): string[] {
+  const lines: string[] = [];
+  const fmt = (seat: number) => `${formatSeatNum(seat)} 號`;
+
+  if (draft.nightmareFearTarget != null) lines.push(`夢魘恐懼：${fmt(draft.nightmareFearTarget)}`);
+  if (draft.hybridIdolTarget != null) lines.push(`混血兒榜樣：${fmt(draft.hybridIdolTarget)}`);
+  if (draft.wildChildIdolTarget != null) lines.push(`野孩子榜樣：${fmt(draft.wildChildIdolTarget)}`);
+  if (draft.shadowMasterTarget != null) lines.push(`影子目標：${fmt(draft.shadowMasterTarget)}`);
+  if (draft.awakenedLonelyGirlIdolTarget != null) {
+    lines.push(`覺醒孤獨少女榜樣：${fmt(draft.awakenedLonelyGirlIdolTarget)}`);
+  }
+  if (draft.cupidLoversPair?.[0] != null && draft.cupidLoversPair?.[1] != null) {
+    lines.push(`邱比特連線：${fmt(draft.cupidLoversPair[0])} ⇄ ${fmt(draft.cupidLoversPair[1])}`);
+  }
+  if (draft.ghostBrideGroomTarget != null || draft.ghostBrideWitnessTarget != null) {
+    lines.push(
+      `鬼魂新娘：新郎 ${draft.ghostBrideGroomTarget != null ? fmt(draft.ghostBrideGroomTarget) : '無'}／證婚 ${draft.ghostBrideWitnessTarget != null ? fmt(draft.ghostBrideWitnessTarget) : '無'}`,
+    );
+  }
+  if (draft.scentPhantomChainPair?.[0] != null && draft.scentPhantomChainPair?.[1] != null) {
+    lines.push(
+      `尋香魅影連線：${fmt(draft.scentPhantomChainPair[0])} ⇄ ${fmt(draft.scentPhantomChainPair[1])}`,
+    );
+  }
+  if (draft.mechWolfLearnTarget !== null) {
+    lines.push(`機械狼學習：${fmt(draft.mechWolfLearnTarget)}`);
+  }
+  if (draft.mechWolfSkillTarget !== null) {
+    const res = entry?.mechWolfPsychicResult;
+    const suffix = res
+      ? ` ➜ ${getRoleById(res.perceivedRoleId)?.name ?? res.perceivedRoleId}`
+      : '';
+    lines.push(`機械狼技能：${fmt(draft.mechWolfSkillTarget)}${suffix}`);
+  }
+  if (draft.magicianSwapPair?.[0] != null && draft.magicianSwapPair?.[1] != null) {
+    lines.push(`魔術師交換：${fmt(draft.magicianSwapPair[0])} ⇄ ${fmt(draft.magicianSwapPair[1])}`);
+  }
+  if (draft.wolfWarlockSwapPair?.[0] != null && draft.wolfWarlockSwapPair?.[1] != null) {
+    lines.push(
+      `狼術師交換：${fmt(draft.wolfWarlockSwapPair[0])} ⇄ ${fmt(draft.wolfWarlockSwapPair[1])}`,
+    );
+  }
+  if (draft.tricksterSwapPair?.[0] != null && draft.tricksterSwapPair?.[1] != null) {
+    lines.push(
+      `詭術師換票：${fmt(draft.tricksterSwapPair[0])} ⇄ ${fmt(draft.tricksterSwapPair[1])}`,
+    );
+  }
+  if (draft.guardTarget !== null) lines.push(`守衛守護：${fmt(draft.guardTarget)}`);
+  if (draft.dreamCatcherTarget != null) lines.push(`攝夢人夢遊：${fmt(draft.dreamCatcherTarget)}`);
+  if (draft.awakenedDreamTarget != null) {
+    const res = entry?.awakenedDreamResult;
+    lines.push(
+      `覺醒攝夢人夢語：${fmt(draft.awakenedDreamTarget)}${res ? `（${res.killedByDream ? '處決' : '未處決'}）` : ''}`,
+    );
+  }
+  if (draft.penguinFreezeTarget != null) lines.push(`企鵝冰凍：${fmt(draft.penguinFreezeTarget)}`);
+  if (draft.timeEclipseTarget != null) lines.push(`蝕時狼妃封鎖：${fmt(draft.timeEclipseTarget)}`);
+  if (draft.medusaPetrifyTarget != null) lines.push(`梅杜莎石化：${fmt(draft.medusaPetrifyTarget)}`);
+  if (draft.muteElderTarget != null) lines.push(`禁言長老禁言：${fmt(draft.muteElderTarget)}`);
+  if (draft.silentNightMentorTarget != null && draft.silentNightMentorMode) {
+    lines.push(
+      `寂夜導師${draft.silentNightMentorMode === 'amplify' ? '增幅' : '削弱'}：${fmt(draft.silentNightMentorTarget)}`,
+    );
+  }
+  if (draft.daylightScholarTarget != null && draft.daylightScholarMode) {
+    lines.push(
+      `白晝學者${draft.daylightScholarMode === 'amplify' ? '增幅' : '削弱'}：${fmt(draft.daylightScholarTarget)}`,
+    );
+  }
+  if (draft.wolfTarget !== null) {
+    lines.push(`狼人落刀：${fmt(draft.wolfTarget)}`);
+  } else if (entry?.deaths !== undefined) {
+    lines.push('狼人落刀：空刀');
+  }
+  if (draft.seedWolfInfectTarget != null) {
+    lines.push(`種狼感染：${fmt(draft.seedWolfInfectTarget)}`);
+  }
+  if (draft.wolfBeautyCharmTarget != null) {
+    lines.push(`狼美人魅惑：${fmt(draft.wolfBeautyCharmTarget)}`);
+  }
+  if (draft.awakenedWolfBeautyCharmTarget != null) {
+    lines.push(`覺醒狼美人魅惑：${fmt(draft.awakenedWolfBeautyCharmTarget)}`);
+  }
+  if (draft.witchUseAntidote) {
+    lines.push('女巫用藥：使用解藥');
+  } else if (draft.witchPoisonTarget !== null) {
+    lines.push(`女巫用藥：毒殺 ${fmt(draft.witchPoisonTarget)}`);
+  }
+  if (draft.poisonerTarget != null) {
+    lines.push(`毒師毒殺：${fmt(draft.poisonerTarget)}`);
+  }
+  if (draft.awakenedWitchUseAntidote) {
+    lines.push('覺醒女巫：使用解藥');
+  } else if (draft.awakenedWitchPoisonTarget != null) {
+    lines.push(`覺醒女巫毒殺：${fmt(draft.awakenedWitchPoisonTarget)}`);
+  }
+  if (draft.seerCheckTarget !== null) {
+    const res = entry?.seerResult;
+    const suffix = res
+      ? ` ➜ ${res.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`
+      : '';
+    lines.push(`預言家查驗：${fmt(draft.seerCheckTarget)}${suffix}`);
+  }
+  if (draft.psychicCheckTarget !== null) {
+    const res = entry?.psychicResult;
+    const suffix = res
+      ? ` ➜ ${getRoleById(res.perceivedRoleId)?.name ?? res.perceivedRoleId}`
+      : '';
+    lines.push(`通靈師查驗：${fmt(draft.psychicCheckTarget)}${suffix}`);
+  }
+  if (draft.awakenedSeerTargets?.[0] != null && draft.awakenedSeerTargets?.[1] != null) {
+    const res = entry?.awakenedSeerResult;
+    const suffix = res
+      ? ` ➜ ${res.result === 'double_good' ? '雙金水（皆好人）' : '疑似狼人（含狼）'}`
+      : '';
+    lines.push(
+      `覺醒預言家雙驗：${fmt(draft.awakenedSeerTargets[0])}、${fmt(draft.awakenedSeerTargets[1])}${suffix}`,
+    );
+  }
+  if (draft.lanternSeerCheckTarget != null) {
+    const res = entry?.lanternSeerResult;
+    const suffix = res
+      ? ` ➜ ${res.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`
+      : '';
+    lines.push(`燈影預言家查驗：${fmt(draft.lanternSeerCheckTarget)}${suffix}`);
+  }
+  if (draft.drunkSeerCheckTarget != null) {
+    const res = entry?.drunkSeerResult;
+    const suffix = res
+      ? ` ➜ ${res.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`
+      : '';
+    lines.push(`酒鬼預言家查驗：${fmt(draft.drunkSeerCheckTarget)}${suffix}`);
+  }
+  if (draft.foolSeerCheckTarget != null) {
+    const res = entry?.foolSeerResult;
+    const suffix = res
+      ? ` ➜ ${res.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`
+      : '';
+    lines.push(`愚言家查驗：${fmt(draft.foolSeerCheckTarget)}${suffix}`);
+  }
+  if (draft.foxCheckTarget != null) {
+    const res = entry?.foxResult;
+    const suffix = res ? ` ➜ ${res.hasWolf ? '含狼人' : '全好人（失效）'}` : '';
+    lines.push(`狐狸查驗：${fmt(draft.foxCheckTarget)}${suffix}`);
+  }
+  if (draft.gargoyleCheckTarget != null) {
+    const res = entry?.gargoyleResult;
+    const suffix = res
+      ? ` ➜ ${getRoleById(res.perceivedRoleId)?.name ?? res.perceivedRoleId}`
+      : '';
+    lines.push(`石像鬼查驗：${fmt(draft.gargoyleCheckTarget)}${suffix}`);
+  }
+  if (draft.wolfWitchCheckTarget != null) {
+    const res = entry?.wolfWitchResult;
+    const suffix = res
+      ? ` ➜ ${getRoleById(res.perceivedRoleId)?.name ?? res.perceivedRoleId}`
+      : '';
+    lines.push(`狼巫查驗：${fmt(draft.wolfWitchCheckTarget)}${suffix}`);
+  }
+  if (draft.pureWhiteCheckTarget != null) {
+    const res = entry?.pureWhiteResult;
+    const suffix = res
+      ? ` ➜ ${getRoleById(res.perceivedRoleId)?.name ?? res.perceivedRoleId}`
+      : '';
+    lines.push(`純白之女查驗：${fmt(draft.pureWhiteCheckTarget)}${suffix}`);
+  }
+  if (draft.demonWolfCheckTarget != null) {
+    const res = entry?.demonWolfResult;
+    const suffix = res ? ` ➜ ${res.roleType === 'god' ? '神職' : '平民'}` : '';
+    lines.push(`惡魔查驗：${fmt(draft.demonWolfCheckTarget)}${suffix}`);
+  }
+  if (draft.pumpkinGhostCheckTarget != null) {
+    const res = entry?.pumpkinGhostResult;
+    const suffix = res
+      ? ` ➜ ${getRoleById(res.perceivedRoleId)?.name ?? res.perceivedRoleId}`
+      : '';
+    lines.push(`南瓜鬼查驗：${fmt(draft.pumpkinGhostCheckTarget)}${suffix}`);
+  }
+  if (entry?.gravekeeperResult?.exiledSeat != null) {
+    lines.push(`守墓人驗屍：${entry.gravekeeperResult.summary}`);
+  }
+  if (draft.crowCurseTarget != null) lines.push(`烏鴉詛咒：${fmt(draft.crowCurseTarget)}`);
+  if (draft.miracleMerchantTarget != null) {
+    lines.push(`奇蹟商人贈禮：${fmt(draft.miracleMerchantTarget)}`);
+  }
+  if (draft.blackMarketTarget != null) {
+    lines.push(`黑市商人贈禮：${fmt(draft.blackMarketTarget)}`);
+  }
+  if (draft.evilMerchantTarget != null) {
+    lines.push(`邪惡商人贈禮：${fmt(draft.evilMerchantTarget)}`);
+  }
+  if (draft.demonHunterTarget != null) lines.push(`獵魔人狩獵：${fmt(draft.demonHunterTarget)}`);
+  if (draft.wolfRavenClawKillTarget != null) {
+    lines.push(`狼鴉之爪刀口：${fmt(draft.wolfRavenClawKillTarget)}`);
+  }
+  if (draft.bigBadWolfKillTarget != null) {
+    lines.push(`大野狼額外刀：${fmt(draft.bigBadWolfKillTarget)}`);
+  }
+  if (draft.bigGreyWolfKillTarget != null) {
+    lines.push(`大灰狼擊殺：${fmt(draft.bigGreyWolfKillTarget)}`);
+  }
+  if (draft.wolfYoungerBrotherKillTarget != null) {
+    lines.push(`狼弟覺醒刀：${fmt(draft.wolfYoungerBrotherKillTarget)}`);
+  }
+  if (draft.jackRipperKillTarget != null) {
+    lines.push(`開膛手傑克擊殺：${fmt(draft.jackRipperKillTarget)}`);
+  }
+  if (draft.scarletAttachTarget != null) {
+    lines.push(`猩紅狼王附著：${fmt(draft.scarletAttachTarget)}`);
+  }
+  if (draft.nightNobleServantTarget != null) {
+    lines.push(`夜之貴族夜僕：${fmt(draft.nightNobleServantTarget)}`);
+  }
+  if (draft.sleepingBeautyPickSeat != null) {
+    lines.push(`睡美人選擇：${fmt(draft.sleepingBeautyPickSeat)}`);
+  }
+  if (draft.socialiteTarget != null) lines.push(`名媛寵幸：${fmt(draft.socialiteTarget)}`);
+  if (draft.enchanterTarget != null) lines.push(`蠱惑師蠱惑：${fmt(draft.enchanterTarget)}`);
+  if (draft.radiantEarlTarget != null) lines.push(`輝光伯爵守護：${fmt(draft.radiantEarlTarget)}`);
+  if (draft.blackBatTarget != null) lines.push(`黑蝙蝠庇護：${fmt(draft.blackBatTarget)}`);
+  if (draft.darkNightEnvoyTarget != null) {
+    lines.push(`黑夜使者庇護：${fmt(draft.darkNightEnvoyTarget)}`);
+  }
+  if (draft.alchemyFogTargets && draft.alchemyFogTargets.length > 0) {
+    lines.push(`未明之霧：${draft.alchemyFogTargets.map(fmt).join('、')}`);
+  }
+  if (entry?.bearRoar) {
+    lines.push(`熊判定：${entry.bearRoar.roared ? '咆哮' : '未咆哮'}`);
+  }
+  if (pendingSelfExplodeSeat != null) {
+    lines.push(`自爆待出局：${fmt(pendingSelfExplodeSeat)}`);
+  }
+
+  return lines;
 }

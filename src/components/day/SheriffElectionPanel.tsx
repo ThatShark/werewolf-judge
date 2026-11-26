@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  assignAllVotesToCandidate,
   getEligibleSheriffVoters,
   getSheriffPkSpeakingOrder,
   isSheriffElectionActive,
@@ -8,6 +9,7 @@ import {
 } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { InlineCountdownTimer } from '../common/InlineCountdownTimer';
 import { formatSeatNum } from '../common/displayHelpers';
 
 interface SheriffElectionPanelProps {
@@ -51,13 +53,20 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
     [electionActive, sheriffState, seats],
   );
 
+  const isPkRound =
+    sheriffState.status === 'pk_speaking' ||
+    sheriffState.status === 'pk_voting' ||
+    sheriffState.pkCandidates.length > 0;
+
   const lockedOutVoters = useMemo(() => {
-    const excluded = new Set([...sheriffState.candidates, ...sheriffState.withdrawnSeats]);
+    const excluded = isPkRound
+      ? new Set(sheriffState.pkCandidates)
+      : new Set([...sheriffState.candidates, ...sheriffState.withdrawnSeats]);
     return aliveSeats
       .filter((s) => excluded.has(s.seatNumber))
       .map((s) => s.seatNumber)
       .sort((a, b) => a - b);
-  }, [aliveSeats, sheriffState.candidates, sheriffState.withdrawnSeats]);
+  }, [aliveSeats, isPkRound, sheriffState.pkCandidates, sheriffState.candidates, sheriffState.withdrawnSeats]);
 
   const normalizedVotes = useMemo(() => {
     const validTargets = new Set(activeCandidates);
@@ -227,10 +236,12 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
           </div>
           {sheriffState.withdrawnSeats.length > 0 && (
             <div className="border-t border-subtle pt-2 text-[12px] text-muted tabular-nums">
-              已退水（無投票權）：{sheriffState.withdrawnSeats.map(formatSeatNum).join('、')} 號
+              已退水（首輪無投票權，PK 時恢復）：{sheriffState.withdrawnSeats.map(formatSeatNum).join('、')} 號
             </div>
           )}
         </div>
+
+        <InlineCountdownTimer title="警上競選發言倒數" />
 
         <button
           type="button"
@@ -292,6 +303,8 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
           </div>
         </div>
 
+        <InlineCountdownTimer title="警長平票 PK 發言倒數" />
+
         <button
           type="button"
           disabled={disabled}
@@ -328,14 +341,31 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         <span className="text-[14px] font-semibold text-primary">
           {isPk ? '步驟 D · 警長 PK 投票' : '步驟 C · 警下投票'}
         </span>
+      </div>
+
+      {/* 計票模式切換直接外移至主畫面 */}
+      <div className="grid grid-cols-2 gap-1 rounded-md border border-subtle bg-canvas p-1">
         <button
           type="button"
-          onClick={() =>
-            setVoteInputMode(voteInputMode === 'by_candidate' ? 'by_voter' : 'by_candidate')
-          }
-          className="min-h-9 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+          onClick={() => setVoteInputMode('by_candidate')}
+          className={`min-h-10 rounded-md text-[12px] font-semibold transition ${
+            voteInputMode === 'by_candidate'
+              ? 'bg-elevated text-sheriff'
+              : 'text-secondary hover:text-primary'
+          }`}
         >
-          {voteInputMode === 'by_candidate' ? '逐號模式' : '候選模式'}
+          依候選人點票
+        </button>
+        <button
+          type="button"
+          onClick={() => setVoteInputMode('by_voter')}
+          className={`min-h-10 rounded-md text-[12px] font-semibold transition ${
+            voteInputMode === 'by_voter'
+              ? 'bg-elevated text-sheriff'
+              : 'text-secondary hover:text-primary'
+          }`}
+        >
+          逐號點選
         </button>
       </div>
 
@@ -345,7 +375,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         </div>
       )}
 
-      {/* 候選人列（含票數與退水鍵） */}
+      {/* 候選人列（含票數、全票快捷與退水鍵） */}
       <div className="grid grid-cols-2 gap-1.5">
         {activeCandidates.map((seatNum) => {
           const isActive = activeCandidateForTally === seatNum;
@@ -353,7 +383,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
           return (
             <div
               key={seatNum}
-              className={`flex min-h-12 items-center justify-between gap-1 rounded-md px-2.5 ${
+              className={`flex h-12 items-center justify-between gap-1 rounded-md px-2 ${
                 isActive
                   ? 'border-selected-sheriff bg-sheriff-tint'
                   : 'border border-subtle bg-surface'
@@ -362,7 +392,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
               <button
                 type="button"
                 onClick={() => setSelectedCandidateTab(seatNum)}
-                className="flex min-h-11 flex-1 items-center justify-between pr-2 text-left"
+                className="flex h-full min-w-0 flex-1 items-center justify-between pr-1 text-left"
               >
                 <span className="text-[14px] font-semibold tabular-nums text-primary">
                   {formatSeatNum(seatNum)} 號
@@ -371,12 +401,25 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
                   {voteCount}
                 </span>
               </button>
+              {voteInputMode === 'by_candidate' && (
+                <button
+                  type="button"
+                  disabled={disabled || eligibleVoters.length === 0}
+                  onClick={() => {
+                    setSelectedCandidateTab(seatNum);
+                    setVotesDraft(assignAllVotesToCandidate(eligibleVoters, seatNum));
+                  }}
+                  className="min-h-8 shrink-0 rounded border border-subtle bg-canvas px-1.5 text-[12px] font-semibold text-secondary hover:border-sheriff-border hover:text-sheriff disabled:opacity-40"
+                >
+                  全票
+                </button>
+              )}
               {!isPk && (
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => setPendingWithdrawSeat(seatNum)}
-                  className="min-h-9 rounded-md border border-subtle bg-canvas px-2 text-[12px] text-secondary hover:border-wolf-border hover:text-wolf"
+                  className="min-h-8 shrink-0 rounded border border-subtle bg-canvas px-1.5 text-[12px] text-secondary hover:border-wolf-border hover:text-wolf"
                 >
                   退水
                 </button>
@@ -388,7 +431,9 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
 
       {lockedOutVoters.length > 0 && (
         <div className="text-[12px] text-muted tabular-nums">
-          無投票權（上警／退水已鎖定）：{lockedOutVoters.map(formatSeatNum).join('、')} 號
+          {isPk
+            ? `無投票權（平票 PK 候選人，退水玩家已恢復投票權）：${lockedOutVoters.map(formatSeatNum).join('、')} 號`
+            : `無投票權（上警／退水已鎖定）：${lockedOutVoters.map(formatSeatNum).join('、')} 號`}
         </div>
       )}
 

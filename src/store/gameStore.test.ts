@@ -76,6 +76,11 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     // 第一晚狼刀 5 號，女巫不救
     useGameStore.getState().updateNightDraft({ wolfTarget: 5 });
     useGameStore.getState().finishNight();
+    // 警長競選期間 5 號尚未公布死亡；進入死訊公告後正式出局
+    expect(useGameStore.getState().phase).toBe('day_announcement');
+    expect(useGameStore.getState().dayStage).toBe('sheriff_election');
+    expect(useGameStore.getState().seats[4].isAlive).toBe(true);
+    useGameStore.getState().proceedToDeathAnnouncement();
 
     expect(useGameStore.getState().phase).toBe('day_announcement');
     expect(useGameStore.getState().seats[4].isAlive).toBe(false);
@@ -338,9 +343,10 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().claimSeatRole(11, 'hunter').ok).toBe(true);
     expect(useGameStore.getState().claimSeatRole(12, 'idiot').ok).toBe(true);
 
-    // 5~8 號尚未認領，第一晚狼刀 5 號後結算 -> 5~8 號自動補為平民
+    // 5~8 號尚未認領，第一晚狼刀 5 號後結算 -> 5~8 號自動補為平民，公布死訊後 5 號出局
     useGameStore.getState().updateNightDraft({ wolfTarget: 5 });
     useGameStore.getState().finishNight();
+    useGameStore.getState().proceedToDeathAnnouncement();
 
     const afterNight = useGameStore.getState();
     expect(afterNight.phase).toBe('day_announcement');
@@ -461,6 +467,7 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     // 夜間行動：狼刀 5 號、女巫不救、預言家驗 1 號
     useGameStore.getState().updateNightDraft({ wolfTarget: 5, seerCheckTarget: 1 });
     useGameStore.getState().finishNight();
+    useGameStore.getState().proceedToDeathAnnouncement();
 
     // 結算後 5~8 號自動判定為平民，且 5 號出局
     const afterNight = useGameStore.getState();
@@ -654,7 +661,8 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().startGame().ok).toBe(true);
     expect(useGameStore.getState().undoStack).toHaveLength(0);
 
-    // 1. 第一晚狼刀 5 號並結算 -> 撤銷後應回到第一晚且 5 號仍存活
+    // 1. 第一晚狼刀 5 號並結算（關閉警長以直接進入死訊公告） -> 撤銷後應回到第一晚且 5 號仍存活
+    useGameStore.getState().updateRuleOverrides({ enableSheriff: false });
     useGameStore.getState().updateNightDraft({ wolfTarget: 5 });
     useGameStore.getState().finishNight();
     expect(useGameStore.getState().phase).toBe('day_announcement');

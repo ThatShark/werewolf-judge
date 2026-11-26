@@ -1,4 +1,14 @@
-import type { NightActionDraft, NightActionType } from '../../logic/types';
+import { getRoleById } from '../../data/roles';
+import type {
+  CombatRuntimeState,
+  ConversionRuntimeState,
+  HybridRuntimeState,
+  MechWolfRuntimeState,
+  NightActionDraft,
+  NightActionType,
+  PlayerSeat,
+  ThirdPartySpecialRuntimeState,
+} from '../../logic/types';
 
 /** 依步驟 actionType 從當前夜間草稿讀取單目標預選座位 */
 export function getInitialTargetForStep(
@@ -205,4 +215,99 @@ export function getSeatActionIcons(
   }
   if (draft.jackRipperKillTarget === seatNumber) icons.push('🔪');
   return icons;
+}
+
+export interface SeatFactionChip {
+  label: '狼' | '神' | '民' | '三方';
+  className: string;
+}
+
+/** 取得角色精簡陣營標記（狼／神／民／三方） */
+export function getSeatFactionChip(roleId: string | null): SeatFactionChip | null {
+  const role = getRoleById(roleId);
+  if (!role) return null;
+  if (role.faction === 'wolf') {
+    return { label: '狼', className: 'text-wolf' };
+  }
+  if (role.faction === 'third_party') {
+    return { label: '三方', className: 'text-third' };
+  }
+  if (role.category === 'god') {
+    return { label: '神', className: 'text-good' };
+  }
+  return { label: '民', className: 'text-secondary' };
+}
+
+export interface SeatStatusTag {
+  label: string;
+  tone: 'wolf' | 'good' | 'sheriff' | 'third' | 'muted';
+}
+
+export interface SeatStatusContext {
+  draft: NightActionDraft;
+  activeCharmedSeat?: number | null;
+  lastDreamTarget?: number | null;
+  hybridState?: HybridRuntimeState;
+  mechWolfState?: MechWolfRuntimeState;
+  combatState?: CombatRuntimeState;
+  conversionState?: ConversionRuntimeState;
+  thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
+}
+
+/**
+ * 彙整單一座位的所有附著狀態標籤（供實體法官開啟「顯示底牌」時一眼判讀）。
+ */
+export function getSeatAttachedStatusTags(
+  seat: PlayerSeat,
+  ctx: SeatStatusContext,
+): SeatStatusTag[] {
+  const tags: SeatStatusTag[] = [];
+  const sn = seat.seatNumber;
+  const { draft, hybridState, mechWolfState, combatState, conversionState, thirdPartySpecialState } =
+    ctx;
+
+  if (hybridState?.idolSeat === sn) tags.push({ label: '被混血', tone: 'third' });
+  if (seat.maskedDelayedDeath || seat.oldRascalDelayedDeath || seat.baiZeDelayedDeath) {
+    tags.push({ label: '負傷', tone: 'wolf' });
+  }
+  const isLucky =
+    thirdPartySpecialState?.miracleLuckySeat === sn ||
+    thirdPartySpecialState?.blackMarketLuckySeat === sn ||
+    Boolean(thirdPartySpecialState?.superBlackMarketGifts?.some((g) => g.seat === sn));
+  if (isLucky) tags.push({ label: '幸運兒', tone: 'sheriff' });
+
+  if (
+    ctx.activeCharmedSeat === sn ||
+    draft.wolfBeautyCharmTarget === sn ||
+    combatState?.awakenedWolfBeautyActiveCharmSeat === sn
+  ) {
+    tags.push({ label: '魅惑', tone: 'wolf' });
+  }
+  if (draft.witchPoisonTarget === sn || draft.poisonerTarget === sn || draft.awakenedWitchPoisonTarget === sn) {
+    tags.push({ label: '中毒', tone: 'wolf' });
+  }
+  if (draft.guardTarget === sn) tags.push({ label: '守護', tone: 'good' });
+  if (draft.dreamCatcherTarget === sn || ctx.lastDreamTarget === sn) {
+    tags.push({ label: '連夢', tone: 'third' });
+  }
+  if (draft.nightmareFearTarget === sn) tags.push({ label: '恐懼', tone: 'wolf' });
+  if (seat.infectedBySeedWolf || seat.infectedByZombie || draft.seedWolfInfectTarget === sn) {
+    tags.push({ label: '感染', tone: 'third' });
+  }
+  if (seat.petrified || draft.medusaPetrifyTarget === sn) tags.push({ label: '石化', tone: 'wolf' });
+  if (seat.muted || draft.muteElderTarget === sn) tags.push({ label: '禁言', tone: 'sheriff' });
+  if (conversionState?.cupidLovers?.includes(sn)) tags.push({ label: '情侶', tone: 'third' });
+  if (seat.idiotRevealed || seat.whiteCatRevealed) tags.push({ label: '翻牌', tone: 'sheriff' });
+  if (seat.isPuppetized) tags.push({ label: '傀儡', tone: 'wolf' });
+  if (combatState?.scarletAttachedSeats?.includes(sn)) tags.push({ label: '猩紅', tone: 'wolf' });
+  if (combatState?.nightNobleServantSeat === sn) tags.push({ label: '夜僕', tone: 'third' });
+  if (thirdPartySpecialState?.sleepingSeats?.includes(sn)) tags.push({ label: '沉睡', tone: 'third' });
+  if (thirdPartySpecialState?.crowActiveCursedSeat === sn || draft.crowCurseTarget === sn) {
+    tags.push({ label: '詛咒', tone: 'sheriff' });
+  }
+  if (mechWolfState?.learnedFromSeat === sn || draft.mechWolfLearnTarget === sn) {
+    tags.push({ label: '被學', tone: 'sheriff' });
+  }
+
+  return tags;
 }

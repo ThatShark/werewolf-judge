@@ -1069,6 +1069,33 @@ export interface NightHistoryEntry {
   moonSpiritHowl?: MoonSpiritHowlResult | null;
   nineTailedFoxResult?: NineTailedFoxResult | null;
   seniorVillagerReveal?: SeniorVillagerRevealResult | null;
+  seerResult?: SeerCheckOutcome | null;
+  psychicResult?: PsychicCheckOutcome | null;
+  mechWolfPsychicResult?: PsychicCheckOutcome | null;
+  awakenedSeerResult?: AwakenedSeerCheckOutcome | null;
+  lanternSeerResult?: SeerCheckOutcome | null;
+  drunkSeerResult?: SeerCheckOutcome | null;
+  foolSeerResult?: SeerCheckOutcome | null;
+  foxResult?: FoxCheckOutcome | null;
+  gargoyleResult?: PsychicCheckOutcome | null;
+  wolfWitchResult?: PsychicCheckOutcome | null;
+  pureWhiteResult?: PsychicCheckOutcome | null;
+  demonWolfResult?: DemonWolfCheckOutcome | null;
+  pumpkinGhostResult?: PsychicCheckOutcome | null;
+  gravekeeperResult?: GravekeeperExileOutcome | null;
+  awakenedDreamResult?: AwakenedDreamCheckOutcome | null;
+}
+
+export interface PendingNightAnnouncement {
+  seats: PlayerSeat[];
+  pendingShooters: Array<ShootEligibility & { deathReason: DeathReason }>;
+  victory: VictoryResult;
+}
+
+export interface ExileResolvedToday {
+  outcome: 'exile' | 'no_exile' | 'idiot_revealed' | 'survived';
+  seat: number | null;
+  summary: string;
 }
 
 export type DayStructuredEventType =
@@ -1181,6 +1208,10 @@ export interface GameState {
   /** 警長競選、警徽與白天放逐投票狀態 */
   sheriffState: SheriffState;
   exilePkCandidates: number[];
+  /** 首夜有警長競選時，暫存昨晚結算結果，待「公布死訊」階段才正式套用死亡與觸發警徽交接 */
+  pendingNightAnnouncement?: PendingNightAnnouncement | null;
+  /** 本日白天放逐結果是否已結算（放逐或平安日後鎖定禁止二輪放逐，僅定序王子重投可解除） */
+  exileResolvedToday?: ExileResolvedToday | null;
   /** 中央操作雙模式投票紀錄器模式 */
   voteInputMode: VoteInputMode;
 

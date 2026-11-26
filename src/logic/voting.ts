@@ -242,3 +242,17 @@ export function toggleVoterForCandidate(
     [voterSeat]: currentlyPicked ? null : candidateSeat,
   };
 }
+
+/**
+ * 「全票」快捷指定：除候選人自己外，場上所有具投票權玩家全數投給該候選人（候選人本人記為 null）。
+ */
+export function assignAllVotesToCandidate(
+  eligibleVoters: number[],
+  candidateSeat: number,
+): Record<number, number | null> {
+  const result: Record<number, number | null> = {};
+  for (const voterSeat of eligibleVoters) {
+    result[voterSeat] = voterSeat === candidateSeat ? null : candidateSeat;
+  }
+  return result;
+}

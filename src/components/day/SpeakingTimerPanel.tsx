@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { playSoftTimerChime } from '../../audio/timerChime';
 import { isSheriffElectionActive, resolveDaySpeakingRule } from '../../logic';
 import type { SpeakingOrderMode } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
@@ -55,6 +56,7 @@ export function SpeakingTimerPanel() {
   useEffect(() => {
     if (remainingSeconds <= 0 && timerRunning) {
       setTimerRunning(false);
+      playSoftTimerChime();
     }
   }, [remainingSeconds, timerRunning]);
 
@@ -174,7 +176,7 @@ export function SpeakingTimerPanel() {
               {currentSpeakerSeat !== null
                 ? `發言中 ${currentSpeakerIndex + 1} / ${speakingQueue.length}`
                 : isSpeakingFinished
-                  ? '全員發言完畢'
+                  ? `發言完畢 ${speakingQueue.length} / ${speakingQueue.length}`
                   : `D${round} 發言計時`}
             </div>
             <div className="mt-0.5 truncate text-[18px] font-semibold leading-6 tabular-nums text-primary">
@@ -182,7 +184,9 @@ export function SpeakingTimerPanel() {
                 ? `${formatSeatNum(currentSpeakerSeat)} 號${
                     currentSpeakerObj?.nickname.trim() ? ` ${currentSpeakerObj.nickname.trim()}` : ''
                   }${speakingMeta?.sheriffLastSeat === currentSpeakerSeat ? '（歸票）' : ''}`
-                : '尚未抽取順序'}
+                : isSpeakingFinished
+                  ? '所有人發言完畢'
+                  : '尚未抽取順序'}
             </div>
           </div>
 

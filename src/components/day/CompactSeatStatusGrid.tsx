@@ -34,7 +34,7 @@ export function CompactSeatStatusGrid({
         key={seat.seatNumber}
         type="button"
         onClick={onOpenSeatDrawer}
-        className={`flex min-h-12 w-full items-center justify-between gap-1.5 rounded-md px-2.5 text-left transition ${
+        className={`flex h-12 w-full items-center justify-between gap-1.5 rounded-md px-2.5 text-left transition ${
           isSpeaking
             ? 'border-selected-sheriff bg-sheriff-tint text-primary'
             : isNightDead

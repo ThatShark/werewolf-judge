@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  assignAllVotesToCandidate,
   getBatch5ExileExtraVotes,
   getEligibleExileVoters,
   tallyExileVotes,
@@ -155,6 +156,12 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     [eligibleVoters, normalizedVotes],
   );
 
+  const handleAllVotesForCandidate = (candidateSeat: number) => {
+    if (disabled) return;
+    setSelectedCandidateTab(candidateSeat);
+    setVotesDraft(assignAllVotesToCandidate(eligibleVoters, candidateSeat));
+  };
+
   const renderTargetRow = (seat: (typeof seats)[number]) => {
     const isActive = activeCandidateForTally === seat.seatNumber;
     const total = tallyPreview?.totals[seat.seatNumber] ?? 0;
@@ -162,51 +169,65 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     const isTop = tallyPreview?.topSeats.includes(seat.seatNumber) && total > 0;
 
     return (
-      <button
+      <div
         key={seat.seatNumber}
-        type="button"
-        disabled={disabled}
-        onClick={() => setSelectedCandidateTab(seat.seatNumber)}
-        className={`flex min-h-12 w-full items-center justify-between gap-2 rounded-md px-2.5 text-left transition ${
+        className={`flex h-12 w-full items-center justify-between gap-1 rounded-md px-2 transition ${
           isActive
             ? 'border-selected-sheriff bg-sheriff-tint text-primary'
             : 'border border-subtle bg-surface text-primary hover:border-strong'
         }`}
       >
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="w-6 shrink-0 text-[14px] font-semibold tabular-nums">
-            {formatSeatNum(seat.seatNumber)}
-          </span>
-          <span className="truncate text-[12px] text-secondary">
-            {seat.nickname.trim() || `${seat.seatNumber}號`}
-          </span>
-        </div>
-        <div className="flex shrink-0 items-center gap-1 tabular-nums">
-          {extra > 0 && (
-            <span className="text-[12px] font-semibold text-third">+{extra}</span>
-          )}
-          <span
-            className={`text-[18px] font-semibold leading-none ${
-              isTop ? 'text-wolf' : total > 0 ? 'text-primary' : 'text-muted'
-            }`}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setSelectedCandidateTab(seat.seatNumber)}
+          className="flex h-full min-w-0 flex-1 items-center justify-between gap-1.5 text-left"
+        >
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="w-6 shrink-0 text-[14px] font-semibold tabular-nums">
+              {formatSeatNum(seat.seatNumber)}
+            </span>
+            <span className="truncate text-[12px] text-secondary">
+              {seat.nickname.trim() || `${seat.seatNumber}號`}
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 tabular-nums">
+            {extra > 0 && (
+              <span className="text-[12px] font-semibold text-third">+{extra}</span>
+            )}
+            <span
+              className={`text-[18px] font-semibold leading-none ${
+                isTop ? 'text-wolf' : total > 0 ? 'text-primary' : 'text-muted'
+              }`}
+            >
+              {total}
+            </span>
+          </div>
+        </button>
+        {voteInputMode === 'by_candidate' && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => handleAllVotesForCandidate(seat.seatNumber)}
+            className="min-h-8 shrink-0 rounded border border-subtle bg-canvas px-1.5 text-[12px] font-semibold text-secondary hover:border-sheriff-border hover:text-sheriff disabled:opacity-40"
           >
-            {total}
-          </span>
-        </div>
-      </button>
+            全票
+          </button>
+        )}
+      </div>
     );
   };
 
   return (
     <div className="space-y-2.5">
-      {/* 頂部精簡列：標題／PK 標記 ＋ 右上角選單 */}
+      {/* 頂部精簡列：標題／PK 標記 ＋ 外置計票模式切換 ＋ 右上角選單 */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold text-primary">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-[14px] font-semibold text-primary">
             {exilePkCandidates.length > 0 ? 'PK 投票' : '放逐計票'}
           </span>
           {tallyPreview && tallyPreview.topSeats.length > 0 && tallyPreview.maxVotes > 0 && (
-            <span className="text-[12px] font-semibold tabular-nums text-wolf">
+            <span className="truncate text-[12px] font-semibold tabular-nums text-wolf">
               領先 {tallyPreview.topSeats.map(formatSeatNum).join('/')}（{tallyPreview.maxVotes}）
             </span>
           )}
@@ -214,9 +235,35 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
-          className="min-h-10 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+          className="min-h-10 shrink-0 rounded-md border border-subtle bg-surface px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
         >
-          計票選單
+          更多
+        </button>
+      </div>
+
+      {/* 計票模式切換直接外移至主畫面 */}
+      <div className="grid grid-cols-2 gap-1 rounded-md border border-subtle bg-canvas p-1">
+        <button
+          type="button"
+          onClick={() => setVoteInputMode('by_candidate')}
+          className={`min-h-10 rounded-md text-[12px] font-semibold transition ${
+            voteInputMode === 'by_candidate'
+              ? 'bg-elevated text-sheriff'
+              : 'text-secondary hover:text-primary'
+          }`}
+        >
+          依候選人點票
+        </button>
+        <button
+          type="button"
+          onClick={() => setVoteInputMode('by_voter')}
+          className={`min-h-10 rounded-md text-[12px] font-semibold transition ${
+            voteInputMode === 'by_voter'
+              ? 'bg-elevated text-sheriff'
+              : 'text-secondary hover:text-primary'
+          }`}
+        >
+          逐號點選
         </button>
       </div>
 

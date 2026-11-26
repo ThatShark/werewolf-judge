@@ -114,13 +114,21 @@ export function withdrawSheriffCandidate(
 }
 
 /**
- * 取得具警下投票權之座位清單：存活且未曾上警（排除目前候選人與已退水玩家）。
+ * 取得具警下投票權之座位清單：
+ * - 首輪警下投票：存活且未曾上警（排除目前候選人與已退水玩家）。
+ * - 平票 PK 輪：退水玩家與非 PK 玩家恢復投票權，僅平票 PK 候選人本人不可投票。
  */
 export function getEligibleSheriffVoters(
   state: SheriffState,
   seats: PlayerSeat[],
 ): number[] {
-  const excluded = new Set([...state.candidates, ...state.withdrawnSeats]);
+  const isPkRound =
+    state.status === 'pk_speaking' ||
+    state.status === 'pk_voting' ||
+    state.pkCandidates.length > 0;
+  const excluded = isPkRound
+    ? new Set(state.pkCandidates)
+    : new Set([...state.candidates, ...state.withdrawnSeats]);
   return seats
     .filter((seat) => seat.isAlive && !excluded.has(seat.seatNumber))
     .map((seat) => seat.seatNumber)

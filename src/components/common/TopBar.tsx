@@ -41,6 +41,13 @@ export function TopBar({
 }: TopBarProps) {
   const isGame = activeView === 'game';
   const showQA = isGame && Boolean(board);
+  const showHistory =
+    isGame &&
+    (phase === 'pass_and_reveal' ||
+      phase === 'night' ||
+      phase === 'day_announcement' ||
+      phase === 'day_vote' ||
+      phase === 'game_over');
   const viewTitle =
     activeView !== 'game' && activeView !== 'home' ? VIEW_TITLES[activeView] : null;
 
@@ -103,13 +110,15 @@ export function TopBar({
                 筆記
               </button>
             )}
-            <button
-              type="button"
-              onClick={onOpenHistory}
-              className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
-            >
-              紀錄
-            </button>
+            {showHistory && (
+              <button
+                type="button"
+                onClick={onOpenHistory}
+                className="min-h-11 rounded-md px-2 text-[12px] font-medium text-secondary transition hover:bg-elevated hover:text-primary"
+              >
+                紀錄
+              </button>
+            )}
             {showQA && (
               <button
                 type="button"

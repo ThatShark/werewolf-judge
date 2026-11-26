@@ -172,6 +172,8 @@ export type UndoSnapshotData = Pick<
   | 'remainingSeconds'
   | 'sheriffState'
   | 'exilePkCandidates'
+  | 'pendingNightAnnouncement'
+  | 'exileResolvedToday'
   | 'nightHistory'
   | 'dayHistory'
   | 'winner'
@@ -437,6 +439,8 @@ function createInitialGameState(): GameState & {
     remainingSeconds: DEFAULT_SPEAK_DURATION_SEC,
     sheriffState: createInitialSheriffState(),
     exilePkCandidates: [],
+    pendingNightAnnouncement: null,
+    exileResolvedToday: null,
     voteInputMode: 'by_voter',
     notebook: createInitialNotebookState(),
     nightHistory: [],
@@ -495,6 +499,8 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     remainingSeconds: state.remainingSeconds,
     sheriffState: state.sheriffState,
     exilePkCandidates: state.exilePkCandidates,
+    pendingNightAnnouncement: state.pendingNightAnnouncement ?? null,
+    exileResolvedToday: state.exileResolvedToday ?? null,
     nightHistory: state.nightHistory,
     dayHistory: state.dayHistory,
     winner: state.winner,
@@ -512,6 +518,28 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
 function pushUndo(state: GameStore, label: string): UndoSnapshot[] {
   const next = [...state.undoStack, captureUndoSnapshot(state, label)];
   return next.length > MAX_UNDO_STEPS ? next.slice(next.length - MAX_UNDO_STEPS) : next;
+}
+
+function mergePendingNightDeaths(
+  seats: GameState['seats'],
+  pending: GameState['pendingNightAnnouncement'],
+): GameState['seats'] {
+  if (!pending) return seats;
+  const deadBySeat = new Map(
+    pending.seats.filter((s) => !s.isAlive).map((s) => [s.seatNumber, s]),
+  );
+  if (deadBySeat.size === 0) return seats;
+  return seats.map((seat) => {
+    if (!seat.isAlive) return seat;
+    const deferredDead = deadBySeat.get(seat.seatNumber);
+    if (!deferredDead) return seat;
+    return {
+      ...seat,
+      isAlive: false,
+      deathReason: deferredDead.deathReason,
+      deathRound: deferredDead.deathRound,
+    };
+  });
 }
 
 function appendDayEvent(
@@ -847,6 +875,8 @@ export const useGameStore = create<GameStore>()(
           remainingSeconds: defaultSpeakDurationSec,
           sheriffState: createInitialSheriffState(),
           exilePkCandidates: [],
+          pendingNightAnnouncement: null,
+          exileResolvedToday: null,
           nightHistory: [],
           dayHistory: [],
           winner: null,
@@ -1068,8 +1098,45 @@ export const useGameStore = create<GameStore>()(
           ? 'sheriff_election'
           : 'death_announcement';
 
+        // 首夜若進入警長競選且尚未分出勝負：首夜死者於競選期間仍視為在場，待「公布昨晚死訊」時才正式宣告死亡並觸發警徽交接
+        const deferNightDeaths =
+          !triggerGameOver &&
+          state.round === 1 &&
+          initialDayStage === 'sheriff_election' &&
+          state.ruleOverrides.enableSheriff &&
+          nextSheriffState.status === 'not_started';
+
+        const nextNightEntry = {
+          round: state.round,
+          draft: JSON.parse(JSON.stringify(state.currentNightDraft)) as NightActionDraft,
+          deaths: result.deaths,
+          bearRoar: result.bearRoar,
+          moonSpiritHowl: result.moonSpiritHowl,
+          nineTailedFoxResult: result.nineTailedFoxResult,
+          seniorVillagerReveal: result.seniorVillagerReveal,
+          seerResult: result.seerResult,
+          psychicResult: result.psychicResult,
+          mechWolfPsychicResult: result.mechWolfPsychicResult,
+          awakenedSeerResult: result.awakenedSeerResult,
+          lanternSeerResult: result.lanternSeerResult,
+          drunkSeerResult: result.drunkSeerResult,
+          foolSeerResult: result.foolSeerResult,
+          foxResult: result.foxResult,
+          gargoyleResult: result.gargoyleResult,
+          wolfWitchResult: result.wolfWitchResult,
+          pureWhiteResult: result.pureWhiteResult,
+          demonWolfResult: result.demonWolfResult,
+          pumpkinGhostResult: result.pumpkinGhostResult,
+          gravekeeperResult: result.gravekeeperResult,
+          awakenedDreamResult: result.awakenedDreamResult,
+        };
+        const nextNightHistory = [
+          ...state.nightHistory.filter((entry) => entry.round !== state.round),
+          nextNightEntry,
+        ].sort((a, b) => a.round - b.round);
+
         set({
-          seats: result.seats,
+          seats: deferNightDeaths ? resolvedInputSeats : result.seats,
           witchAntidoteUsed: result.witchAntidoteUsed,
           witchPoisonUsed: result.witchPoisonUsed,
           lastGuardedSeat: result.lastGuardedSeat,
@@ -1104,25 +1171,23 @@ export const useGameStore = create<GameStore>()(
           speakingMeta: null,
           remainingSeconds: state.defaultSpeakDurationSec,
           exilePkCandidates: [],
+          exileResolvedToday: null,
+          pendingNightAnnouncement: deferNightDeaths
+            ? {
+                seats: result.seats,
+                pendingShooters,
+                victory: result.victory,
+              }
+            : null,
           enterNightAfterPendingShooters: false,
-          nightHistory: [
-            ...state.nightHistory,
-            {
-              round: state.round,
-              draft: { ...state.currentNightDraft },
-              deaths: result.deaths,
-              bearRoar: result.bearRoar,
-              moonSpiritHowl: result.moonSpiritHowl,
-              nineTailedFoxResult: result.nineTailedFoxResult,
-              seniorVillagerReveal: result.seniorVillagerReveal,
-            },
-          ],
+          nightHistory: nextNightHistory,
           dayHistory: nextDayHistory,
-          pendingShooters,
-          winner: triggerGameOver ? result.victory.winner : null,
-          winReason: triggerGameOver ? result.victory.winReason : null,
-          preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
-          phase: triggerGameOver ? 'game_over' : 'day_announcement',
+          pendingShooters: deferNightDeaths ? [] : pendingShooters,
+          winner: !deferNightDeaths && triggerGameOver ? result.victory.winner : null,
+          winReason: !deferNightDeaths && triggerGameOver ? result.victory.winReason : null,
+          preGameOverPhase:
+            !deferNightDeaths && triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+          phase: !deferNightDeaths && triggerGameOver ? 'game_over' : 'day_announcement',
           dayStage: initialDayStage,
           undoStack: pushUndo(state, `結束第 ${state.round} 晚`),
         });
@@ -1454,7 +1519,11 @@ export const useGameStore = create<GameStore>()(
           });
         }
 
-        const synced = finalizeDayDeathSync(state, result.seats, {
+        const seatsWithDeferred = mergePendingNightDeaths(
+          result.seats,
+          state.pendingNightAnnouncement,
+        );
+        const synced = finalizeDayDeathSync(state, seatsWithDeferred, {
           wolfKillPriorityOverride: result.charmedDeathSeat !== null,
         });
         const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats);
@@ -1540,14 +1609,43 @@ export const useGameStore = create<GameStore>()(
       },
 
       proceedToDeathAnnouncement: () => {
-        set((state) => ({
-          dayStage: 'death_announcement',
-          speakingQueue: [],
-          currentSpeakerIndex: 0,
-          speakingMeta: null,
-          remainingSeconds: state.defaultSpeakDurationSec,
-          undoStack: pushUndo(state, '進入死訊公告'),
-        }));
+        set((state) => {
+          const pending = state.pendingNightAnnouncement;
+          if (!pending) {
+            return {
+              dayStage: 'death_announcement' as const,
+              speakingQueue: [],
+              currentSpeakerIndex: 0,
+              speakingMeta: null,
+              remainingSeconds: state.defaultSpeakDurationSec,
+              undoStack: pushUndo(state, '進入死訊公告'),
+            };
+          }
+
+          const appliedSeats = pending.seats;
+          const syncedSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, appliedSeats);
+          const triggerGameOver = shouldTriggerAutoVictory(
+            pending.victory,
+            state.forceContinueAfterVictory,
+          );
+
+          return {
+            seats: appliedSeats,
+            pendingShooters: pending.pendingShooters,
+            sheriffState: syncedSheriffState,
+            pendingNightAnnouncement: null,
+            dayStage: 'death_announcement' as const,
+            speakingQueue: [],
+            currentSpeakerIndex: 0,
+            speakingMeta: null,
+            remainingSeconds: state.defaultSpeakDurationSec,
+            winner: triggerGameOver ? pending.victory.winner : state.winner,
+            winReason: triggerGameOver ? pending.victory.winReason : state.winReason,
+            preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
+            phase: triggerGameOver ? 'game_over' : state.phase,
+            undoStack: pushUndo(state, '進入死訊公告'),
+          };
+        });
       },
 
       proceedToDaySpeaking: () => {
@@ -1610,6 +1708,11 @@ export const useGameStore = create<GameStore>()(
             : '放逐投票無人得票，本日無人出局（平安日）';
           set({
             exilePkCandidates: [],
+            exileResolvedToday: {
+              outcome: 'no_exile',
+              seat: null,
+              summary,
+            },
             dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
               type: 'exile_vote',
               summary,
@@ -1676,6 +1779,15 @@ export const useGameStore = create<GameStore>()(
             exileResult.charmedDeathSeat !== null ? null : state.activeCharmedSeat,
           sheriffState: nextSheriffState,
           exilePkCandidates: [],
+          exileResolvedToday: {
+            outcome: exileResult.idiotRevealed
+              ? 'idiot_revealed'
+              : exileResult.treasureMasterMaskedSurvived
+                ? 'survived'
+                : 'exile',
+            seat: targetSeat,
+            summary: outcomeText,
+          },
           dayHistory: nextDayHistory,
           pendingShooters,
           winner: triggerGameOver ? exileResult.victory.winner : state.winner,
@@ -1755,7 +1867,11 @@ export const useGameStore = create<GameStore>()(
           result.seats,
           state.superGravekeeperState ?? createInitialSuperGravekeeperState(),
         );
-        const synced = finalizeDayDeathSync(state, result.seats, {
+        const seatsWithDeferred = mergePendingNightDeaths(
+          result.seats,
+          state.pendingNightAnnouncement,
+        );
+        const synced = finalizeDayDeathSync(state, seatsWithDeferred, {
           wolfKillPriorityOverride: result.charmedDeathSeat !== null,
         });
         const finalSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats);
@@ -1777,6 +1893,15 @@ export const useGameStore = create<GameStore>()(
             result.charmedDeathSeat !== null ? null : state.activeCharmedSeat,
           sheriffState: finalSheriffState,
           exilePkCandidates: [],
+          exileResolvedToday: {
+            outcome: result.idiotRevealed
+              ? 'idiot_revealed'
+              : result.treasureMasterMaskedSurvived
+                ? 'survived'
+                : 'exile',
+            seat: targetSeat,
+            summary: eventText,
+          },
           dayHistory: nextDayHistory,
           pendingShooters,
           winner: finalTriggerGameOver ? synced.victory.winner : state.winner,
@@ -2211,6 +2336,7 @@ export const useGameStore = create<GameStore>()(
         set({
           finalBatchState: res.state,
           exilePkCandidates: [],
+          exileResolvedToday: null,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'manual_judge',
             summary,
@@ -2373,7 +2499,10 @@ export const useGameStore = create<GameStore>()(
         );
         const swallowedBadge = explodeBadge.swallowed;
         const deferredBadge = explodeBadge.deferred;
-        const seatsAfterExplode = result.seats ?? state.seats;
+        const seatsAfterExplode = mergePendingNightDeaths(
+          result.seats ?? state.seats,
+          state.pendingNightAnnouncement,
+        );
         const synced = finalizeDayDeathSync(state, seatsAfterExplode);
         const nextSheriffState = syncSheriffBadgeOnDeaths(explodeBadge.sheriffState, synced.seats);
 
@@ -2454,6 +2583,8 @@ export const useGameStore = create<GameStore>()(
             speakingMeta: null,
             remainingSeconds: state.defaultSpeakDurationSec,
             exilePkCandidates: [],
+            exileResolvedToday: null,
+            pendingNightAnnouncement: null,
             pendingShooters: [],
             enterNightAfterPendingShooters: false,
             phase: 'night',
@@ -2489,7 +2620,11 @@ export const useGameStore = create<GameStore>()(
         );
         const swallowedBadge = explodeBadge.swallowed;
         const deferredBadge = explodeBadge.deferred;
-        const synced = finalizeDayDeathSync(state, result.seats, {
+        const seatsWithDeferred = mergePendingNightDeaths(
+          result.seats,
+          state.pendingNightAnnouncement,
+        );
+        const synced = finalizeDayDeathSync(state, seatsWithDeferred, {
           wolfKillPriorityOverride: result.charmedDeathSeat !== null,
         });
         const nextSheriffState = syncSheriffBadgeOnDeaths(explodeBadge.sheriffState, synced.seats);
@@ -2906,6 +3041,8 @@ export const useGameStore = create<GameStore>()(
           speakingMeta: null,
           remainingSeconds: state.defaultSpeakDurationSec,
           exilePkCandidates: [],
+          exileResolvedToday: null,
+          pendingNightAnnouncement: null,
           pendingShooters: [],
           phase: 'night',
           undoStack: pushUndo(state, `進入第 ${nextRound} 晚`),
@@ -3129,6 +3266,8 @@ export const useGameStore = create<GameStore>()(
             gridCells: persisted.notebook?.gridCells ?? {},
           },
           voteInputMode: persisted.voteInputMode ?? 'by_voter',
+          pendingNightAnnouncement: persisted.pendingNightAnnouncement ?? null,
+          exileResolvedToday: persisted.exileResolvedToday ?? null,
           forceContinueAfterVictory: persisted.forceContinueAfterVictory ?? false,
           preGameOverPhase: persisted.preGameOverPhase ?? null,
           passRevealConfirmedSeats: persisted.passRevealConfirmedSeats ?? [],

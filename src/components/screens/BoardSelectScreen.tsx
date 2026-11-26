@@ -163,9 +163,9 @@ export function BoardSelectScreen() {
           <button
             type="button"
             onClick={() => selectBoard(activeBoard.id)}
-            className="min-h-12 flex-1 rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90"
+            className="min-h-12 flex-1 truncate rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90"
           >
-            進入房間（{activeBoard.playerCount}人）
+            進入房間：{activeBoard.name}
           </button>
         </footer>
       )}

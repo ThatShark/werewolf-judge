@@ -18,5 +18,6 @@ export * from './sheriff';
 export * from './voting';
 export * from './dayResolution';
 export * from './nightResolution';
+export * from './nightValidation';
 export * from './manualControl';
 export * from './notebook';

@@ -48,6 +48,7 @@ import {
   canWolfBeautyCharm,
   canWolfRavenClawKill,
   canWolfYoungerBrotherAwakenedKill,
+  checkMandatoryNightTarget,
   createInitialCombatState,
   createInitialConversionState,
   createInitialGargoyleState,
@@ -57,6 +58,7 @@ import {
   createInitialSuperGravekeeperState,
   evaluateAwakenedDreamTargetActed,
   evaluateMoonSpiritHowl,
+  evaluateNightStepLockState,
   evaluateNineTailedFoxTails,
   findMechWolfSeat,
   getAwakenedSeerCheckResult,
@@ -96,7 +98,12 @@ import {
   OnlineJudgeOverlay,
   type OnlineJudgeOverlayMode,
 } from '../night/OnlineJudgeOverlay';
-import { getInitialTargetForStep, getSeatActionIcons } from '../night/nightStepConfig';
+import {
+  getInitialTargetForStep,
+  getSeatActionIcons,
+  getSeatAttachedStatusTags,
+  getSeatFactionChip,
+} from '../night/nightStepConfig';
 
 interface NightConsoleScreenProps {
   onOpenHistory?: () => void;
@@ -120,8 +127,11 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const mechWolfState = useGameStore((s) => s.mechWolfState);
   const pendingSelfExplodeSeat = useGameStore((s) => s.pendingSelfExplodeSeat);
   const lastCharmedSeat = useGameStore((s) => s.lastCharmedSeat);
+  const activeCharmedSeat = useGameStore((s) => s.activeCharmedSeat);
   const lastDreamTarget = useGameStore((s) => s.lastDreamTarget);
   const lastFearedSeat = useGameStore((s) => s.lastFearedSeat ?? null);
+  const hybridState = useGameStore((s) => s.hybridState);
+  const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const seedWolfState = useGameStore((s) => s.seedWolfState ?? createInitialSeedWolfState());
   const gargoyleState = useGameStore((s) => s.gargoyleState ?? createInitialGargoyleState());
   const pumpkinGhostState = useGameStore(
@@ -374,26 +384,37 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     return matchingActorSeats.some((seat) => seat.isAlive);
   }, [currentStep, matchingActorSeats]);
 
-  const showDeadActorWarning =
-    !isClaimStage &&
-    matchingActorSeats.length > 0 &&
-    matchingActorSeats.every((seat) => !seat.isAlive);
-
-  // 血月使徒自爆：當晚所有好人神職技能全面封印（照常唸詞、操作鎖死）
-  const isGoodGodStep = useMemo(() => {
-    if (!currentStep || currentStep.actorRoleIds.length === 0) return false;
-    return currentStep.actorRoleIds.every((roleId) => {
-      const role = getRoleById(roleId);
-      return role?.faction === 'good' && role.category === 'god';
+  // 雙向防呆：評估「強制無法使用技能」狀態（含已出局、血月封印、夢魘恐懼、石化、冰凍、沉睡、導師/學者削弱歸零等）
+  const stepLockEval = useMemo(() => {
+    if (!currentStep) return { locked: false, reason: null };
+    return evaluateNightStepLockState({
+      step: currentStep,
+      round,
+      seats,
+      draft: currentNightDraft,
+      isClaimStage,
+      witchAntidoteUsed,
+      witchPoisonUsed,
+      foxLostAbility,
+      pumpkinGhostState,
+      combatState,
+      thirdPartySpecialState,
     });
-  }, [currentStep]);
+  }, [
+    currentStep,
+    round,
+    seats,
+    currentNightDraft,
+    isClaimStage,
+    witchAntidoteUsed,
+    witchPoisonUsed,
+    foxLostAbility,
+    pumpkinGhostState,
+    combatState,
+    thirdPartySpecialState,
+  ]);
 
-  const isBloodMoonSealedStep = Boolean(
-    !isClaimStage && combatState.bloodMoonSealActiveTonight && isGoodGodStep,
-  );
-
-  // 已出局神職或血月封印中：台詞完整保留，但座位點擊與操作盤全面鎖死
-  const isSkillLocked = !isClaimStage && (showDeadActorWarning || isBloodMoonSealedStep);
+  const isSkillLocked = !isClaimStage && stepLockEval.locked;
 
   // 線上語音模式：已出局神職或血月封印步驟，自動空等行動秒數後播報閉眼並進入靜音緩衝（防玩家聽出死訊）
   useEffect(() => {
@@ -488,9 +509,20 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   );
   const antidoteBlockedByPoison = pendingTarget !== null;
 
-  // 確認紀錄前的純規則檢核（一律呼叫 src/logic/）
+  // 確認紀錄前的純規則檢核（一律呼叫 src/logic/，含強制使用技能目標檢查）
   const pendingValidation: ActionCheckResult = (() => {
     if (isClaimStage || isSkillLocked) return { allowed: true };
+    const mandatoryCheck = checkMandatoryNightTarget({
+      actionType: currentStep.actionType,
+      round,
+      ruleOverrides,
+      pendingTarget,
+      pendingDualTargets,
+      pendingMultiTargets,
+    });
+    if (!mandatoryCheck.allowed) {
+      return mandatoryCheck;
+    }
     switch (currentStep.actionType) {
       case 'wolf_kill':
         if (pendingSeedWolfInfect && pendingTarget !== null) {
@@ -748,11 +780,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       return {
         selected: pendingTarget === seatNumber,
         disabled: true,
-        reason: isBloodMoonSealedStep
-          ? '血月封印'
-          : showDeadActorWarning
-            ? '已出局鎖定'
-            : undefined,
+        reason: isSkillLocked ? '技能鎖定' : undefined,
         onSelect: () => {},
       };
     }
@@ -2015,7 +2043,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     if (seerOutcome) {
       return {
         eyebrow: '預言家查驗結果',
-        headline: `${formatSeatNum(seerOutcome.targetSeat)} 號 · ${seerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        headline: `${formatSeatNum(seerOutcome.targetSeat)} 號 · ${seerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
         tone: seerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
@@ -2049,21 +2077,21 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     if (lanternSeerOutcome) {
       return {
         eyebrow: '燈影預言家查驗',
-        headline: `${formatSeatNum(lanternSeerOutcome.targetSeat)} 號 · ${lanternSeerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        headline: `${formatSeatNum(lanternSeerOutcome.targetSeat)} 號 · ${lanternSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
         tone: lanternSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
     if (drunkSeerOutcome) {
       return {
         eyebrow: '查驗結果',
-        headline: `${formatSeatNum(drunkSeerOutcome.targetSeat)} 號 · ${drunkSeerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        headline: `${formatSeatNum(drunkSeerOutcome.targetSeat)} 號 · ${drunkSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
         tone: drunkSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
     if (foolSeerOutcome) {
       return {
         eyebrow: '愚言家查驗結果',
-        headline: `${formatSeatNum(foolSeerOutcome.targetSeat)} 號 · ${foolSeerOutcome.faction === 'wolf' ? '狼人' : '好人'}`,
+        headline: `${formatSeatNum(foolSeerOutcome.targetSeat)} 號 · ${foolSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
         tone: foolSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
@@ -2227,6 +2255,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   const renderNightSeatButton = (seat: (typeof seats)[number]) => {
     const role = getRoleById(seat.roleId);
+    const factionChip = getSeatFactionChip(seat.roleId);
     const control = getSeatControl(seat.seatNumber);
     const actionIcons = getSeatActionIcons(seat.seatNumber, currentNightDraft, {
       isOnlineJudge,
@@ -2238,63 +2267,110 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     const showRoleBadge = !isOnlineJudge
       ? !maskSeatRoles && Boolean(role)
       : isClaimedAsActive && Boolean(role);
+    const attachedTags =
+      !isOnlineJudge && !maskSeatRoles
+        ? getSeatAttachedStatusTags(seat, {
+            draft: currentNightDraft,
+            activeCharmedSeat,
+            lastDreamTarget,
+            hybridState,
+            mechWolfState,
+            combatState,
+            conversionState,
+            thirdPartySpecialState,
+          })
+        : [];
+
+    const tagToneClass = (tone: (typeof attachedTags)[number]['tone']) => {
+      switch (tone) {
+        case 'wolf':
+          return 'border-wolf-border bg-wolf-tint text-wolf';
+        case 'good':
+          return 'border-good-border bg-good-tint text-good';
+        case 'sheriff':
+          return 'border-sheriff-border bg-sheriff-tint text-sheriff';
+        case 'third':
+          return 'border-third-border bg-third-tint text-third';
+        default:
+          return 'border-subtle bg-canvas text-muted';
+      }
+    };
 
     return (
       <button
         key={seat.seatNumber}
         type="button"
         disabled={control.disabled}
+        title={control.reason}
         onClick={control.onSelect}
-        className={`flex min-h-12 w-full flex-col justify-center rounded-md px-2.5 py-1.5 text-left transition ${
+        className={`flex h-12 w-full items-center justify-between gap-1 rounded-md px-2.5 text-left transition ${
           control.selected
             ? 'border-selected-sheriff bg-sheriff-tint'
             : isClaimedAsActive
               ? 'border-selected-good bg-good-tint'
               : control.disabled
-                ? 'cursor-not-allowed border border-subtle bg-canvas opacity-50'
+                ? 'cursor-not-allowed border border-subtle bg-canvas opacity-55'
                 : 'border border-subtle bg-surface hover:border-strong'
         }`}
       >
-        <div className="flex w-full items-center justify-between gap-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span
-              className={`w-6 shrink-0 text-[14px] font-semibold tabular-nums ${
-                seat.isAlive ? 'text-primary' : 'text-muted line-through'
-              }`}
-            >
-              {formatSeatNum(seat.seatNumber)}
-            </span>
-            {showRoleBadge && role ? (
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+          <span
+            className={`w-6 shrink-0 text-[14px] font-semibold tabular-nums ${
+              seat.isAlive ? 'text-primary' : 'text-muted line-through'
+            }`}
+          >
+            {formatSeatNum(seat.seatNumber)}
+          </span>
+          {showRoleBadge && role ? (
+            <div className="flex min-w-0 items-center gap-1 overflow-hidden">
               <span
                 className={`truncate rounded-md border px-1.5 py-0.5 text-[12px] font-medium ${getRoleBadgeClasses(role.id)}`}
               >
                 {role.name}
               </span>
-            ) : (
-              <span className="truncate text-[12px] text-secondary">
-                {seat.nickname.trim() || `${seat.seatNumber}號`}
-              </span>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-1 text-[12px]">
-            {!seat.isAlive && <span className="text-muted">死</span>}
-            {seat.isAlive && seat.idiotRevealed && <span className="text-sheriff">翻</span>}
-            {actionIcons.map((icon, i) => (
+              {factionChip && (
+                <span className={`shrink-0 text-[12px] font-semibold ${factionChip.className}`}>
+                  {factionChip.label}
+                </span>
+              )}
+              {attachedTags.slice(0, 2).map((tag, idx) => (
+                <span
+                  key={`${tag.label}-${idx}`}
+                  className={`shrink-0 rounded border px-1 text-[12px] leading-4 font-medium ${tagToneClass(tag.tone)}`}
+                >
+                  {tag.label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="truncate text-[12px] text-secondary">
+              {seat.nickname.trim() || `${seat.seatNumber}號`}
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1 text-[12px]">
+          {!seat.isAlive && (
+            <span className="shrink-0 font-medium text-muted">已出局</span>
+          )}
+          {seat.isAlive && control.disabled && control.reason && control.reason !== '技能鎖定' && (
+            <span className="max-w-[68px] shrink-0 truncate text-wolf">{control.reason}</span>
+          )}
+          {seat.isAlive && seat.idiotRevealed && !showRoleBadge && (
+            <span className="text-sheriff">翻</span>
+          )}
+          {!showRoleBadge &&
+            actionIcons.map((icon, i) => (
               <span key={i}>{icon}</span>
             ))}
-            {control.selected && (
-              <span className="rounded bg-sheriff px-1 text-[12px] font-semibold text-inverse">
-                選
-              </span>
-            )}
-            {!control.selected && isClaimedAsActive && (
-              <span className="text-[12px] font-semibold text-good">認</span>
-            )}
-          </div>
+          {control.selected && (
+            <span className="rounded bg-sheriff px-1 text-[12px] font-semibold text-inverse">
+              選
+            </span>
+          )}
+          {!control.selected && isClaimedAsActive && (
+            <span className="text-[12px] font-semibold text-good">認</span>
+          )}
         </div>
-        {control.disabled && control.reason && (
-          <div className="mt-0.5 truncate pl-7 text-[12px] text-wolf">{control.reason}</div>
-        )}
       </button>
     );
   };
@@ -2376,48 +2452,110 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         </div>
       </section>
 
-      {/* 1.5 台詞提詞區置頂放大（高對比純白字 16px–18px，方便關燈閱讀） */}
-      {!isOnlineJudge && (
+      {/* 1.5 實體認領主提示區（認領時不顯示台詞）或實體法官三段台詞提詞區（睜眼／行動／閉眼） */}
+      {isClaimStage && claimSummary && (
         <section className="shrink-0 space-y-1.5">
-          <div className="flex items-start justify-between gap-2 border-l-2 border-sheriff bg-surface px-3 py-2">
-            <p className="min-w-0 flex-1 text-[16px] font-semibold leading-6 text-primary sm:text-[18px]">
-              {currentStep.actionPrompt.replace(/\n+/g, ' ')}
-            </p>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {currentFlashcardCandidate && (
-                <button
-                  type="button"
-                  onClick={() => setFlashcardData(currentFlashcardCandidate)}
-                  className="min-h-10 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff hover:opacity-90"
-                >
-                  放大展示
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setScriptDrawerOpen(true)}
-                className="min-h-10 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
-              >
-                台詞
-              </button>
+          {(() => {
+            const activeRoleStatus = claimSummary.roles.find(
+              (r) => r.roleId === activeClaimRoleId,
+            );
+            const isFlexibleCount =
+              board.isFlexibleComposition ||
+              Boolean(board.presetPlayerCounts?.length) ||
+              Boolean(board.playerCountRange);
+            const allowMultiClaim =
+              isFlexibleCount ||
+              (activeRoleStatus !== undefined && activeRoleStatus.expectedCount > 1);
+            const remainingCount = activeRoleStatus?.remainingCount ?? 0;
+            return (
+              <div className="flex items-center justify-between gap-2 border-l-2 border-sheriff bg-surface px-3 py-2">
+                <div className="min-w-0 flex-1 text-[14px] font-semibold text-primary">
+                  點選座位認領「{activeClaimRoleName}」
+                  {allowMultiClaim && (
+                    <span className="ml-1 text-[12px] font-medium text-secondary">
+                      （多名可一次多選）
+                    </span>
+                  )}
+                </div>
+                <span className="shrink-0 text-[12px] font-semibold tabular-nums text-sheriff">
+                  {remainingCount > 0 ? `待認領 ${remainingCount} 位` : '已認領完成'}
+                </span>
+              </div>
+            );
+          })()}
+        </section>
+      )}
+
+      {!isOnlineJudge && !isClaimStage && (
+        <section className="shrink-0 space-y-1.5">
+          <div
+            className={`flex items-start justify-between gap-2 border-l-2 bg-surface px-3 py-2 ${
+              isSkillLocked ? 'border-wolf' : 'border-sheriff'
+            }`}
+          >
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <div className="text-[12px] font-semibold leading-4 text-sheriff">
+                {currentStep.openPrompt?.trim() || `${currentStep.actorLabel} 請睜眼`}
+              </div>
+              <p className="text-[14px] font-semibold leading-5 text-primary">
+                {currentStep.actionPrompt.replace(/\n+/g, ' ')}
+              </p>
+              <div className="text-[12px] font-medium leading-4 text-secondary">
+                {currentStep.closePrompt?.trim() || `${currentStep.actorLabel} 請閉眼`}
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setScriptDrawerOpen(true)}
+              className="min-h-10 shrink-0 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+            >
+              台詞
+            </button>
           </div>
 
-          {isBloodMoonSealedStep && (
+          {stepLockEval.locked && stepLockEval.reason && (
             <div
               role="alert"
               className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf"
             >
-              血月封印中：今晚所有好人神職技能全面封印，請照常唸詞，操作已鎖死。
+              {stepLockEval.reason}
             </div>
           )}
 
-          {!isBloodMoonSealedStep && showDeadActorWarning && (
-            <div
-              role="alert"
-              className="border-l-2 border-wolf bg-wolf-tint px-3 py-1.5 text-[12px] font-semibold text-wolf"
-            >
-              該角色已出局：請照常唸詞並停頓防暴露，技能操作已鎖死。
+          {!stepLockEval.locked && stepLockEval.modifierNotice && (
+            <div className="border-l-2 border-third bg-third-tint px-3 py-1.5 text-[12px] font-semibold text-third">
+              {stepLockEval.modifierNotice}
+            </div>
+          )}
+
+          {/* 資訊與結果區塊（移至台詞正下方，含放大展示給玩家看按鈕） */}
+          {currentFlashcardCandidate && (
+            <div className="flex items-center justify-between gap-2 rounded-md border border-subtle bg-surface px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] font-medium text-secondary">
+                  {currentFlashcardCandidate.eyebrow}
+                </div>
+                <div
+                  className={`truncate text-[14px] font-semibold tabular-nums ${
+                    currentFlashcardCandidate.tone === 'wolf'
+                      ? 'text-wolf'
+                      : currentFlashcardCandidate.tone === 'good'
+                        ? 'text-good'
+                        : currentFlashcardCandidate.tone === 'third'
+                          ? 'text-third'
+                          : 'text-sheriff'
+                  }`}
+                >
+                  {currentFlashcardCandidate.headline}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFlashcardData(currentFlashcardCandidate)}
+                className="min-h-10 shrink-0 rounded-md border border-sheriff-border bg-sheriff-tint px-3 text-[12px] font-semibold text-sheriff hover:opacity-90"
+              >
+                放大展示給玩家看
+              </button>
             </div>
           )}
         </section>
@@ -2428,11 +2566,11 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
           <div className="truncate text-[12px] text-secondary">
             {isClaimStage
-              ? `點選座位認領「${activeClaimRoleName}」（多名可一次多選）`
+              ? '點擊下方座位進行認領'
               : isSkillLocked
                 ? '技能已鎖死 · 唸詞完畢後直接按下一步'
                 : currentStep.actionType === 'witch_action'
-                  ? '點上方【解藥】救人 · 直接點下方座位＝【毒藥】'
+                  ? '點下方【解藥】救人 · 點座位＝【毒藥】'
                   : isSeatSelectableForSkill
                     ? '點選目標座位，按下方確認'
                     : '檢視狀態後按下方確認'}
@@ -2441,9 +2579,13 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             <button
               type="button"
               onClick={() => setMaskSeatRoles((prev) => !prev)}
-              className="shrink-0 rounded-md border border-subtle bg-surface px-2.5 py-1 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
+              className={`min-h-9 shrink-0 rounded-md border px-2.5 text-[12px] font-semibold transition ${
+                !maskSeatRoles
+                  ? 'border-sheriff-border bg-sheriff-tint text-sheriff'
+                  : 'border-subtle bg-surface text-secondary hover:border-strong hover:text-primary'
+              }`}
             >
-              {maskSeatRoles ? '顯示身分' : '遮罩身分'}
+              {maskSeatRoles ? '顯示底牌' : '隱藏底牌'}
             </button>
           )}
         </div>
@@ -2558,11 +2700,15 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             {currentStep.actionType === 'nightmare_fear' && (
               <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <div className="text-xs text-secondary">
-                  昨晚恐懼：
-                  <strong className="text-sheriff">
-                    {lastFearedSeat !== null ? `${lastFearedSeat} 號` : '無'}
-                  </strong>
-                  {' · '}
+                  {round > 1 && (
+                    <>
+                      昨晚恐懼：
+                      <strong className="text-sheriff">
+                        {lastFearedSeat !== null ? `${lastFearedSeat} 號` : '無'}
+                      </strong>
+                      {' · '}
+                    </>
+                  )}
                   預選：
                   <strong className="text-third">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '不恐懼'}
@@ -2594,11 +2740,15 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             {currentStep.actionType === 'guard_protect' && (
               <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <div className="text-xs text-secondary">
-                  昨晚守：
-                  <strong className="text-sheriff">
-                    {lastGuardedSeat !== null ? `${lastGuardedSeat} 號` : '無'}
-                  </strong>
-                  {' · '}
+                  {round > 1 && (
+                    <>
+                      昨晚守：
+                      <strong className="text-sheriff">
+                        {lastGuardedSeat !== null ? `${lastGuardedSeat} 號` : '無'}
+                      </strong>
+                      {' · '}
+                    </>
+                  )}
                   預選：
                   <strong className="text-good">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '空守'}
@@ -2702,7 +2852,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
                 {seerOutcome ? (
                   <span className="text-sm font-extrabold">
                     查驗結果：{seerOutcome.targetSeat} 號 ➜{' '}
-                    {seerOutcome.faction === 'wolf' ? '👎 狼人陣營' : '👍 好人陣營'}
+                    {seerOutcome.faction === 'wolf' ? '👎 狼人陣營（查殺）' : '👍 好人陣營（金水）'}
                   </span>
                 ) : pendingTarget !== null ? (
                   `已預選查驗 ${pendingTarget} 號，點擊「確認查驗」揭曉結果`
@@ -3053,7 +3203,9 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             {currentStep.actionType === 'awakened_dream_catcher_dream' && (
               <div className="flex items-center justify-between gap-2 text-xs text-secondary">
                 <span>
-                  昨晚夢語：{lastAwakenedDreamTarget !== null ? `${lastAwakenedDreamTarget} 號` : '無'} ·
+                  {round > 1 && (
+                    <>昨晚夢語：{lastAwakenedDreamTarget !== null ? `${lastAwakenedDreamTarget} 號` : '無'} · </>
+                  )}
                   預選：
                   <strong className="text-third">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '尚未選擇'}
@@ -3536,7 +3688,10 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             {currentStep.actionType === 'wolf_beauty_charm' && (
               <div className="flex items-center justify-between gap-2 text-xs text-secondary">
                 <span>
-                  昨晚魅惑：{lastCharmedSeat !== null ? `${lastCharmedSeat} 號` : '無'} · 預選：
+                  {round > 1 && (
+                    <>昨晚魅惑：{lastCharmedSeat !== null ? `${lastCharmedSeat} 號` : '無'} · </>
+                  )}
+                  預選：
                   <strong className="text-wolf">
                     {pendingTarget !== null ? `${pendingTarget} 號` : '空魅'}
                   </strong>
@@ -3555,7 +3710,9 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
             {currentStep.actionType === 'dream_catcher_dream' && (
               <div className="text-xs text-secondary">
-                昨晚夢遊：{lastDreamTarget !== null ? `${lastDreamTarget} 號` : '無'} ·{' '}
+                {round > 1 && (
+                  <>昨晚夢遊：{lastDreamTarget !== null ? `${lastDreamTarget} 號` : '無'} ·{' '}</>
+                )}
                 {pendingTarget !== null && pendingTarget === lastDreamTarget ? (
                   <span className="font-bold text-wolf">
                     ⚠️ 連夢 {lastDreamTarget} 號將夢死！

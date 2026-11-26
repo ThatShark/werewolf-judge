@@ -158,7 +158,7 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const renderSeatRow = (seat: (typeof seats)[number]) => (
     <div
       key={seat.seatNumber}
-      className="flex min-h-12 items-center gap-2 rounded-md border border-subtle bg-surface px-2"
+      className="flex h-12 items-center gap-2 rounded-md border border-subtle bg-surface px-2"
     >
       <span className="w-6 shrink-0 text-center text-[14px] font-semibold tabular-nums text-sheriff">
         {formatSeatNum(seat.seatNumber)}

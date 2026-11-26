@@ -1,9 +1,12 @@
 import { getRoleById } from '../data/roles';
+import { isPhantomWolfInvincible } from './finalBatchRoles';
+import { isWarWolfImmuneToDeath, shouldWhiteCatSurviveDeath } from './interferenceRoles';
 import { isSeatWolfFaction } from './topFiveRoles';
 import type {
   ActionCheckResult,
   CombatRuntimeState,
   DeathReason,
+  FinalBatchRuntimeState,
   PlayerSeat,
   RuleOverrides,
   TreasureMasterRuntimeState,
@@ -362,6 +365,7 @@ export function resolvePufferfishExplode(
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
   victoryOptions?: VictoryCheckOptions,
+  options?: { highestVoteSeat?: number | null },
 ): {
   allowed: boolean;
   reason?: string;
@@ -376,24 +380,53 @@ export function resolvePufferfishExplode(
   if (pufferfishBombUsed) {
     return { allowed: false, reason: '河豚翻牌技能整局僅能使用一次', seats, killedSeats: [], victory: { winner: null, winReason: null } };
   }
-  const uniqueVoters = Array.from(new Set(voterSeatsForPufferfish)).filter((num) => {
+  const rawUnique = Array.from(new Set(voterSeatsForPufferfish)).filter((num) => {
+    const s = seats.find((seat) => seat.seatNumber === num);
+    return Boolean(s && s.isAlive);
+  });
+  if (
+    rawUnique.length === 1 &&
+    options?.highestVoteSeat != null &&
+    rawUnique[0] === options.highestVoteSeat
+  ) {
+    return {
+      allowed: false,
+      reason: '唯一投票給河豚的玩家最高票出局，河豚不可翻牌',
+      seats,
+      killedSeats: [],
+      victory: { winner: null, winReason: null },
+    };
+  }
+  const uniqueVoters = rawUnique.filter((num) => {
     const s = seats.find((seat) => seat.seatNumber === num);
     return Boolean(s && s.isAlive && !(s.roleId === 'white_cat' && s.whiteCatRevealed));
   });
   if (uniqueVoters.length === 0) {
     return { allowed: false, reason: '沒有可被炸死的投票玩家，河豚無法翻牌', seats, killedSeats: [], victory: { winner: null, winReason: null } };
   }
-  const killSet = new Set(uniqueVoters);
+  const killSet = new Set<number>();
+  const revealedWhiteCatSet = new Set<number>();
+  for (const num of uniqueVoters) {
+    const seatObj = seats.find((s) => s.seatNumber === num);
+    const wc = shouldWhiteCatSurviveDeath(seatObj, 'pufferfish_explode');
+    if (wc.survive) {
+      revealedWhiteCatSet.add(num);
+    } else {
+      killSet.add(num);
+    }
+  }
   const updatedSeats = seats.map((s) =>
-    killSet.has(s.seatNumber)
-      ? { ...s, isAlive: false, deathReason: 'pufferfish_explode' as const, deathRound: round }
-      : s,
+    revealedWhiteCatSet.has(s.seatNumber)
+      ? { ...s, whiteCatRevealed: true }
+      : killSet.has(s.seatNumber)
+        ? { ...s, isAlive: false, deathReason: 'pufferfish_explode' as const, deathRound: round }
+        : s,
   );
   const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
   return {
     allowed: true,
     seats: updatedSeats,
-    killedSeats: uniqueVoters,
+    killedSeats: Array.from(killSet),
     victory,
   };
 }
@@ -488,7 +521,7 @@ export function canAwakenedWolfBeautyCharm(
   return { allowed: true };
 }
 
-/** 覺醒獵人死亡方向開槍：擊殺指定方向最近的一位存活狼人（夜槍可破覺醒狼美人替死） */
+/** 覺醒獵人死亡方向開槍：擊殺指定方向最近的一位存活狼人（夜槍可破覺醒狼美人替死；戰狼／怪盜狼王無敵期間免疫） */
 export function resolveAwakenedHunterDirectionShoot(
   seats: PlayerSeat[],
   hunterSeat: number,
@@ -497,6 +530,7 @@ export function resolveAwakenedHunterDirectionShoot(
   ruleOverrides: RuleOverrides,
   treasureMasterState?: TreasureMasterRuntimeState,
   victoryOptions?: VictoryCheckOptions,
+  finalBatchState?: FinalBatchRuntimeState,
 ): {
   allowed: boolean;
   reason?: string;
@@ -510,6 +544,17 @@ export function resolveAwakenedHunterDirectionShoot(
   }
   const targetWolf = findNearestAliveWolfInDirection(seats, hunterSeat, direction);
   if (!targetWolf) {
+    return {
+      allowed: true,
+      seats: seats.map((s) => ({ ...s })),
+      killedSeat: null,
+      victory: checkVictory(seats, ruleOverrides, treasureMasterState, victoryOptions),
+    };
+  }
+  if (
+    isWarWolfImmuneToDeath(targetWolf, 'awakened_hunter_shoot') ||
+    isPhantomWolfInvincible(targetWolf, finalBatchState)
+  ) {
     return {
       allowed: true,
       seats: seats.map((s) => ({ ...s })),

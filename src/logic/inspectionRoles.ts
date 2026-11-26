@@ -503,7 +503,8 @@ export function findSuperGravekeeperSeat(seats: PlayerSeat[]): PlayerSeat | unde
 
 /** 依規則判定被放逐紀錄在守墓人／超級守墓人眼中的陣營（隱狼／南瓜鬼／雪狼／石像鬼／感染者→狼；咒狐→好人） */
 export function getGravekeeperFactionForRecord(record: ExiledRecord): 'wolf' | 'good' {
-  if (record.infectedBySeedWolf) return 'wolf';
+  if (record.infectedBySeedWolf || record.convertedByAwakenedGargoyle) return 'wolf';
+  if (record.effectiveFaction === 'wolf') return 'wolf';
   if (!record.roleId) return 'good';
   if (record.roleId === 'cursed_fox') return 'good';
   const role = getRoleById(record.roleId);
@@ -921,6 +922,12 @@ export function evaluateAwakenedDreamTargetActed(
       break;
     case 'wolf_beauty':
       didAct = draft.wolfBeautyCharmTarget != null || draft.wolfTarget !== null;
+      break;
+    case 'awakened_gargoyle':
+      didAct =
+        draft.awakenedGargoyleConvertTarget != null ||
+        (draft.awakenedGargoyleConvertTargets?.length ?? 0) > 0 ||
+        draft.wolfTarget !== null;
       break;
     default: {
       // 狼人陣營有參與狼刀或感染則視為有行動

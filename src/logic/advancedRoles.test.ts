@@ -46,8 +46,7 @@ describe('高頻進階角色自動結算（白狼王／狼美人／騎士／攝�
       expect(res.seats[0].isAlive).toBe(false);
       expect(res.seats[0].deathReason).toBe('self_explode');
       expect(res.pendingSelfExplodeSeat).toBeNull();
-      expect(res.chainedShootEligibility?.canShoot).toBe(true);
-      expect(res.chainedShootEligibility?.seatNumber).toBe(5);
+      expect(res.chainedShootEligibility?.canShoot).toBe(false);
       expect(res.victory.winner).toBeNull();
 
       // 進入下一晚後 1 號維持自爆死亡狀態

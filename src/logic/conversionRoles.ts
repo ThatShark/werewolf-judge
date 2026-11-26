@@ -26,6 +26,7 @@ export function createInitialConversionState(): ConversionRuntimeState {
     xuXianTriggered: false,
     xuXianThirdPartyInstantWin: false,
     awakenedGargoyleConvertedSeat: null,
+    awakenedGargoyleConvertedSeats: [],
     awakenedLonelyGirlIdolSeat: null,
     awakenedLonelyGirlStatus: 'good',
     awakenedLonelyGirlInheritedRoleId: null,
@@ -39,6 +40,7 @@ export function createInitialConversionState(): ConversionRuntimeState {
     puppetSeat: null,
     zombieInfectedSeats: [],
     chameleonWolfSeat: null,
+    chameleonOriginalRoleId: null,
     chameleonJoinedTeam: false,
     thiefBottomCards: [],
     thiefChosenRoleId: null,
@@ -56,6 +58,7 @@ export function cloneConversionState(state: ConversionRuntimeState): ConversionR
     scentPhantomChain: state.scentPhantomChain ? [...state.scentPhantomChain] : null,
     xuXianLastBoundPair: state.xuXianLastBoundPair ? [...state.xuXianLastBoundPair] : null,
     xuXianActiveBoundPair: state.xuXianActiveBoundPair ? [...state.xuXianActiveBoundPair] : null,
+    awakenedGargoyleConvertedSeats: [...(state.awakenedGargoyleConvertedSeats ?? [])],
     zombieInfectedSeats: [...state.zombieInfectedSeats],
     thiefBottomCards: [...state.thiefBottomCards],
   };
@@ -234,10 +237,34 @@ export function canAwakenedGargoyleConvert(
   if (round !== 1) return { allowed: false, reason: '覺醒石像鬼僅能在第一晚轉化玩家' };
   const target = seats.find((s) => s.seatNumber === targetSeat);
   if (!target || !target.isAlive) return { allowed: false, reason: '轉化目標不存在或已出局' };
-  if (isSeatWolfFaction(target)) return { allowed: false, reason: '覺醒石像鬼僅能轉化好人陣營玩家' };
+  // 允許點選機械狼／混血兒（依風聲諜影 Q&A 轉化靜默失敗），僅阻擋原生狼陣營
+  if (
+    isSeatWolfFaction(target) &&
+    target.roleId !== 'mech_wolf' &&
+    target.roleId !== 'hybrid'
+  ) {
+    return { allowed: false, reason: '覺醒石像鬼僅能轉化非原生狼陣營玩家' };
+  }
   if (!isAdjacentToWolf(seats, targetSeat)) {
     return { allowed: false, reason: '覺醒石像鬼轉化目標必須位於狼隊隔壁' };
   }
+  return { allowed: true };
+}
+
+export function canShadowChoose(
+  seats: PlayerSeat[],
+  targetSeat: number | null,
+  round: number,
+): ActionCheckResult {
+  const shadow = seats.find((s) => s.roleId === 'shadow' && s.isAlive);
+  if (!shadow) return { allowed: false, reason: '場上沒有存活的影子' };
+  if (targetSeat === null) return { allowed: true };
+  if (round !== 1) return { allowed: false, reason: '影子僅能於第一晚選擇主人' };
+  if (targetSeat === shadow.seatNumber) {
+    return { allowed: false, reason: '影子不可選擇自己作為主人' };
+  }
+  const target = seats.find((s) => s.seatNumber === targetSeat);
+  if (!target || !target.isAlive) return { allowed: false, reason: '影子主人目標不存在或已出局' };
   return { allowed: true };
 }
 
@@ -591,11 +618,16 @@ export function syncConversionOnDeaths(
     }
   }
 
-  // 9. 影子：主人出局後繼承主人身分
+  // 9. 影子：主人出局後繼承主人身分（若主人為混血兒且混到第三方/狼人，同樣跟隨其陣營）
   if (nextState.shadowMasterSeat !== null && !nextState.shadowInheritedRoleId) {
     const master = updatedSeats.find((s) => s.seatNumber === nextState.shadowMasterSeat);
     if (master && !master.isAlive && !nextState.shadowAvengerThirdParty) {
       nextState.shadowInheritedRoleId = master.roleId;
+      if (master.roleId) {
+        updatedSeats = updatedSeats.map((s) =>
+          s.roleId === 'shadow' ? { ...s, infectedBySeedWolf: s.infectedBySeedWolf || master.infectedBySeedWolf } : s,
+        );
+      }
     }
   }
 
@@ -611,10 +643,15 @@ export function syncConversionOnDeaths(
 
   // 11. 尋香魅影與百變狼王入隊同步
   nextState.scentPhantomJoinedTeam = syncScentPhantomTeamStatus(updatedSeats, nextState);
-  const cham = updatedSeats.find((s) => s.roleId === 'chameleon_wolf_king');
+  const cham = updatedSeats.find(
+    (s) =>
+      s.roleId === 'chameleon_wolf_king' ||
+      (nextState.chameleonOriginalRoleId === 'chameleon_wolf_king' &&
+        nextState.chameleonWolfSeat === s.seatNumber),
+  );
   if (cham?.isAlive && !nextState.chameleonJoinedTeam) {
     const hasOtherWolf = updatedSeats.some(
-      (s) => s.isAlive && s.roleId !== 'chameleon_wolf_king' && isSeatWolfFaction(s),
+      (s) => s.isAlive && s.seatNumber !== cham.seatNumber && isSeatWolfFaction(s),
     );
     if (!hasOtherWolf) nextState.chameleonJoinedTeam = true;
   }
@@ -695,6 +732,7 @@ export function resolveAvengerAssassinate(
 export function checkConversionThirdPartyVictory(
   seats: PlayerSeat[],
   state?: ConversionRuntimeState,
+  hybridIdolAlignedThirdPartySeats: number[] = [],
 ): VictoryResult {
   // 開膛手傑克單一性別獨立勝利（主身分版與第二身分版共用，若偵探已指證成功則第三方失敗不可獲勝）
   const hasJackRipper = seats.some(
@@ -750,7 +788,12 @@ export function checkConversionThirdPartyVictory(
   if (aliveSeats.length > 0) {
     if (state.cupidAffiliation === 'third_party' && state.cupidLovers) {
       const cupidSeat = seats.find((s) => s.roleId === 'cupid')?.seatNumber;
-      const tpSet = new Set([state.cupidLovers[0], state.cupidLovers[1], ...(cupidSeat ? [cupidSeat] : [])]);
+      const tpSet = new Set([
+        state.cupidLovers[0],
+        state.cupidLovers[1],
+        ...(cupidSeat ? [cupidSeat] : []),
+        ...hybridIdolAlignedThirdPartySeats,
+      ]);
       if (aliveSeats.every((s) => tpSet.has(s.seatNumber))) {
         return {
           winner: 'third_party',

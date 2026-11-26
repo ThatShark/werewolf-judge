@@ -1,11 +1,14 @@
 import { getRoleById } from '../data/roles';
+import { isSeatEffectiveWolf } from './factionHelpers';
 import type {
   ActionCheckResult,
+  ConversionRuntimeState,
   MechWolfRuntimeState,
   PlayerSeat,
   PsychicCheckOutcome,
   RuleOverrides,
   SeerCheckOutcome,
+  ThirdPartySpecialRuntimeState,
   TreasureMasterRuntimeState,
 } from './types';
 
@@ -93,17 +96,32 @@ export function getPsychicCheckResult(
 export function getSeerCheckResult(
   seats: PlayerSeat[],
   targetSeat: number,
+  options: {
+    conversionState?: ConversionRuntimeState;
+    thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
+  } = {},
 ): SeerCheckOutcome | null {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
   if (!target || !target.roleId) return null;
 
-  // 被種狼感染轉化、被覺醒石像鬼轉化、被傀儡狼傀儡化者，以及白蛇／許仙被預言家查驗皆為狼人（查殺）
+  // 被種狼感染轉化、被覺醒石像鬼轉化、被傀儡狼傀儡化者、轉狼的超級黑市／野孩子／覺醒孤獨少女／繼承狼影子，以及白蛇／許仙被預言家查驗皆為狼人（查殺）
   if (
     target.infectedBySeedWolf ||
     target.convertedByAwakenedGargoyle ||
     target.isPuppetized ||
     target.roleId === 'white_snake_seer' ||
-    target.roleId === 'xu_xian_phantom'
+    target.roleId === 'xu_xian_phantom' ||
+    (target.roleId === 'super_black_market_merchant' &&
+      options.thirdPartySpecialState?.superBlackMarketTurnedWolf) ||
+    (target.roleId === 'wild_child' && options.conversionState?.wildChildTurnedWolf) ||
+    (target.roleId === 'awakened_lonely_girl' &&
+      (options.conversionState?.awakenedLonelyGirlStatus === 'wolf' ||
+        (options.conversionState?.awakenedLonelyGirlStatus === 'inherited' &&
+          getRoleById(options.conversionState.awakenedLonelyGirlInheritedRoleId)?.faction ===
+            'wolf'))) ||
+    (target.roleId === 'shadow' &&
+      options.conversionState?.shadowInheritedRoleId &&
+      getRoleById(options.conversionState.shadowInheritedRoleId)?.faction === 'wolf')
   ) {
     return {
       targetSeat,
@@ -163,8 +181,7 @@ export function shouldMechWolfJoinWolfTeam(
 
   const hasAliveOtherWolf = seats.some((seat) => {
     if (!seat.isAlive || seat.roleId === 'mech_wolf') return false;
-    const role = getRoleById(seat.roleId);
-    return role?.faction === 'wolf';
+    return isSeatEffectiveWolf(seat);
   });
 
   return !hasAliveOtherWolf;
@@ -231,6 +248,30 @@ export function canMechWolfUseLearnedSkill(
       return { allowed: true };
 
     case 'psychic':
+    case 'seer':
+    case 'awakened_seer':
+    case 'pure_white_maiden':
+      return { allowed: true };
+
+    case 'hunter':
+      if (mechWolfState.usedLearnedOneShotSkill) {
+        return { allowed: false, reason: '機械狼學到的獵人開槍技能已使用完畢' };
+      }
+      return { allowed: true };
+
+    case 'wolf_beauty':
+      if (targetSeat === mechWolf.seatNumber) {
+        return { allowed: false, reason: '不可魅惑自己' };
+      }
+      if (mechWolfState.lastGuardedSeat === targetSeat) {
+        return { allowed: false, reason: '機械狼學到狼美人技能不可連續兩晚魅惑同一人' };
+      }
+      return { allowed: true };
+
+    case 'dream_catcher':
+      if (targetSeat === mechWolf.seatNumber) {
+        return { allowed: false, reason: '機械狼學到攝夢人不可對自己攝夢' };
+      }
       return { allowed: true };
 
     default:

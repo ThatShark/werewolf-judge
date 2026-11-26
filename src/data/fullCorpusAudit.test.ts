@@ -33,11 +33,15 @@ import { getNightSteps } from '../logic';
 import type { BoardDefinition, Faction } from '../logic/types';
 import { useGameStore } from '../store/gameStore';
 
-/** MVP 3 個手工精修板子（包含額外補充步驟或精選 Q&A，對帳時驗證不低於原文基準） */
+/** MVP 3 個手工精修板子 + 補齊遺漏夜間動作步驟的標準板子（對帳時驗證不低於原文基準） */
 const MVP_CURATED_BOARD_IDS = new Set([
   '12p-classic',
   '12p-wolf-king-guard',
   '10p-mech-wolf-psychic',
+  '12p-jack-the-ripper-2',
+  '12p-big-bad-wolf-little-girl',
+  '12p-sleeping-beauty',
+  '12p-neighbor-only',
 ]);
 
 interface RawBoardSummary {

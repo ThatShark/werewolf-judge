@@ -1,6 +1,7 @@
 import { getRoleById } from '../data/roles';
 import type {
   ActionCheckResult,
+  ConversionRuntimeState,
   DeathReason,
   Faction,
   HiddenWolfRuntimeState,
@@ -158,10 +159,30 @@ export function canHybridChooseIdol(
 }
 
 /**
- * 依據榜樣目前之所屬陣營（含榜樣被種狼感染轉化為狼人）計算混血兒綁定陣營。
+ * 依據榜樣目前之所屬陣營（含榜樣被種狼感染／覺醒石像鬼轉化為狼人、或進入邱比特人狼戀第三方）計算混血兒綁定陣營。
  */
-export function getSeatEffectiveFaction(seat: PlayerSeat): Faction | null {
-  if (seat.infectedBySeedWolf) return 'wolf';
+export function getSeatEffectiveFaction(
+  seat: PlayerSeat,
+  conversionState?: ConversionRuntimeState,
+): Faction | null {
+  if (
+    conversionState?.cupidAffiliation === 'third_party' &&
+    conversionState.cupidLovers &&
+    (conversionState.cupidLovers.includes(seat.seatNumber) || seat.roleId === 'cupid')
+  ) {
+    return 'third_party';
+  }
+  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) return 'wolf';
+  if (seat.roleId === 'wild_child' && conversionState?.wildChildTurnedWolf) return 'wolf';
+  if (seat.roleId === 'awakened_lonely_girl') {
+    if (conversionState?.awakenedLonelyGirlStatus === 'wolf') return 'wolf';
+    if (
+      conversionState?.awakenedLonelyGirlStatus === 'inherited' &&
+      conversionState.awakenedLonelyGirlInheritedRoleId
+    ) {
+      return getRoleById(conversionState.awakenedLonelyGirlInheritedRoleId)?.faction ?? null;
+    }
+  }
   if (!seat.roleId) return null;
   const role = getRoleById(seat.roleId);
   return role?.faction ?? null;
@@ -171,6 +192,7 @@ export function applyHybridChooseIdol(
   state: HybridRuntimeState,
   seats: PlayerSeat[],
   targetSeat: number | null,
+  conversionState?: ConversionRuntimeState,
 ): HybridRuntimeState {
   if (targetSeat === null) {
     return { ...state };
@@ -179,7 +201,7 @@ export function applyHybridChooseIdol(
   if (!target) {
     return { ...state };
   }
-  const alignedFaction = getSeatEffectiveFaction(target);
+  const alignedFaction = getSeatEffectiveFaction(target, conversionState);
   return {
     idolSeat: targetSeat,
     alignedFaction,
@@ -187,16 +209,17 @@ export function applyHybridChooseIdol(
 }
 
 /**
- * 依據場上最新座位狀態同步混血兒榜樣所屬陣營（例如榜樣後續被種狼感染轉狼時即時更新）。
+ * 依據場上最新座位狀態同步混血兒榜樣所屬陣營（例如榜樣後續被種狼感染、轉化或邱比特連線轉陣營時即時更新）。
  */
 export function syncHybridAffiliation(
   state: HybridRuntimeState,
   seats: PlayerSeat[],
+  conversionState?: ConversionRuntimeState,
 ): HybridRuntimeState {
   if (state.idolSeat === null) return state;
   const idol = seats.find((seat) => seat.seatNumber === state.idolSeat);
   if (!idol) return state;
-  const nextFaction = getSeatEffectiveFaction(idol);
+  const nextFaction = getSeatEffectiveFaction(idol, conversionState);
   if (nextFaction === state.alignedFaction) return state;
   return {
     ...state,

@@ -84,6 +84,8 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const boardRoleIds = useMemo(() => getBoardRoleIdSet(board), [board]);
   const hasWitchRole = boardRoleIds.has('witch') || boardRoleIds.has('awakened_witch');
   const hasMechWolfRole = boardRoleIds.has('mech_wolf');
+  const hasIdiotRole = boardRoleIds.has('idiot');
+  const hasHybridRole = boardRoleIds.has('hybrid');
   const hasBlackMarketMerchant = boardRoleIds.has('black_market_merchant');
   const hasMiracleMerchant = boardRoleIds.has('miracle_merchant');
   const hasSuperBlackMarketMerchant = boardRoleIds.has('super_black_market_merchant');
@@ -546,6 +548,64 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
                             updateRuleOverrides({ mechWolfForceLearnNight1: opt.value })
                           }
                           className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                            active
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 條件顯示：僅含白癡時顯示翻牌追刀規則 */}
+              {hasIdiotRole && (
+                <div>
+                  <div className="mb-1.5 text-sm font-medium text-secondary">白癡翻牌追刀規則</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { value: true, label: '翻牌需再追刀一次' },
+                      { value: false, label: '翻牌免追刀（視為沒技能）' },
+                    ].map((opt) => {
+                      const active = ruleOverrides.idiotNeedsExtraKill === opt.value;
+                      return (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() => updateRuleOverrides({ idiotNeedsExtraKill: opt.value })}
+                          className={`min-h-11 rounded px-2.5 py-2 text-center text-xs font-medium ${
+                            active
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 條件顯示：僅含混血兒時顯示平民計邊規則 */}
+              {hasHybridRole && (
+                <div>
+                  <div className="mb-1.5 text-sm font-medium text-secondary">混血兒勝敗計邊規則</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { value: true, label: '計入平民邊（跟隨榜樣勝敗）' },
+                      { value: false, label: '不計入神／民邊' },
+                    ].map((opt) => {
+                      const active = ruleOverrides.hybridCountsAsVillager === opt.value;
+                      return (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() => updateRuleOverrides({ hybridCountsAsVillager: opt.value })}
+                          className={`min-h-11 rounded px-2.5 py-2 text-center text-xs font-medium ${
                             active
                               ? 'border-selected-sheriff bg-sheriff-tint text-primary'
                               : 'border border-subtle bg-canvas text-secondary hover:border-strong'

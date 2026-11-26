@@ -41,6 +41,7 @@ import {
   canJackRipperSelectFanatic,
   canPuppetChoose,
   canScentPhantomLink,
+  canShadowChoose,
   canThiefChooseCard,
   canTwinsGuard,
   canXuXianBind,
@@ -82,6 +83,7 @@ import {
   syncFinalBatchLoneWolfTeamStatus,
 } from './finalBatchRoles';
 import { checkCanShoot } from './dayResolution';
+import { isSeatEffectiveWolf } from './factionHelpers';
 import {
   canAwakenedDreamCatcherDream,
   canDemonWolfCheck,
@@ -455,11 +457,17 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   nextInterferenceState.activeMutedSeat = null;
   nextInterferenceState.activePetrifiedSeat = null;
   nextInterferenceState.activeTricksterVoteSwap = null;
+  nextInterferenceState.activeNightSwapPairs = [];
+  nextInterferenceState.activeTroublemakerPrankedSeat = null;
   nextInterferenceState.alchemySnakePendingVictimSeat = null;
+  nextInterferenceState.alchemySnakePendingVictimSeats = [];
+  nextInterferenceState.amplifiedSeatsTonight = [];
   let nextCombatState = cloneCombatState(combatState);
   const bloodMoonSealedGood = nextCombatState.bloodMoonSealActiveTonight;
   nextCombatState.bloodMoonSealActiveTonight = false;
   nextCombatState.pufferfishWolfKilledToday = false;
+  // 每晚重新開始時清除前一晚覺醒狼美人的替死魅惑綁定（未魅惑則當晚無人替死）
+  nextCombatState.awakenedWolfBeautyActiveCharmSeat = null;
   const prevScarletAttached = [...nextCombatState.scarletAttachedSeats];
   nextCombatState = syncWolfBrothersState(updatedSeats, nextCombatState, round);
   nextCombatState.wolfRavenClawJoinedTeam = syncWolfRavenClawTeamStatus(
@@ -473,6 +481,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextCombatState,
   );
   let nextConversionState = cloneConversionState(conversionState);
+  if (
+    !nextConversionState.scentPhantomTriggered &&
+    (!draft.scentPhantomChainPair || draft.scentPhantomChainPair[0] === null)
+  ) {
+    nextConversionState.scentPhantomChain = null;
+  }
+  if (
+    !nextConversionState.xuXianTriggered &&
+    (!draft.xuXianBindPair || draft.xuXianBindPair[0] === null)
+  ) {
+    nextConversionState.xuXianActiveBoundPair = null;
+  }
   let nextThirdPartySpecialState = cloneThirdPartySpecialState(thirdPartySpecialState);
   nextThirdPartySpecialState.crowActiveCursedSeat = null;
   nextThirdPartySpecialState.butlerActiveTeaSeat = null;
@@ -487,6 +507,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     round,
     draft.sleepingBeautyPickSeat,
   );
+  let exoticPrinceResult: NightResolutionResult['exoticPrinceResult'] = null;
   if (
     round >= 2 &&
     draft.exoticPrinceCheckTarget != null &&
@@ -497,8 +518,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       draft.exoticPrinceCheckTarget,
     );
     nextThirdPartySpecialState = wakeOutcome.state;
+    exoticPrinceResult = {
+      targetSeat: draft.exoticPrinceCheckTarget,
+      foundSleepingBeauty: wakeOutcome.foundSleepingBeauty,
+    };
   }
   const allWolvesAsleepTonight = areAllAliveWolvesAsleep(updatedSeats, nextThirdPartySpecialState);
+  let luckySeerResult: NightResolutionResult['luckySeerResult'] = null;
+  let eclipseMaidCheckResult: NightResolutionResult['eclipseMaidCheckResult'] = null;
+  let greyWolfBossSeerResult: NightResolutionResult['greyWolfBossSeerResult'] = null;
+  let policeDogResult: NightResolutionResult['policeDogResult'] = null;
+  let littleGirlResult: NightResolutionResult['littleGirlResult'] = null;
+  let mediumResult: NightResolutionResult['mediumResult'] = null;
   let nextFinalBatchState = cloneFinalBatchState(finalBatchState);
   nextFinalBatchState.phantomWolfInvincibleActive = false;
   nextFinalBatchState.detectiveRevealedToday = false;
@@ -655,8 +686,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       draft.medusaPetrifyTarget ?? null,
     );
     if (!check.allowed) throw new Error(check.reason);
-    medusaPetrifiedSeat = draft.medusaPetrifyTarget ?? null;
-    nextInterferenceState.lastMedusaTarget = medusaPetrifiedSeat;
+    const requestedPetrifySeat = draft.medusaPetrifyTarget ?? null;
+    const requestedPetrifyObj =
+      requestedPetrifySeat !== null
+        ? updatedSeats.find((s) => s.seatNumber === requestedPetrifySeat)
+        : undefined;
+    const perseusImmuneToPetrify = Boolean(
+      requestedPetrifyObj &&
+        requestedPetrifyObj.roleId === 'perseus' &&
+        !requestedPetrifyObj.infectedBySeedWolf,
+    );
+    medusaPetrifiedSeat = perseusImmuneToPetrify ? null : requestedPetrifySeat;
+    nextInterferenceState.lastMedusaTarget = requestedPetrifySeat;
     nextInterferenceState.activePetrifiedSeat = medusaPetrifiedSeat;
     if (medusaPetrifiedSeat !== null) {
       updatedSeats = updatedSeats.map((s) =>
@@ -714,6 +755,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (mentorScholarOutcome.effectiveScholar?.mode === 'weaken') {
     weakenedSeats.add(mentorScholarOutcome.effectiveScholar.targetSeat);
   }
+  const amplifiedSeats = new Set<number>();
+  if (mentorScholarOutcome.effectiveMentor?.mode === 'amplify') {
+    amplifiedSeats.add(mentorScholarOutcome.effectiveMentor.targetSeat);
+  }
+  if (mentorScholarOutcome.effectiveScholar?.mode === 'amplify') {
+    amplifiedSeats.add(mentorScholarOutcome.effectiveScholar.targetSeat);
+  }
+  nextInterferenceState.amplifiedSeatsTonight = Array.from(amplifiedSeats);
   const wolfTeamWeakened = Array.from(weakenedSeats).some((seatNum) => {
     const s = updatedSeats.find((seat) => seat.seatNumber === seatNum);
     return Boolean(s && isSeatWolfFaction(s));
@@ -796,8 +845,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
+  const activeNightSwapPairs: Array<[number, number]> = [
+    effectiveMagicianPair,
+    effectiveWolfWarlockPair,
+  ].filter((p): p is [number, number] => p !== null);
+  nextInterferenceState.activeNightSwapPairs = [...activeNightSwapPairs];
+
   const swapNightTarget = (seatNum: number | null): number | null =>
-    applyTargetSwaps(seatNum, [effectiveMagicianPair, effectiveWolfWarlockPair]);
+    applyTargetSwaps(seatNum, activeNightSwapPairs);
 
   let troublemakerPrankedSeat: number | null = null;
   if (draft.troublemakerTarget !== undefined) {
@@ -809,10 +864,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     if (!check.allowed) throw new Error(check.reason);
     troublemakerPrankedSeat = draft.troublemakerTarget ?? null;
     nextInterferenceState.lastTroublemakerTarget = troublemakerPrankedSeat;
+    nextInterferenceState.activeTroublemakerPrankedSeat = troublemakerPrankedSeat;
   }
 
   let timeEclipseLockedSeat: number | null = null;
-  if (draft.timeEclipseTarget !== undefined) {
+  const aliveTimeEclipse = updatedSeats.find((s) => s.roleId === 'time_eclipse_consort' && s.isAlive);
+  if (
+    aliveTimeEclipse &&
+    fearedSeat !== aliveTimeEclipse.seatNumber &&
+    penguinFrozenSeat !== aliveTimeEclipse.seatNumber &&
+    medusaPetrifiedSeat !== aliveTimeEclipse.seatNumber &&
+    draft.timeEclipseTarget !== undefined
+  ) {
     const check = canTimeEclipseLock(
       updatedSeats,
       nextInterferenceState,
@@ -849,6 +912,10 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // === 第 2 批階段 3：特殊守護（流光伯爵／名媛／蠱惑師） ===
   let radiantShieldSeat: number | null = null;
+  let radiantSecondShieldSeat: number | null = null;
+  const aliveRadiantEarl = updatedSeats.find(
+    (s) => s.roleId === 'radiant_earl' && s.isAlive && !s.infectedBySeedWolf,
+  );
   if (draft.radiantEarlTarget !== undefined) {
     const check = canRadiantEarlShield(
       updatedSeats,
@@ -859,6 +926,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     if (!check.allowed) throw new Error(check.reason);
     radiantShieldSeat = draft.radiantEarlTarget ?? null;
     nextInterferenceState.lastRadiantEarlTarget = radiantShieldSeat;
+    if (
+      aliveRadiantEarl &&
+      amplifiedSeats.has(aliveRadiantEarl.seatNumber) &&
+      draft.radiantEarlSecondShieldTarget != null
+    ) {
+      radiantSecondShieldSeat = draft.radiantEarlSecondShieldTarget;
+    }
   }
 
   let socialiteFavoredSeat: number | null = null;
@@ -939,6 +1013,10 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       );
       wardenImmuneSeats = outcome.immuneSeats;
       wardenKilledSeat = outcome.killedSeat;
+      if (outcome.mutualBetraySwap) {
+        activeNightSwapPairs.push(outcome.mutualBetraySwap);
+        nextInterferenceState.activeNightSwapPairs = [...activeNightSwapPairs];
+      }
     }
   }
 
@@ -1056,15 +1134,34 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextConversionState.twinsGuardUsed = true;
   }
 
-  if (draft.awakenedGargoyleConvertTarget !== undefined && draft.awakenedGargoyleConvertTarget !== null) {
-    const check = canAwakenedGargoyleConvert(updatedSeats, draft.awakenedGargoyleConvertTarget, round);
+  const gargoyleConvertTargets =
+    draft.awakenedGargoyleConvertTargets && draft.awakenedGargoyleConvertTargets.length > 0
+      ? draft.awakenedGargoyleConvertTargets
+      : draft.awakenedGargoyleConvertTarget !== undefined &&
+          draft.awakenedGargoyleConvertTarget !== null
+        ? [draft.awakenedGargoyleConvertTarget]
+        : [];
+  for (const convertTargetSeat of gargoyleConvertTargets) {
+    const check = canAwakenedGargoyleConvert(updatedSeats, convertTargetSeat, round);
     if (!check.allowed) throw new Error(check.reason);
-    nextConversionState.awakenedGargoyleConvertedSeat = draft.awakenedGargoyleConvertTarget;
-    updatedSeats = updatedSeats.map((s) =>
-      s.seatNumber === draft.awakenedGargoyleConvertTarget
-        ? { ...s, convertedByAwakenedGargoyle: true }
-        : s,
-    );
+    nextConversionState.awakenedGargoyleConvertedSeat = convertTargetSeat;
+    if (!nextConversionState.awakenedGargoyleConvertedSeats) {
+      nextConversionState.awakenedGargoyleConvertedSeats = [];
+    }
+    const convertTargetObj = updatedSeats.find((s) => s.seatNumber === convertTargetSeat);
+    // Q&A：機械狼／混血兒被覺醒石像鬼轉化時靜默無效（底牌與陣營保持不變）
+    if (
+      convertTargetObj &&
+      convertTargetObj.roleId !== 'mech_wolf' &&
+      convertTargetObj.roleId !== 'hybrid'
+    ) {
+      if (!nextConversionState.awakenedGargoyleConvertedSeats.includes(convertTargetSeat)) {
+        nextConversionState.awakenedGargoyleConvertedSeats.push(convertTargetSeat);
+      }
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === convertTargetSeat ? { ...s, convertedByAwakenedGargoyle: true } : s,
+      );
+    }
   }
 
   if (round === 1 && draft.awakenedLonelyGirlIdolTarget != null) {
@@ -1074,6 +1171,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextConversionState.wildChildIdolSeat = draft.wildChildIdolTarget;
   }
   if (round === 1 && draft.shadowMasterTarget != null) {
+    const shadowCheck = canShadowChoose(updatedSeats, draft.shadowMasterTarget, round);
+    if (!shadowCheck.allowed) throw new Error(shadowCheck.reason);
     nextConversionState.shadowMasterSeat = draft.shadowMasterTarget;
     const master = updatedSeats.find((s) => s.seatNumber === draft.shadowMasterTarget);
     if (master?.roleId === 'avenger') {
@@ -1094,7 +1193,17 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   if (draft.chameleonWolfTarget != null) {
-    nextConversionState.chameleonWolfSeat = draft.chameleonWolfTarget;
+    const chamSeat = updatedSeats.find((s) => s.roleId === 'chameleon_wolf_king' && s.isAlive);
+    const chamTargetObj = updatedSeats.find((s) => s.seatNumber === draft.chameleonWolfTarget);
+    if (chamSeat && chamTargetObj?.roleId) {
+      nextConversionState.chameleonWolfSeat = chamSeat.seatNumber;
+      nextConversionState.chameleonOriginalRoleId = 'chameleon_wolf_king';
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === chamSeat.seatNumber ? { ...s, roleId: chamTargetObj.roleId } : s,
+      );
+    } else {
+      nextConversionState.chameleonWolfSeat = draft.chameleonWolfTarget;
+    }
   }
 
   if (
@@ -1135,14 +1244,57 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextConversionState.xuXianLastBoundPair = pair;
   }
 
+  // 蝕日侍女當晚吞噬目標／灰太狼偷取目標／管家與狼僕互抵前置檢查（影響後續刀口與神職技能）
+  const aliveEclipseMaid = initialSeats.find((s) => s.roleId === 'eclipse_maid' && s.isAlive);
+  let eclipseDevouredSeat: number | null = null;
+  let eclipseDevouredRoleId: string | null = null;
+  if (
+    aliveEclipseMaid &&
+    draft.eclipseMaidDevourTarget != null &&
+    canEclipseMaidDevour(initialSeats, round, draft.eclipseMaidDevourTarget).allowed
+  ) {
+    eclipseDevouredSeat = draft.eclipseMaidDevourTarget;
+    nextFinalBatchState.eclipseMaidDevouredSeatTonight = eclipseDevouredSeat;
+    eclipseDevouredRoleId =
+      initialSeats.find((s) => s.seatNumber === eclipseDevouredSeat)?.roleId ?? null;
+  }
+
+  let greyWolfBossStolenRoleId: string | null = null;
+  let greyWolfBossValidSteal = false;
+  if (
+    draft.greyWolfBossStealTarget != null &&
+    canGreyWolfBossSteal(initialSeats, nextFinalBatchState, draft.greyWolfBossStealTarget).allowed
+  ) {
+    nextFinalBatchState.greyWolfBossStolenSeats.push(draft.greyWolfBossStealTarget);
+    const blockedByAntiTheft = happySheepAntiTheftSeat === draft.greyWolfBossStealTarget;
+    if (!blockedByAntiTheft) {
+      greyWolfBossValidSteal = true;
+      greyWolfBossStolenRoleId =
+        initialSeats.find((s) => s.seatNumber === draft.greyWolfBossStealTarget)?.roleId ?? null;
+    }
+  }
+  const greyWolfStoleWolfTonight =
+    greyWolfBossValidSteal &&
+    round >= 2 &&
+    (greyWolfBossStolenRoleId === 'wolf' || greyWolfBossStolenRoleId === 'little_grey_wolf');
+
+  const butlerWolfMaidCancelled =
+    round >= 2 &&
+    draft.butlerTeaTarget != null &&
+    draft.wolfMaidTeaTarget != null &&
+    draft.butlerTeaTarget === draft.wolfMaidTeaTarget;
+
   const isSeatBlockedByInterference = (seatNum: number): boolean => {
     const s = updatedSeats.find((seat) => seat.seatNumber === seatNum);
     if (bloodMoonSealedGood && s && !isSeatWolfFaction(s)) return true;
+    if (eclipseDevouredSeat !== null && eclipseDevouredSeat === seatNum) return true;
+    const isExemptFromWeaken =
+      s?.roleId === 'awakened_gargoyle' || s?.roleId === 'scent_phantom';
     return (
       fearedSeat === seatNum ||
       penguinFrozenSeat === seatNum ||
       medusaPetrifiedSeat === seatNum ||
-      weakenedSeats.has(seatNum)
+      (!isExemptFromWeaken && weakenedSeats.has(seatNum))
     );
   };
 
@@ -1151,10 +1303,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     penguinFrozeWolf ||
     foxCubCharmedWolf ||
     wolfTeamWeakened ||
-    assassinMissedBlockWolf;
+    assassinMissedBlockWolf ||
+    allWolvesAsleepTonight ||
+    greyWolfStoleWolfTonight;
 
   const isSpecialNightImmune = (seatNum: number): boolean =>
     (radiantShieldSeat !== null && seatNum === radiantShieldSeat) ||
+    (radiantSecondShieldSeat !== null && seatNum === radiantSecondShieldSeat) ||
     (darkNightEnvoyShieldSeat !== null && seatNum === darkNightEnvoyShieldSeat) ||
     wardenImmuneSeats.includes(seatNum);
 
@@ -1273,13 +1428,17 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     );
   }
 
-  // 2. 守衛行動檢核（若守衛被夢魘恐懼／企鵝冰凍／梅杜莎石化／削弱／種狼感染則當晚無法守護；受搗蛋鬼／魔術師／蝕時狼妃影響轉移）
+  // 2. 守衛行動檢核（若守衛被夢魘恐懼／企鵝冰凍／梅杜莎石化／削弱／種狼感染／傀儡則當晚無法守護；受搗蛋鬼／魔術師／蝕時狼妃影響轉移）
   const aliveGuard = updatedSeats.find(
     (seat) => seat.roleId === 'guard' && seat.isAlive && !seat.infectedBySeedWolf,
   );
-  const guardFeared = Boolean(aliveGuard && isSeatBlockedByInterference(aliveGuard.seatNumber));
+  const guardFeared = Boolean(
+    aliveGuard &&
+      (isSeatBlockedByInterference(aliveGuard.seatNumber) || aliveGuard.isPuppetized),
+  );
   const hasAliveGuard = Boolean(aliveGuard && !guardFeared);
   let effectiveGuardTarget: number | null = null;
+  let effectiveGuardSecondTarget: number | null = null;
   let guardTroublemakerSelfGuardDeath = false;
   if (guardFeared) {
     nextLastGuardedSeat = null;
@@ -1306,14 +1465,25 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         ? draft.guardTarget
         : effectiveGuardTarget;
     trackBlackBatTarget(aliveGuard.seatNumber, effectiveGuardTarget);
+
+    if (amplifiedSeats.has(aliveGuard.seatNumber) && draft.guardSecondTarget != null) {
+      effectiveGuardSecondTarget = redirectSkillTarget(
+        aliveGuard.seatNumber,
+        draft.guardSecondTarget,
+        { isGodSkill: true },
+      );
+      trackBlackBatTarget(aliveGuard.seatNumber, effectiveGuardSecondTarget);
+    }
   }
 
-  // 2.5 攝夢人行動檢核（若被夢魘恐懼則無法攝夢且重置連夢紀錄；被種狼感染則失能；受蝕時狼妃封鎖依板子區分無效或自攝）
+  // 2.5 攝夢人行動檢核（若被夢魘恐懼則無法攝夢且重置連夢紀錄；被種狼感染／吞噬則失能；受蝕時狼妃封鎖依板子區分無效或自攝）
   const aliveDreamCatcher = updatedSeats.find(
     (seat) => seat.roleId === 'dream_catcher' && seat.isAlive && !seat.infectedBySeedWolf,
   );
   const dreamCatcherFeared = Boolean(
-    aliveDreamCatcher && fearedSeat === aliveDreamCatcher.seatNumber,
+    aliveDreamCatcher &&
+      (fearedSeat === aliveDreamCatcher.seatNumber ||
+        eclipseDevouredSeat === aliveDreamCatcher.seatNumber),
   );
   let dreamTarget: number | null = null;
   if (dreamCatcherFeared) {
@@ -1341,7 +1511,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextLastDreamTarget = dreamTarget;
   }
 
-  // 2.55 覺醒攝夢人行動檢核（不可連選、不可選自己、免疫夜間傷害、不奶穿；被夢魘恐懼則重置）
+  // 2.55 覺醒攝夢人行動檢核（不可連選、不可選自己、免疫夜間傷害、不奶穿；被夢魘恐懼／吞噬則重置）
   const aliveAwakenedDreamCatcher = findAwakenedDreamCatcherSeat(updatedSeats);
   const awakenedDreamActive = Boolean(
     aliveAwakenedDreamCatcher &&
@@ -1351,7 +1521,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   const awakenedDreamFeared = Boolean(
     awakenedDreamActive &&
       aliveAwakenedDreamCatcher &&
-      fearedSeat === aliveAwakenedDreamCatcher.seatNumber,
+      (fearedSeat === aliveAwakenedDreamCatcher.seatNumber ||
+        eclipseDevouredSeat === aliveAwakenedDreamCatcher.seatNumber),
   );
   let awakenedDreamTarget: number | null = null;
   if (awakenedDreamFeared) {
@@ -1401,15 +1572,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  const isDreamProtected = (seatNumber: number): boolean =>
-    (dreamTarget !== null && seatNumber === dreamTarget) ||
-    (awakenedDreamTarget !== null && seatNumber === awakenedDreamTarget);
-
   // 3. 機械狼第二晚起學習技能檢核
   let mechGuardTarget: number | null = null;
   let mechExtraKillTarget: number | null = null;
   let mechPoisonTarget: number | null = null;
   let mechPsychicTarget: number | null = null;
+  let mechPureWhiteTarget: number | null = null;
+  let mechDreamTarget: number | null = null;
 
   if (
     round >= 2 &&
@@ -1441,10 +1610,25 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       case 'psychic':
         mechPsychicTarget = draft.mechWolfSkillTarget;
         break;
+      case 'pure_white_maiden':
+        mechPureWhiteTarget = draft.mechWolfSkillTarget;
+        break;
+      case 'wolf_beauty':
+        nextActiveCharmedSeat = draft.mechWolfSkillTarget;
+        nextLastCharmedSeat = draft.mechWolfSkillTarget;
+        break;
+      case 'dream_catcher':
+        mechDreamTarget = draft.mechWolfSkillTarget;
+        break;
       default:
         break;
     }
   }
+
+  const isDreamProtected = (seatNumber: number): boolean =>
+    (dreamTarget !== null && seatNumber === dreamTarget) ||
+    (awakenedDreamTarget !== null && seatNumber === awakenedDreamTarget) ||
+    (mechDreamTarget !== null && seatNumber === mechDreamTarget);
 
   // 3.5 惡靈騎士／惡魔／梅杜莎不可自刀、限刀驗證（占卜師／煉金魔女）、搗蛋鬼轉刀、魔術師換刀、名媛空刀 & 種狼感染
   let rawWolfTarget: number | null = wolfTeamBlocked ? null : draft.wolfTarget;
@@ -1519,13 +1703,17 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     throw new Error('覺醒狼美人不可自刀');
   }
 
-  // 名媛寵幸保護：只要名媛不死且寵幸者被狼刀，視為空刀（女巫不見刀口、種狼無法感染、目標不死）
-  const socialiteBlockedWolfKill = Boolean(
+  // 名媛寵幸保護：只要名媛不死且寵幸者被狼刀（含種狼感染），視為空刀（女巫不見刀口、種狼無法感染、目標不死）
+  const socialiteProtectedSeat =
     aliveSocialite?.isAlive &&
-      socialiteFavoredSeat !== null &&
-      effectiveWolfTarget !== null &&
-      effectiveWolfTarget === socialiteFavoredSeat &&
-      effectiveWolfTarget !== aliveSocialite.seatNumber,
+    socialiteFavoredSeat !== null &&
+    socialiteFavoredSeat !== aliveSocialite.seatNumber
+      ? socialiteFavoredSeat
+      : null;
+  const socialiteBlockedWolfKill = Boolean(
+    socialiteProtectedSeat !== null &&
+      (effectiveWolfTarget === socialiteProtectedSeat ||
+        draft.seedWolfInfectTarget === socialiteProtectedSeat),
   );
   if (socialiteBlockedWolfKill) {
     effectiveWolfTarget = null;
@@ -1547,7 +1735,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     effectiveWolfTarget = null;
 
     const infectGuarded =
-      (hasAliveGuard && effectiveGuardTarget === requestedSeedInfectTarget) ||
+      (hasAliveGuard &&
+        (effectiveGuardTarget === requestedSeedInfectTarget ||
+          effectiveGuardSecondTarget === requestedSeedInfectTarget)) ||
       mechGuardTarget === requestedSeedInfectTarget ||
       isDreamProtected(requestedSeedInfectTarget);
 
@@ -1565,20 +1755,35 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 4. 女巫行動檢核（解毒互斥 + 自救限制；Q&A：被白晝學者／寂夜導師削弱僅禁毒、仍可用解藥）
+  // 4. 女巫行動檢核（解毒互斥 + 自救限制；被傀儡／灰太狼偷毒無法用毒；管家同夜可雙藥／導師增幅雙毒；被削弱僅禁毒仍可用解藥）
   const activeWitch = updatedSeats.find(
     (seat) => seat.roleId === 'witch' && seat.isAlive && !seat.infectedBySeedWolf,
   );
   const witchHardBlocked =
     !activeWitch ||
+    activeWitch.isPuppetized ||
     bloodMoonSealedGood ||
     fearedSeat === activeWitch.seatNumber ||
     penguinFrozenSeat === activeWitch.seatNumber ||
-    medusaPetrifiedSeat === activeWitch.seatNumber;
+    medusaPetrifiedSeat === activeWitch.seatNumber ||
+    eclipseDevouredSeat === activeWitch.seatNumber;
   const witchPoisonWeakened = Boolean(activeWitch && weakenedSeats.has(activeWitch.seatNumber));
+  const witchStolenByGreyWolf =
+    greyWolfBossValidSteal && greyWolfBossStolenRoleId === 'witch';
+  const butlerServedWitch = Boolean(
+    activeWitch &&
+      round >= 2 &&
+      !butlerWolfMaidCancelled &&
+      draft.butlerTeaTarget === activeWitch.seatNumber &&
+      draft.butlerTeaAccepted !== false &&
+      !nextThirdPartySpecialState.butlerServedSeats.includes(activeWitch.seatNumber),
+  );
+  const witchAmplified = Boolean(activeWitch && amplifiedSeats.has(activeWitch.seatNumber));
   const effectiveWitchUseAntidote = witchHardBlocked ? false : draft.witchUseAntidote;
   const rawWitchPoisonTarget =
-    witchHardBlocked || witchPoisonWeakened ? null : draft.witchPoisonTarget;
+    witchHardBlocked || witchPoisonWeakened || witchStolenByGreyWolf
+      ? null
+      : draft.witchPoisonTarget;
   const effectiveWitchPoisonTarget =
     activeWitch && rawWitchPoisonTarget !== null
       ? redirectSkillTarget(activeWitch.seatNumber, rawWitchPoisonTarget, { isGodSkill: true })
@@ -1586,8 +1791,22 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (activeWitch && effectiveWitchPoisonTarget !== null) {
     trackBlackBatTarget(activeWitch.seatNumber, effectiveWitchPoisonTarget);
   }
+  const effectiveWitchSecondPoisonTarget =
+    activeWitch &&
+    !witchHardBlocked &&
+    !witchPoisonWeakened &&
+    !witchStolenByGreyWolf &&
+    (butlerServedWitch || witchAmplified) &&
+    draft.witchSecondPoisonTarget != null
+      ? redirectSkillTarget(activeWitch.seatNumber, draft.witchSecondPoisonTarget, {
+          isGodSkill: true,
+        })
+      : null;
+  if (activeWitch && effectiveWitchSecondPoisonTarget !== null) {
+    trackBlackBatTarget(activeWitch.seatNumber, effectiveWitchSecondPoisonTarget);
+  }
 
-  if (effectiveWitchUseAntidote && rawWitchPoisonTarget !== null) {
+  if (effectiveWitchUseAntidote && rawWitchPoisonTarget !== null && !butlerServedWitch) {
     throw new Error('女巫解藥與毒藥不可在同一晚同時使用');
   }
   if (effectiveWitchUseAntidote) {
@@ -1606,7 +1825,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (rawWitchPoisonTarget !== null) {
     const poisonCheck = canWitchUsePoison(
       updatedSeats,
-      effectiveWitchUseAntidote,
+      butlerServedWitch ? false : effectiveWitchUseAntidote,
       rawWitchPoisonTarget,
       witchPoisonUsed,
     );
@@ -1621,7 +1840,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     (seat) => seat.roleId === 'awakened_witch' && seat.isAlive && !seat.infectedBySeedWolf,
   );
   const awBlocked =
-    !activeAwakenedWitch || isSeatBlockedByInterference(activeAwakenedWitch.seatNumber);
+    !activeAwakenedWitch ||
+    activeAwakenedWitch.isPuppetized ||
+    isSeatBlockedByInterference(activeAwakenedWitch.seatNumber);
   const effectiveAwUseAntidote = awBlocked ? false : Boolean(draft.awakenedWitchUseAntidote);
   const rawAwPoisonTarget = awBlocked ? null : (draft.awakenedWitchPoisonTarget ?? null);
   let effectiveAwPoisonTarget: number | null = null;
@@ -1659,30 +1880,47 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 4.5 毒師行動檢核（僅 1 瓶毒藥；被恐懼或被感染則無法用毒）
+  // 4.5 毒師行動檢核（僅 1 瓶毒藥；被干擾封鎖／傀儡／種狼感染則無法用毒；受目標交換與反彈影響）
   const activePoisoner = updatedSeats.find(
     (seat) => seat.roleId === 'poisoner' && seat.isAlive && !seat.infectedBySeedWolf,
   );
-  const poisonerBlocked = !activePoisoner || fearedSeat === activePoisoner.seatNumber;
-  const requestedPoisonerTarget = poisonerBlocked ? null : (draft.poisonerTarget ?? null);
-  if (requestedPoisonerTarget !== null) {
+  const poisonerBlocked =
+    !activePoisoner ||
+    activePoisoner.isPuppetized ||
+    isSeatBlockedByInterference(activePoisoner.seatNumber);
+  const rawPoisonerTarget = poisonerBlocked ? null : (draft.poisonerTarget ?? null);
+  let requestedPoisonerTarget: number | null = null;
+  if (activePoisoner && rawPoisonerTarget !== null) {
     const poisonerCheck = canPoisonerUsePoison(
       updatedSeats,
-      requestedPoisonerTarget,
+      rawPoisonerTarget,
       poisonerPoisonUsed,
     );
     if (!poisonerCheck.allowed) {
       throw new Error(poisonerCheck.reason);
     }
     nextPoisonerPoisonUsed = true;
+    requestedPoisonerTarget = redirectSkillTarget(activePoisoner.seatNumber, rawPoisonerTarget, {
+      isGodSkill: true,
+    });
+    trackBlackBatTarget(activePoisoner.seatNumber, requestedPoisonerTarget);
   }
 
-  // 5. 狼刀階段結算（含夢遊者／咒狐免疫狼刀、同守同救奶穿、機械狼雙刀、自爆狼點刀後死亡、盜寶蒙面狼放逐免死隔夜點刀後死亡）
+  // 5. 狼刀階段結算（含夢遊者／咒狐免疫狼刀、沙龍之夜夢咒同中死、同守同救奶穿、機械狼雙刀、自爆狼點刀後死亡、盜寶蒙面狼放逐免死隔夜點刀後死亡）
   const wolfTargetSeatObj =
     effectiveWolfTarget !== null
       ? updatedSeats.find((s) => s.seatNumber === effectiveWolfTarget)
       : undefined;
-  const wolfTargetIsCursedFox = isCursedFoxSeat(wolfTargetSeatObj);
+  const isSalonNight = input.boardId === '12p-salon-night';
+  const salonDreamPiercedCursedFox = Boolean(
+    isSalonNight &&
+      wolfTargetSeatObj &&
+      isCursedFoxSeat(wolfTargetSeatObj) &&
+      dreamTarget !== null &&
+      dreamTarget === effectiveWolfTarget,
+  );
+  const wolfTargetIsCursedFox =
+    isCursedFoxSeat(wolfTargetSeatObj) && !salonDreamPiercedCursedFox;
 
   const anyAntidoteUsed = effectiveWitchUseAntidote || effectiveAwUseAntidote;
 
@@ -1714,12 +1952,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   if (
     effectiveWolfTarget !== null &&
-    !isDreamProtected(effectiveWolfTarget) &&
+    (!isDreamProtected(effectiveWolfTarget) || salonDreamPiercedCursedFox) &&
     !isSpecialNightImmune(effectiveWolfTarget) &&
     !wolfTargetIsCursedFox
   ) {
     const guardedByNormal =
-      (hasAliveGuard && effectiveGuardTarget === effectiveWolfTarget) ||
+      (hasAliveGuard &&
+        (effectiveGuardTarget === effectiveWolfTarget ||
+          effectiveGuardSecondTarget === effectiveWolfTarget)) ||
       twinsGuardedSeat === effectiveWolfTarget ||
       luckyShieldSeat === effectiveWolfTarget ||
       mediumShieldSeat === effectiveWolfTarget ||
@@ -1737,8 +1977,16 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   if (mechExtraKillTarget !== null && !isDreamProtected(mechExtraKillTarget)) {
-    const guardedByNormal = hasAliveGuard && effectiveGuardTarget === mechExtraKillTarget;
-    if (!guardedByNormal) {
+    const mechKillTargetObj = updatedSeats.find((s) => s.seatNumber === mechExtraKillTarget);
+    const guardedByNormal =
+      hasAliveGuard &&
+      (effectiveGuardTarget === mechExtraKillTarget ||
+        effectiveGuardSecondTarget === mechExtraKillTarget);
+    if (
+      !guardedByNormal &&
+      !isCursedFoxSeat(mechKillTargetObj) &&
+      !isSpecialNightImmune(mechExtraKillTarget)
+    ) {
       updatedSeats = killSeat(
         updatedSeats,
         deaths,
@@ -1786,7 +2034,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     const check = canWolfRavenClawKill(updatedSeats, nextCombatState, draft.wolfRavenClawKillTarget);
     if (!check.allowed) throw new Error(check.reason);
     nextCombatState.wolfRavenClawInvincibleUsed = true;
-    if (!isDreamProtected(draft.wolfRavenClawKillTarget) && !isSpecialNightImmune(draft.wolfRavenClawKillTarget)) {
+    // 狼鴉之爪無敵落刀無視流光伯爵／盾免疫，僅受夢遊狀態免疫
+    if (!isDreamProtected(draft.wolfRavenClawKillTarget)) {
       doKill(draft.wolfRavenClawKillTarget, 'wolf_raven_claw_kill');
     }
   }
@@ -1834,7 +2083,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     if (
       !isDreamProtected(draft.bigBadWolfKillTarget) &&
       !isSpecialNightImmune(draft.bigBadWolfKillTarget) &&
-      !(hasAliveGuard && effectiveGuardTarget === draft.bigBadWolfKillTarget)
+      !(
+        hasAliveGuard &&
+        (effectiveGuardTarget === draft.bigBadWolfKillTarget ||
+          effectiveGuardSecondTarget === draft.bigBadWolfKillTarget)
+      )
     ) {
       doKill(draft.bigBadWolfKillTarget, 'big_bad_wolf_kill');
     }
@@ -1854,7 +2107,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     const aliveObj = updatedSeats.find((s) => s.seatNumber === draft.anubisAliveSeat)!;
     const anubisSeat = updatedSeats.find((s) => s.roleId === 'anubis' && s.isAlive);
     if (evaluateAnubisScaleWins(deadObj, aliveObj)) {
-      if (!isDreamProtected(aliveObj.seatNumber) && !isSpecialNightImmune(aliveObj.seatNumber)) {
+      // 阿努比斯審判之秤穿透攝夢保護
+      if (!isSpecialNightImmune(aliveObj.seatNumber)) {
         doKill(aliveObj.seatNumber, 'anubis_scale_kill');
       }
     } else if (anubisSeat) {
@@ -1866,7 +2120,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     doKill(wardenKilledSeat, 'warden_trade_death');
   }
 
-  // 6. 查驗資訊（預言家 / 通靈師 / 機械狼學通靈師；若遭夢魘恐懼或當晚被種狼感染則無法查驗）
+  // 6. 查驗資訊（預言家 / 通靈師 / 機械狼學通靈師；若遭夢魘恐懼／吞噬／傀儡或當晚被種狼感染則受影響）
   const seerSeatObj = initialSeats.find(
     (seat) => seat.roleId === 'seer' && seat.isAlive && !seat.infectedBySeedWolf,
   );
@@ -1883,8 +2137,23 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (seerSeatObj && effectiveSeerTarget !== null) {
     trackBlackBatTarget(seerSeatObj.seatNumber, effectiveSeerTarget);
   }
+  const rawSeerResult =
+    effectiveSeerTarget !== null
+      ? getSeerCheckResult(updatedSeats, effectiveSeerTarget, {
+          conversionState: nextConversionState,
+          thirdPartySpecialState: nextThirdPartySpecialState,
+        })
+      : null;
+  const seerUpdatedObj = seerSeatObj
+    ? updatedSeats.find((s) => s.seatNumber === seerSeatObj.seatNumber)
+    : undefined;
   const seerResult =
-    effectiveSeerTarget !== null ? getSeerCheckResult(updatedSeats, effectiveSeerTarget) : null;
+    rawSeerResult && seerUpdatedObj?.isPuppetized
+      ? {
+          ...rawSeerResult,
+          faction: rawSeerResult.faction === 'wolf' ? ('good' as const) : ('wolf' as const),
+        }
+      : rawSeerResult;
 
   const psychicSeatObj = initialSeats.find(
     (seat) => seat.roleId === 'psychic' && seat.isAlive && !seat.infectedBySeedWolf,
@@ -1894,8 +2163,18 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       updatedSeats.find((s) => s.seatNumber === psychicSeatObj.seatNumber)?.infectedBySeedWolf,
   );
   const psychicBlocked =
-    !psychicSeatObj || fearedSeat === psychicSeatObj.seatNumber || psychicInfectedTonight;
-  const effectivePsychicTarget = psychicBlocked ? null : draft.psychicCheckTarget;
+    !psychicSeatObj ||
+    isSeatBlockedByInterference(psychicSeatObj.seatNumber) ||
+    psychicInfectedTonight;
+  const effectivePsychicTarget =
+    psychicBlocked || !psychicSeatObj
+      ? null
+      : redirectSkillTarget(psychicSeatObj.seatNumber, draft.psychicCheckTarget, {
+          isGodSkill: true,
+        });
+  if (psychicSeatObj && effectivePsychicTarget !== null) {
+    trackBlackBatTarget(psychicSeatObj.seatNumber, effectivePsychicTarget);
+  }
   const psychicResult =
     effectivePsychicTarget !== null
       ? getPsychicCheckResult(
@@ -1914,7 +2193,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
           mechPsychicTarget,
           nextTreasureMasterState,
         )
-      : null;
+      : mechPureWhiteTarget !== null
+        ? getPureWhiteCheckResult(
+            updatedSeats,
+            nextMechWolfState,
+            mechPureWhiteTarget,
+            nextTreasureMasterState,
+          )
+        : null;
 
   // 6.5 第 1 批查驗與資訊感知類角色結算
   const isRoleBlocked = (roleId: string): { seat: PlayerSeat | undefined; blocked: boolean } => {
@@ -1926,7 +2212,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     );
     return {
       seat: seatObj,
-      blocked: !seatObj || fearedSeat === seatObj.seatNumber || infectedTonight,
+      blocked: !seatObj || isSeatBlockedByInterference(seatObj.seatNumber) || infectedTonight,
     };
   };
 
@@ -1935,20 +2221,38 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   const rawAwakenedTargets = draft.awakenedSeerTargets;
   const effectiveAwakenedSeerTargets: [number, number] | null =
     !awakenedSeerCheck.blocked &&
+    awakenedSeerCheck.seat &&
     rawAwakenedTargets &&
     rawAwakenedTargets[0] !== null &&
     rawAwakenedTargets[1] !== null
-      ? [rawAwakenedTargets[0], rawAwakenedTargets[1]]
+      ? [
+          redirectSkillTarget(awakenedSeerCheck.seat.seatNumber, rawAwakenedTargets[0], {
+            isGodSkill: true,
+          }) ?? rawAwakenedTargets[0],
+          redirectSkillTarget(awakenedSeerCheck.seat.seatNumber, rawAwakenedTargets[1], {
+            isGodSkill: true,
+          }) ?? rawAwakenedTargets[1],
+        ]
       : null;
+  if (awakenedSeerCheck.seat && effectiveAwakenedSeerTargets) {
+    trackBlackBatTarget(awakenedSeerCheck.seat.seatNumber, effectiveAwakenedSeerTargets[0]);
+    trackBlackBatTarget(awakenedSeerCheck.seat.seatNumber, effectiveAwakenedSeerTargets[1]);
+  }
   const awakenedSeerResult = effectiveAwakenedSeerTargets
     ? getAwakenedSeerCheckResult(updatedSeats, effectiveAwakenedSeerTargets)
     : null;
 
   // 燈影預言家（相反結果陣營查驗）
   const lanternSeerCheck = isRoleBlocked('lantern_seer');
-  const effectiveLanternTarget = lanternSeerCheck.blocked
-    ? null
-    : (draft.lanternSeerCheckTarget ?? null);
+  const effectiveLanternTarget =
+    lanternSeerCheck.blocked || !lanternSeerCheck.seat
+      ? null
+      : redirectSkillTarget(lanternSeerCheck.seat.seatNumber, draft.lanternSeerCheckTarget ?? null, {
+          isGodSkill: true,
+        });
+  if (lanternSeerCheck.seat && effectiveLanternTarget !== null) {
+    trackBlackBatTarget(lanternSeerCheck.seat.seatNumber, effectiveLanternTarget);
+  }
   const lanternSeerResult =
     effectiveLanternTarget !== null
       ? getLanternSeerCheckResult(updatedSeats, effectiveLanternTarget)
@@ -1956,9 +2260,15 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 酒鬼預言家（隨機或法官手動覆寫結果）
   const drunkSeerCheck = isRoleBlocked('drunk_seer');
-  const effectiveDrunkTarget = drunkSeerCheck.blocked
-    ? null
-    : (draft.drunkSeerCheckTarget ?? null);
+  const effectiveDrunkTarget =
+    drunkSeerCheck.blocked || !drunkSeerCheck.seat
+      ? null
+      : redirectSkillTarget(drunkSeerCheck.seat.seatNumber, draft.drunkSeerCheckTarget ?? null, {
+          isGodSkill: true,
+        });
+  if (drunkSeerCheck.seat && effectiveDrunkTarget !== null) {
+    trackBlackBatTarget(drunkSeerCheck.seat.seatNumber, effectiveDrunkTarget);
+  }
   const drunkSeerResult =
     effectiveDrunkTarget !== null
       ? getDrunkSeerCheckResult(updatedSeats, effectiveDrunkTarget, {
@@ -1969,14 +2279,29 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 愚言家（標準陣營查驗）
   const foolSeerCheck = isRoleBlocked('fool_seer');
-  const effectiveFoolTarget = foolSeerCheck.blocked ? null : (draft.foolSeerCheckTarget ?? null);
+  const effectiveFoolTarget =
+    foolSeerCheck.blocked || !foolSeerCheck.seat
+      ? null
+      : redirectSkillTarget(foolSeerCheck.seat.seatNumber, draft.foolSeerCheckTarget ?? null, {
+          isGodSkill: true,
+        });
+  if (foolSeerCheck.seat && effectiveFoolTarget !== null) {
+    trackBlackBatTarget(foolSeerCheck.seat.seatNumber, effectiveFoolTarget);
+  }
   const foolSeerResult =
     effectiveFoolTarget !== null ? getFoolSeerCheckResult(updatedSeats, effectiveFoolTarget) : null;
 
   // 狐狸（目標＋左右鄰居 3 人查驗，全好人永久失能）
   const foxCheck = isRoleBlocked('fox');
   const effectiveFoxTarget =
-    foxCheck.blocked || nextFoxLostAbility ? null : (draft.foxCheckTarget ?? null);
+    foxCheck.blocked || !foxCheck.seat || nextFoxLostAbility
+      ? null
+      : redirectSkillTarget(foxCheck.seat.seatNumber, draft.foxCheckTarget ?? null, {
+          isGodSkill: true,
+        });
+  if (foxCheck.seat && effectiveFoxTarget !== null) {
+    trackBlackBatTarget(foxCheck.seat.seatNumber, effectiveFoxTarget);
+  }
   const foxResult =
     effectiveFoxTarget !== null
       ? getFoxCheckResult(updatedSeats, effectiveFoxTarget, nextFoxLostAbility)
@@ -1988,8 +2313,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   // 石像鬼（具體底牌查驗＋歷史紀錄保存供南瓜鬼繼承）
   const gargoyleSeatObj = findGargoyleSeat(initialSeats);
   const gargoyleBlocked =
-    !gargoyleSeatObj || !gargoyleSeatObj.isAlive || fearedSeat === gargoyleSeatObj.seatNumber;
-  const effectiveGargoyleTarget = gargoyleBlocked ? null : (draft.gargoyleCheckTarget ?? null);
+    !gargoyleSeatObj ||
+    !gargoyleSeatObj.isAlive ||
+    isSeatBlockedByInterference(gargoyleSeatObj.seatNumber);
+  const effectiveGargoyleTarget =
+    gargoyleBlocked || !gargoyleSeatObj
+      ? null
+      : redirectSkillTarget(gargoyleSeatObj.seatNumber, draft.gargoyleCheckTarget ?? null);
   const gargoyleResult =
     effectiveGargoyleTarget !== null
       ? getGargoyleCheckResult(
@@ -2009,8 +2339,12 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 狼巫（具體底牌查驗，第 2 晚起驗純白之女致死）
   const wolfWitchSeatObj = initialSeats.find((s) => s.roleId === 'wolf_witch' && s.isAlive);
-  const wolfWitchBlocked = !wolfWitchSeatObj || fearedSeat === wolfWitchSeatObj.seatNumber;
-  const effectiveWolfWitchTarget = wolfWitchBlocked ? null : (draft.wolfWitchCheckTarget ?? null);
+  const wolfWitchBlocked =
+    !wolfWitchSeatObj || isSeatBlockedByInterference(wolfWitchSeatObj.seatNumber);
+  const effectiveWolfWitchTarget =
+    wolfWitchBlocked || !wolfWitchSeatObj
+      ? null
+      : redirectSkillTarget(wolfWitchSeatObj.seatNumber, draft.wolfWitchCheckTarget ?? null);
   const wolfWitchResult =
     effectiveWolfWitchTarget !== null
       ? getWolfWitchCheckResult(
@@ -2023,9 +2357,15 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 純白之女（具體底牌查驗，第 2 晚起驗狼人致死）
   const pureWhiteCheck = isRoleBlocked('pure_white_maiden');
-  const effectivePureWhiteTarget = pureWhiteCheck.blocked
-    ? null
-    : (draft.pureWhiteCheckTarget ?? null);
+  const effectivePureWhiteTarget =
+    pureWhiteCheck.blocked || !pureWhiteCheck.seat
+      ? null
+      : redirectSkillTarget(pureWhiteCheck.seat.seatNumber, draft.pureWhiteCheckTarget ?? null, {
+          isGodSkill: true,
+        });
+  if (pureWhiteCheck.seat && effectivePureWhiteTarget !== null) {
+    trackBlackBatTarget(pureWhiteCheck.seat.seatNumber, effectivePureWhiteTarget);
+  }
   const pureWhiteResult =
     effectivePureWhiteTarget !== null
       ? getPureWhiteCheckResult(
@@ -2038,8 +2378,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 惡魔（非狼目標神職／平民查驗）
   const demonWolfBlocked =
-    !aliveDemonWolf || !aliveDemonWolf.isAlive || fearedSeat === aliveDemonWolf.seatNumber;
-  const effectiveDemonWolfTarget = demonWolfBlocked ? null : (draft.demonWolfCheckTarget ?? null);
+    !aliveDemonWolf ||
+    !aliveDemonWolf.isAlive ||
+    isSeatBlockedByInterference(aliveDemonWolf.seatNumber);
+  const effectiveDemonWolfTarget =
+    demonWolfBlocked || !aliveDemonWolf
+      ? null
+      : redirectSkillTarget(aliveDemonWolf.seatNumber, draft.demonWolfCheckTarget ?? null);
   let demonWolfResult = null;
   if (effectiveDemonWolfTarget !== null) {
     const demonCheck = canDemonWolfCheck(updatedSeats, effectiveDemonWolfTarget);
@@ -2055,10 +2400,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     !pumpkinGhostSeatObj ||
     !pumpkinGhostSeatObj.isAlive ||
     !nextPumpkinGhostState.hasInherited ||
-    fearedSeat === pumpkinGhostSeatObj.seatNumber;
-  const effectivePumpkinGhostTarget = pumpkinGhostBlocked
-    ? null
-    : (draft.pumpkinGhostCheckTarget ?? null);
+    isSeatBlockedByInterference(pumpkinGhostSeatObj.seatNumber);
+  const effectivePumpkinGhostTarget =
+    pumpkinGhostBlocked || !pumpkinGhostSeatObj
+      ? null
+      : redirectSkillTarget(
+          pumpkinGhostSeatObj.seatNumber,
+          draft.pumpkinGhostCheckTarget ?? null,
+        );
   const pumpkinGhostResult =
     effectivePumpkinGhostTarget !== null
       ? getPumpkinGhostCheckResult(
@@ -2093,11 +2442,52 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
+  // 先行處理蠱惑師替死與覺醒白痴秘密之身（避免狼刀在先誤判提早結束）
+  const clearDeathsForSeat = (seatNum: number) => {
+    for (let i = deaths.length - 1; i >= 0; i -= 1) {
+      if (deaths[i].seat === seatNum) {
+        deaths.splice(i, 1);
+      }
+    }
+  };
+
+  let enchanterAppliedEarly = false;
+  if (aliveEnchanter && enchanterTargetSeat !== null) {
+    if (deaths.some((d) => d.seat === aliveEnchanter.seatNumber)) {
+      enchanterAppliedEarly = true;
+      clearDeathsForSeat(aliveEnchanter.seatNumber);
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === aliveEnchanter.seatNumber
+          ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+          : s,
+      );
+      doKill(enchanterTargetSeat, 'enchanter_substitute');
+    }
+  }
+  let awakenedIdiotAppliedEarly = false;
+  if (
+    aliveAwakenedIdiot &&
+    awakenedIdiotShieldTarget !== null &&
+    nextCombatState.awakenedIdiotSecretActive &&
+    deaths.some((d) => d.seat === awakenedIdiotShieldTarget)
+  ) {
+    awakenedIdiotAppliedEarly = true;
+    clearDeathsForSeat(awakenedIdiotShieldTarget);
+    updatedSeats = updatedSeats.map((s) =>
+      s.seatNumber === awakenedIdiotShieldTarget
+        ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+        : s,
+    );
+    nextCombatState.awakenedIdiotSecretActive = false;
+  }
+
   // 7. 狼刀在先判定：若狼刀階段（含種狼感染轉化）已達狼人勝利條件，直接判狼人勝利（優先於女巫與毒師毒藥）
   if (ruleOverrides.wolfKillPriority) {
     const wolfPhaseVictory = checkVictory(updatedSeats, ruleOverrides, nextTreasureMasterState, {
+      cursedFoxDiedThisResolution: salonDreamPiercedCursedFox,
       conversionState: nextConversionState,
       thirdPartySpecialState: nextThirdPartySpecialState,
+      wolfGirlState: nextWolfGirlState,
       boardId: input.boardId,
     });
     if (wolfPhaseVictory.winner === 'wolf' || wolfPhaseVictory.winner === 'third_party') {
@@ -2165,17 +2555,36 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         pumpkinGhostResult,
         gravekeeperResult,
         awakenedDreamResult: null,
+        exoticPrinceResult,
+        luckySeerResult,
+        eclipseMaidCheckResult,
+        greyWolfBossSeerResult,
+        policeDogResult,
+        littleGirlResult,
+        mediumResult,
         shootEligibilities: [],
         victory: wolfPhaseVictory,
       };
     }
   }
 
-  // 8. 毒藥階段結算（普通守衛不防毒；機械狼學守衛之機械盾可防毒藥；夢遊者、惡靈騎士與惡魔免疫夜間毒藥）
+  // 8. 毒藥階段結算（普通守衛不防毒；機械狼學守衛之機械盾可防毒藥；夢遊者、惡靈騎士、惡魔及特定免疫角色免疫夜間毒藥）
   const isEvilKnightSeat = (seatNumber: number): boolean =>
     Boolean(aliveEvilKnight?.isAlive && seatNumber === aliveEvilKnight.seatNumber);
   const isDemonWolfSeat = (seatNumber: number): boolean =>
     Boolean(aliveDemonWolf?.isAlive && seatNumber === aliveDemonWolf.seatNumber);
+  const isWitchPoisonImmuneRole = (seatNumber: number): boolean => {
+    const seatObj = updatedSeats.find((s) => s.seatNumber === seatNumber);
+    if (!seatObj) return false;
+    if (
+      seatObj.roleId === 'nine_tails_wolf' ||
+      seatObj.roleId === 'dancer' ||
+      seatObj.roleId === 'masked_wolf'
+    ) {
+      return true;
+    }
+    return isSalonNight && isCursedFoxSeat(seatObj);
+  };
 
   const witchTargetedEvilKnight =
     effectiveWitchPoisonTarget !== null && isEvilKnightSeat(effectiveWitchPoisonTarget);
@@ -2187,7 +2596,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     !isDreamProtected(effectiveWitchPoisonTarget) &&
     !isSpecialNightImmune(effectiveWitchPoisonTarget) &&
     !witchTargetedEvilKnight &&
-    !isDemonWolfSeat(effectiveWitchPoisonTarget)
+    !isDemonWolfSeat(effectiveWitchPoisonTarget) &&
+    !isWitchPoisonImmuneRole(effectiveWitchPoisonTarget)
   ) {
     // 梅杜莎石化反彈女巫毒藥
     if (medusaPetrifiedSeat !== null && effectiveWitchPoisonTarget === medusaPetrifiedSeat && activeWitch) {
@@ -2201,11 +2611,31 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   if (
+    effectiveWitchSecondPoisonTarget !== null &&
+    !isDreamProtected(effectiveWitchSecondPoisonTarget) &&
+    !isSpecialNightImmune(effectiveWitchSecondPoisonTarget) &&
+    !isEvilKnightSeat(effectiveWitchSecondPoisonTarget) &&
+    !isDemonWolfSeat(effectiveWitchSecondPoisonTarget) &&
+    !isWitchPoisonImmuneRole(effectiveWitchSecondPoisonTarget)
+  ) {
+    if (
+      medusaPetrifiedSeat !== null &&
+      effectiveWitchSecondPoisonTarget === medusaPetrifiedSeat &&
+      activeWitch
+    ) {
+      doKill(activeWitch.seatNumber, 'medusa_poison_reflect');
+    } else if (mechGuardTarget !== effectiveWitchSecondPoisonTarget) {
+      doKill(effectiveWitchSecondPoisonTarget, 'witch_poison');
+    }
+  }
+
+  if (
     effectiveAwPoisonTarget !== null &&
     !isDreamProtected(effectiveAwPoisonTarget) &&
     !isSpecialNightImmune(effectiveAwPoisonTarget) &&
     !isEvilKnightSeat(effectiveAwPoisonTarget) &&
-    !isDemonWolfSeat(effectiveAwPoisonTarget)
+    !isDemonWolfSeat(effectiveAwPoisonTarget) &&
+    !isWitchPoisonImmuneRole(effectiveAwPoisonTarget)
   ) {
     if (medusaPetrifiedSeat !== null && effectiveAwPoisonTarget === medusaPetrifiedSeat && activeAwakenedWitch) {
       doKill(activeAwakenedWitch.seatNumber, 'medusa_poison_reflect');
@@ -2217,20 +2647,30 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (
     requestedPoisonerTarget !== null &&
     !isDreamProtected(requestedPoisonerTarget) &&
+    !isSpecialNightImmune(requestedPoisonerTarget) &&
     !isEvilKnightSeat(requestedPoisonerTarget) &&
-    !isDemonWolfSeat(requestedPoisonerTarget)
+    !isDemonWolfSeat(requestedPoisonerTarget) &&
+    !(isSalonNight && isCursedFoxSeat(updatedSeats.find((s) => s.seatNumber === requestedPoisonerTarget)))
   ) {
-    const blockedByMechShield = mechGuardTarget === requestedPoisonerTarget;
-    if (!blockedByMechShield) {
-      updatedSeats = killSeat(
-        updatedSeats,
-        deaths,
-        requestedPoisonerTarget,
-        'poisoner_poison',
-        round,
-        maskedDelayedSeats,
-        nextTreasureMasterState,
-      );
+    if (
+      medusaPetrifiedSeat !== null &&
+      requestedPoisonerTarget === medusaPetrifiedSeat &&
+      activePoisoner
+    ) {
+      doKill(activePoisoner.seatNumber, 'medusa_poison_reflect');
+    } else {
+      const blockedByMechShield = mechGuardTarget === requestedPoisonerTarget;
+      if (!blockedByMechShield) {
+        updatedSeats = killSeat(
+          updatedSeats,
+          deaths,
+          requestedPoisonerTarget,
+          'poisoner_poison',
+          round,
+          maskedDelayedSeats,
+          nextTreasureMasterState,
+        );
+      }
     }
   }
 
@@ -2238,6 +2678,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextMechWolfState.usedLearnedOneShotSkill = true;
     if (
       !isDreamProtected(mechPoisonTarget) &&
+      !isSpecialNightImmune(mechPoisonTarget) &&
       !isEvilKnightSeat(mechPoisonTarget) &&
       !isDemonWolfSeat(mechPoisonTarget)
     ) {
@@ -2285,7 +2726,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   // 8.3 第 1 批查驗致死與被動結算（狼巫驗殺純白之女、純白之女驗殺狼人、咒狐被陣營驗死、九尾狐無尾死、覺醒攝夢人夢語出局）
-  let cursedFoxDiedTonight = false;
+  let cursedFoxDiedTonight = salonDreamPiercedCursedFox;
 
   if (
     effectiveWolfWitchTarget !== null &&
@@ -2407,6 +2848,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (mentorScholarOutcome.clashDeathSeat !== null) {
     doKill(mentorScholarOutcome.clashDeathSeat, 'mentor_scholar_clash');
   }
+  const amplifiedMentorOrEclipseSeat = Array.from(amplifiedSeats).find((seatNum) => {
+    const s = updatedSeats.find((seat) => seat.seatNumber === seatNum);
+    return s?.isAlive && (s.roleId === 'silent_night_mentor' || s.roleId === 'eclipse_maid');
+  });
+  if (amplifiedMentorOrEclipseSeat !== undefined && draft.mentorAmplifySoloKillTarget != null) {
+    doKill(draft.mentorAmplifySoloKillTarget, 'wolf_kill');
+  }
 
   // 黑蝙蝠一次性反彈：首位對被庇護者施放技能的玩家死亡
   if (blackBatCasters.length > 0 && !nextInterferenceState.blackBatReflectUsed) {
@@ -2429,9 +2877,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 蠱惑師替死與連蠱致死
   if (aliveEnchanter && enchanterTargetSeat !== null) {
-    const enchanterDeathIdx = deaths.findIndex((d) => d.seat === aliveEnchanter.seatNumber);
-    if (enchanterDeathIdx !== -1) {
-      deaths.splice(enchanterDeathIdx, 1);
+    if (!enchanterAppliedEarly && deaths.some((d) => d.seat === aliveEnchanter.seatNumber)) {
+      clearDeathsForSeat(aliveEnchanter.seatNumber);
       updatedSeats = updatedSeats.map((s) =>
         s.seatNumber === aliveEnchanter.seatNumber
           ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
@@ -2451,17 +2898,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 梅杜莎夜死 → 石化者跟隨出局
-  if (aliveMedusa && medusaPetrifiedSeat !== null) {
-    const medusaNow = updatedSeats.find((s) => s.seatNumber === aliveMedusa.seatNumber);
-    if (medusaNow && !medusaNow.isAlive) {
-      doKill(medusaPetrifiedSeat, 'medusa_petrify_link');
-    }
-  }
-
-  // 禁言長老禁言標記
+  // 禁言長老禁言標記（依開夜時是否存活且未被封鎖判定）
   if (draft.muteElderTarget !== undefined && draft.muteElderTarget !== null) {
-    const aliveMuteElder = updatedSeats.find(
+    const aliveMuteElder = initialSeats.find(
       (s) => s.roleId === 'mute_elder' && s.isAlive && !s.infectedBySeedWolf,
     );
     if (aliveMuteElder && !isSeatBlockedByInterference(aliveMuteElder.seatNumber)) {
@@ -2474,12 +2913,15 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 煉金魔女法老之蛇待救目標紀錄
+  // 煉金魔女法老之蛇待救目標紀錄（記錄所有夜死候選名單，並保留單一欄位相容舊版）
   const aliveAlchemyWitch = updatedSeats.find(
     (s) => s.roleId === 'alchemy_witch' && s.isAlive && !s.infectedBySeedWolf,
   );
   if (aliveAlchemyWitch && !nextInterferenceState.alchemySnakeUsed && deaths.length > 0) {
     nextInterferenceState.alchemySnakePendingVictimSeat = deaths[0].seat;
+    nextInterferenceState.alchemySnakePendingVictimSeats = Array.from(
+      new Set(deaths.map((d) => d.seat)),
+    );
   }
 
   nextInterferenceState.troublemakerJoinedWolfTeam = syncTroublemakerTeamStatus(
@@ -2492,19 +2934,24 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   );
 
   // 8.58 第 3 批好人擊殺、夜僕抵消、鏽劍反殺、秘密之身、覺醒狼美替死與猩紅之子連帶
-  // 夜之貴族選擇夜僕
-  if (draft.nightNobleServantTarget !== undefined && draft.nightNobleServantTarget !== null) {
+  // 夜之貴族選擇夜僕（若於前面結算已出局則安全略過）
+  if (
+    draft.nightNobleServantTarget !== undefined &&
+    draft.nightNobleServantTarget !== null &&
+    updatedSeats.some((s) => s.roleId === 'night_noble' && s.isAlive)
+  ) {
     const check = canNightNobleChooseServant(
       updatedSeats,
       nextCombatState,
       draft.nightNobleServantTarget,
       round,
     );
-    if (!check.allowed) throw new Error(check.reason);
-    nextCombatState.nightNobleServantSeat = draft.nightNobleServantTarget;
+    if (check.allowed) {
+      nextCombatState.nightNobleServantSeat = draft.nightNobleServantTarget;
+    }
   }
 
-  // 獵魔人狩獵（血月封印時無效；狩到夜僕抵消夜僕雙方不死；狩狼殺狼、狩好人自死）
+  // 獵魔人狩獵（血月封印時無效；狩到夜僕抵消夜僕雙方不死；狩狼殺狼、狩好人自死；受流光盾保護免於自死）
   if (
     !bloodMoonSealedGood &&
     draft.demonHunterTarget !== undefined &&
@@ -2527,7 +2974,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
           if (!isDreamProtected(targetObj.seatNumber) && !isSpecialNightImmune(targetObj.seatNumber)) {
             doKill(targetObj.seatNumber, 'demon_hunter_kill');
           }
-        } else {
+        } else if (!isSpecialNightImmune(aliveDh.seatNumber)) {
           doKill(aliveDh.seatNumber, 'demon_hunter_backfire');
         }
       }
@@ -2576,7 +3023,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 珀爾修斯處決（免疫石化；處決到被石化者一同出局）
+  // 珀爾修斯處決（免疫石化；處決到被石化者一同出局；先於梅杜莎死亡連帶結算，避免處決梅杜莎反觸發連帶）
   if (
     !bloodMoonSealedGood &&
     draft.perseusExecuteTarget !== undefined &&
@@ -2598,6 +3045,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       if (medusaPetrifiedSeat !== null && draft.perseusExecuteTarget === medusaPetrifiedSeat) {
         doKill(alivePerseus.seatNumber, 'perseus_petrify_backfire');
       }
+    }
+  }
+
+  // 梅杜莎夜死 → 石化者跟隨出局（若梅杜莎係遭柏修斯處決，則不再觸發石化連帶死亡）
+  if (aliveMedusa && medusaPetrifiedSeat !== null) {
+    const medusaNow = updatedSeats.find((s) => s.seatNumber === aliveMedusa.seatNumber);
+    if (medusaNow && !medusaNow.isAlive && medusaNow.deathReason !== 'perseus_execute') {
+      doKill(medusaPetrifiedSeat, 'medusa_petrify_link');
     }
   }
 
@@ -2638,11 +3093,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     const godSkillTargets = new Set<number>(
       [
         effectiveGuardTarget,
+        effectiveGuardSecondTarget,
         effectiveWitchPoisonTarget,
+        effectiveWitchSecondPoisonTarget,
         effectiveAwPoisonTarget,
         effectiveSeerTarget,
         effectivePsychicTarget,
         draft.demonHunterTarget ?? null,
+        ...(draft.beeWildHuntTargets ?? []),
       ].filter((n): n is number => n !== null),
     );
     for (const attachedSeat of prevScarletAttached) {
@@ -2653,39 +3111,39 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   // 覺醒白痴秘密之身：保護目標抵擋一次死亡；若目標未受傷則改護自己
-  if (aliveAwakenedIdiot && awakenedIdiotShieldTarget !== null && nextCombatState.awakenedIdiotSecretActive) {
-    const targetDeathIdx = deaths.findIndex((d) => d.seat === awakenedIdiotShieldTarget);
-    if (targetDeathIdx !== -1) {
-      deaths.splice(targetDeathIdx, 1);
+  if (
+    !awakenedIdiotAppliedEarly &&
+    aliveAwakenedIdiot &&
+    awakenedIdiotShieldTarget !== null &&
+    nextCombatState.awakenedIdiotSecretActive
+  ) {
+    if (deaths.some((d) => d.seat === awakenedIdiotShieldTarget)) {
+      clearDeathsForSeat(awakenedIdiotShieldTarget);
       updatedSeats = updatedSeats.map((s) =>
         s.seatNumber === awakenedIdiotShieldTarget
           ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
           : s,
       );
       nextCombatState.awakenedIdiotSecretActive = false;
-    } else {
-      const selfDeathIdx = deaths.findIndex((d) => d.seat === aliveAwakenedIdiot.seatNumber);
-      if (selfDeathIdx !== -1) {
-        deaths.splice(selfDeathIdx, 1);
-        updatedSeats = updatedSeats.map((s) =>
-          s.seatNumber === aliveAwakenedIdiot.seatNumber
-            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
-            : s,
-        );
-        nextCombatState.awakenedIdiotSecretActive = false;
-      }
+    } else if (deaths.some((d) => d.seat === aliveAwakenedIdiot.seatNumber)) {
+      clearDeathsForSeat(aliveAwakenedIdiot.seatNumber);
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === aliveAwakenedIdiot.seatNumber
+          ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+          : s,
+      );
+      nextCombatState.awakenedIdiotSecretActive = false;
     }
   }
 
-  // 覺醒狼美人替死：首次出局時由被魅惑者代替死亡
+  // 覺醒狼美人替死：首次出局時由被魅惑者代替死亡（移除當晚對覺醒狼美人的所有死亡判定）
   if (
     aliveAwakenedWolfBeauty &&
     !nextCombatState.awakenedWolfBeautySubstituteUsed &&
     nextCombatState.awakenedWolfBeautyActiveCharmSeat !== null
   ) {
-    const awbDeathIdx = deaths.findIndex((d) => d.seat === aliveAwakenedWolfBeauty.seatNumber);
-    if (awbDeathIdx !== -1) {
-      deaths.splice(awbDeathIdx, 1);
+    if (deaths.some((d) => d.seat === aliveAwakenedWolfBeauty.seatNumber)) {
+      clearDeathsForSeat(aliveAwakenedWolfBeauty.seatNumber);
       updatedSeats = updatedSeats.map((s) =>
         s.seatNumber === aliveAwakenedWolfBeauty.seatNumber
           ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
@@ -2757,9 +3215,31 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   if (draft.xuXianKillTarget != null) {
     const aliveXuXian = updatedSeats.find((s) => s.roleId === 'xu_xian_phantom' && s.isAlive);
-    const hasAliveWolf = updatedSeats.some((s) => s.isAlive && isSeatWolfFaction(s));
+    const hasAliveWolf = updatedSeats.some(
+      (s) =>
+        s.isAlive &&
+        isSeatEffectiveWolf(s, {
+          conversionState: nextConversionState,
+          thirdPartySpecialState: nextThirdPartySpecialState,
+        }),
+    );
     if (aliveXuXian && !hasAliveWolf) {
       doKill(draft.xuXianKillTarget, 'xu_xian_kill');
+    }
+  }
+
+  if (draft.ghostBrideKillTarget != null) {
+    const aliveBride = updatedSeats.find((s) => s.roleId === 'ghost_bride' && s.isAlive);
+    const hasAliveWolf = updatedSeats.some(
+      (s) =>
+        s.isAlive &&
+        isSeatEffectiveWolf(s, {
+          conversionState: nextConversionState,
+          thirdPartySpecialState: nextThirdPartySpecialState,
+        }),
+    );
+    if (aliveBride && !hasAliveWolf) {
+      doKill(draft.ghostBrideKillTarget, 'ghost_bride_kill');
     }
   }
 
@@ -2774,7 +3254,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     if (jackKillCheck.allowed) {
       // 守衛可守護玩家免受開膛手傑克殺害；女巫解藥則無法救開膛手傑克之刀
       const guardedFromJack =
-        hasAliveGuard && effectiveGuardTarget === draft.jackRipperKillTarget;
+        hasAliveGuard &&
+        (effectiveGuardTarget === draft.jackRipperKillTarget ||
+          effectiveGuardSecondTarget === draft.jackRipperKillTarget);
       if (!guardedFromJack) {
         doKill(draft.jackRipperKillTarget, 'jack_ripper_kill');
       }
@@ -2825,10 +3307,10 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 8.68b 九尾標記 & 白澤清除標記
+  // 8.68b 九尾標記 & 白澤清除標記（依開夜時角色存活判定）
   if (
     draft.nineTailsMarkTarget != null &&
-    updatedSeats.some((s) => s.roleId === 'nine_tails_wolf' && s.isAlive)
+    initialSeats.some((s) => s.roleId === 'nine_tails_wolf' && s.isAlive)
   ) {
     nextThirdPartySpecialState = addNineTailsMark(
       nextThirdPartySpecialState,
@@ -2837,7 +3319,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
   if (
     draft.baiZeClearTarget != null &&
-    updatedSeats.some((s) => s.roleId === 'bai_ze' && s.isAlive)
+    initialSeats.some((s) => s.roleId === 'bai_ze' && s.isAlive)
   ) {
     nextThirdPartySpecialState = clearBaiZeMarks(
       nextThirdPartySpecialState,
@@ -2849,7 +3331,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let maskedAlterSeatTonight: number | null = null;
   if (
     round >= 2 &&
-    updatedSeats.some((s) => s.roleId === 'masked_wolf' && s.isAlive)
+    initialSeats.some((s) => s.roleId === 'masked_wolf' && s.isAlive)
   ) {
     if (
       draft.maskedWolfCheckTarget != null &&
@@ -2988,7 +3470,51 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 幸運兒使用道具（毒藥／盾／查驗，依房規 luckyFirstNightSkills 管制第一晚是否可用）
+  // 幸運兒使用道具（毒藥／盾／查驗，依房規 luckyFirstNightSkills 管制第一晚是否可用；套用夜毒免疫／惡靈騎士反傷／咒狐被驗死）
+  const executeLuckyPoison = (actorSeat: number, targetSeat: number) => {
+    if (
+      !isDreamProtected(targetSeat) &&
+      !isSpecialNightImmune(targetSeat) &&
+      !isDemonWolfSeat(targetSeat) &&
+      !isWitchPoisonImmuneRole(targetSeat)
+    ) {
+      if (isEvilKnightSeat(targetSeat)) {
+        if (!nextEvilKnightCounterUsed) {
+          nextEvilKnightCounterUsed = true;
+          doKill(actorSeat, 'evil_knight_counter');
+        }
+      } else if (medusaPetrifiedSeat === targetSeat) {
+        doKill(actorSeat, 'medusa_poison_reflect');
+      } else if (mechGuardTarget !== targetSeat) {
+        doKill(targetSeat, 'witch_poison');
+      }
+    }
+  };
+  const executeLuckySeerCheck = (
+    targetSeat: number,
+    source: 'miracle' | 'black_market' | 'super_black_market',
+  ) => {
+    const checkRes = getSeerCheckResult(updatedSeats, targetSeat, {
+      conversionState: nextConversionState,
+      thirdPartySpecialState: nextThirdPartySpecialState,
+    });
+    const targetObj = updatedSeats.find((s) => s.seatNumber === targetSeat);
+    if (checkRes) {
+      luckySeerResult = {
+        source,
+        targetSeat: checkRes.targetSeat,
+        faction: checkRes.faction,
+        ...(source === 'super_black_market' && checkRes.faction === 'wolf' && targetObj?.roleId
+          ? { roleId: targetObj.roleId }
+          : {}),
+      };
+    }
+    if (targetObj?.isAlive && isCursedFoxSeat(targetObj) && !isDreamProtected(targetSeat)) {
+      doKill(targetSeat, 'cursed_fox_checked');
+      cursedFoxDiedTonight = true;
+    }
+  };
+
   if (draft.luckyItemActorSeat != null && draft.luckyItemTargetSeat != null) {
     if (
       nextThirdPartySpecialState.miracleLuckySeat === draft.luckyItemActorSeat &&
@@ -3002,7 +3528,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       )
     ) {
       if (nextThirdPartySpecialState.miracleLuckyItem === 'witch_poison') {
-        doKill(draft.luckyItemTargetSeat, 'witch_poison');
+        executeLuckyPoison(draft.luckyItemActorSeat, draft.luckyItemTargetSeat);
+      } else if (nextThirdPartySpecialState.miracleLuckyItem === 'seer_check') {
+        executeLuckySeerCheck(draft.luckyItemTargetSeat, 'miracle');
       }
       nextThirdPartySpecialState.miracleLuckyItemUsed = true;
     } else if (
@@ -3017,7 +3545,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       )
     ) {
       if (nextThirdPartySpecialState.blackMarketLuckyItem === 'witch_poison') {
-        doKill(draft.luckyItemTargetSeat, 'witch_poison');
+        executeLuckyPoison(draft.luckyItemActorSeat, draft.luckyItemTargetSeat);
+      } else if (nextThirdPartySpecialState.blackMarketLuckyItem === 'seer_check') {
+        executeLuckySeerCheck(draft.luckyItemTargetSeat, 'black_market');
       }
       nextThirdPartySpecialState.blackMarketLuckyItemUsed = true;
     } else {
@@ -3030,7 +3560,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       if (superGiftIdx >= 0) {
         const gift = nextThirdPartySpecialState.superBlackMarketGifts[superGiftIdx];
         if (gift.item === 'witch_poison') {
-          doKill(draft.luckyItemTargetSeat, 'witch_poison');
+          executeLuckyPoison(draft.luckyItemActorSeat, draft.luckyItemTargetSeat);
+        } else if (gift.item === 'seer_check') {
+          executeLuckySeerCheck(draft.luckyItemTargetSeat, 'super_black_market');
         }
         nextThirdPartySpecialState.superBlackMarketGifts[superGiftIdx] = {
           ...gift,
@@ -3040,38 +3572,60 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 邪惡商人贈禮
+  // 邪惡商人贈禮（禁止贈給自己；第 2 晚起僅於昨日有非帶槍狼死亡時可改贈毒藥）與毒藥行動
+  const aliveEvilMerchant = updatedSeats.find((s) => s.roleId === 'evil_merchant' && s.isAlive);
   if (
+    aliveEvilMerchant &&
     !nextThirdPartySpecialState.evilMerchantDisabled &&
     draft.evilMerchantTarget != null &&
-    updatedSeats.some((s) => s.roleId === 'evil_merchant' && s.isAlive)
+    draft.evilMerchantTarget !== aliveEvilMerchant.seatNumber &&
+    (round === 1 || nextThirdPartySpecialState.evilMerchantLastDayNoGunWolfDied)
   ) {
     const giftType = draft.evilMerchantGiftType ?? (round === 1 ? 'hunter_gun' : 'witch_poison');
     if (giftType === 'hunter_gun') {
       nextThirdPartySpecialState.evilMerchantGunHolderSeat = draft.evilMerchantTarget;
-    } else if (giftType === 'witch_poison') {
+    } else if (giftType === 'witch_poison' && round >= 2) {
       nextThirdPartySpecialState.evilMerchantGunHolderSeat = null;
       nextThirdPartySpecialState.evilMerchantPoisonHolderSeat = draft.evilMerchantTarget;
     }
   }
+  if (
+    draft.evilMerchantPoisonActionTarget != null &&
+    nextThirdPartySpecialState.evilMerchantPoisonHolderSeat != null &&
+    draft.evilMerchantPoisonActionTarget !==
+      nextThirdPartySpecialState.evilMerchantPoisonHolderSeat
+  ) {
+    const pTarget = draft.evilMerchantPoisonActionTarget;
+    if (!isDreamProtected(pTarget) && !isSpecialNightImmune(pTarget)) {
+      doKill(pTarget, 'evil_merchant_poison');
+    }
+    nextThirdPartySpecialState.evilMerchantPoisonHolderSeat = null;
+    nextThirdPartySpecialState.evilMerchantDisabled = true;
+  }
+  nextThirdPartySpecialState.evilMerchantLastDayNoGunWolfDied = false;
 
-  // 8.68f 通靈者通靈與繼承技能結算
-  const aliveMedium = updatedSeats.find((s) => s.roleId === 'medium' && s.isAlive);
+  // 8.68f 通靈者通靈與繼承技能結算（依開夜存活判定）
+  const aliveMedium = initialSeats.find((s) => s.roleId === 'medium' && s.isAlive);
   if (
     aliveMedium &&
     draft.mediumDeadSeat != null &&
     draft.mediumHeirSeat != null &&
     canMediumChannel(
-      updatedSeats,
+      initialSeats,
       nextThirdPartySpecialState,
       aliveMedium.seatNumber,
       draft.mediumDeadSeat,
       draft.mediumHeirSeat,
     ).allowed
   ) {
-    const deadObj = updatedSeats.find((s) => s.seatNumber === draft.mediumDeadSeat);
+    const deadObj = initialSeats.find((s) => s.seatNumber === draft.mediumDeadSeat);
     const skill = getChannelableSkillForRole(deadObj?.roleId ?? null);
     nextThirdPartySpecialState.mediumChanneledDeadSeats.push(draft.mediumDeadSeat);
+    mediumResult = {
+      deadSeat: draft.mediumDeadSeat,
+      heirSeat: draft.mediumHeirSeat,
+      skill,
+    };
     if (skill) {
       nextThirdPartySpecialState.mediumInheritedHeirs.push({
         heirSeat: draft.mediumHeirSeat,
@@ -3094,7 +3648,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         const targetProtected =
           anyAntidoteUsed && effectiveWolfTarget === draft.mediumSkillTargetSeat
             ? true
-            : (hasAliveGuard && effectiveGuardTarget === draft.mediumSkillTargetSeat) ||
+            : (hasAliveGuard &&
+                (effectiveGuardTarget === draft.mediumSkillTargetSeat ||
+                  effectiveGuardSecondTarget === draft.mediumSkillTargetSeat)) ||
               mediumShieldSeat === draft.mediumSkillTargetSeat;
         if (!targetProtected) {
           doKill(draft.mediumSkillTargetSeat, 'medium_knife');
@@ -3105,65 +3661,88 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     }
   }
 
-  // 8.68g 管家 & 狼僕上茶結算（第二晚起，每人限一次）
-  if (
-    round >= 2 &&
-    draft.butlerTeaTarget != null &&
-    updatedSeats.some((s) => s.roleId === 'butler' && s.isAlive) &&
-    !nextThirdPartySpecialState.butlerServedSeats.includes(draft.butlerTeaTarget)
-  ) {
-    nextThirdPartySpecialState.butlerServedSeats.push(draft.butlerTeaTarget);
-    const targetObj = updatedSeats.find((s) => s.seatNumber === draft.butlerTeaTarget);
-    const accepted =
-      targetObj?.roleId === 'wolf_maid' ||
-      targetObj?.roleId === 'villager' ||
-      draft.butlerTeaAccepted !== false;
-    if (targetObj && accepted) {
-      nextThirdPartySpecialState.butlerActiveTeaSeat = targetObj.seatNumber;
-      if (targetObj.roleId === 'villager') {
-        nextThirdPartySpecialState.butlerActiveVoteBonusSeat = targetObj.seatNumber;
-      } else if (targetObj.roleId === 'seer' && seerResult?.faction === 'wolf') {
-        doKill(seerResult.targetSeat, 'butler_seer_kill');
-      } else if (targetObj.roleId === 'wolf') {
-        // 小狼接管家茶：當晚少一刀（撤銷本晚 wolf_kill）
-        const wkIdx = deaths.findIndex((d) => d.reason === 'wolf_kill');
-        if (wkIdx !== -1) {
-          const rescued = deaths[wkIdx].seat;
-          deaths.splice(wkIdx, 1);
-          updatedSeats = updatedSeats.map((s) =>
-            s.seatNumber === rescued
-              ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
-              : s,
-          );
+  // 8.68g 管家 & 狼僕上茶結算（第二晚起，每人限一次；若雙方同晚給同一人上茶則互相抵消無效）
+  if (butlerWolfMaidCancelled && draft.butlerTeaTarget != null) {
+    if (!nextThirdPartySpecialState.butlerServedSeats.includes(draft.butlerTeaTarget)) {
+      nextThirdPartySpecialState.butlerServedSeats.push(draft.butlerTeaTarget);
+    }
+    if (!nextThirdPartySpecialState.wolfMaidServedSeats.includes(draft.butlerTeaTarget)) {
+      nextThirdPartySpecialState.wolfMaidServedSeats.push(draft.butlerTeaTarget);
+    }
+  } else {
+    if (
+      round >= 2 &&
+      draft.butlerTeaTarget != null &&
+      initialSeats.some((s) => s.roleId === 'butler' && s.isAlive) &&
+      !nextThirdPartySpecialState.butlerServedSeats.includes(draft.butlerTeaTarget)
+    ) {
+      nextThirdPartySpecialState.butlerServedSeats.push(draft.butlerTeaTarget);
+      const targetObj = updatedSeats.find((s) => s.seatNumber === draft.butlerTeaTarget);
+      const accepted =
+        targetObj?.roleId === 'wolf_maid' ||
+        targetObj?.roleId === 'villager' ||
+        draft.butlerTeaAccepted !== false;
+      if (targetObj && accepted) {
+        nextThirdPartySpecialState.butlerActiveTeaSeat = targetObj.seatNumber;
+        if (targetObj.roleId === 'villager') {
+          nextThirdPartySpecialState.butlerActiveVoteBonusSeat = targetObj.seatNumber;
+        } else if (targetObj.roleId === 'seer' && seerResult?.faction === 'wolf') {
+          doKill(seerResult.targetSeat, 'butler_seer_kill');
+        } else if (targetObj.roleId === 'wolf') {
+          // 小狼接管家茶：當晚少一刀（撤銷本晚 wolf_kill）
+          const wkIdx = deaths.findIndex((d) => d.reason === 'wolf_kill');
+          if (wkIdx !== -1) {
+            const rescued = deaths[wkIdx].seat;
+            deaths.splice(wkIdx, 1);
+            updatedSeats = updatedSeats.map((s) =>
+              s.seatNumber === rescued
+                ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+                : s,
+            );
+          }
+        } else if (targetObj.roleId === 'guard' && effectiveGuardTarget != null) {
+          nextThirdPartySpecialState.butlerDayProtectedSeat = effectiveGuardTarget;
         }
-      } else if (targetObj.roleId === 'guard' && effectiveGuardTarget != null) {
-        nextThirdPartySpecialState.butlerDayProtectedSeat = effectiveGuardTarget;
       }
     }
-  }
 
-  if (
-    round >= 2 &&
-    draft.wolfMaidTeaTarget != null &&
-    initialSeats.some((s) => s.roleId === 'wolf_maid' && s.isAlive) &&
-    !nextThirdPartySpecialState.wolfMaidServedSeats.includes(draft.wolfMaidTeaTarget)
-  ) {
-    nextThirdPartySpecialState.wolfMaidServedSeats.push(draft.wolfMaidTeaTarget);
-    const targetObj = updatedSeats.find((s) => s.seatNumber === draft.wolfMaidTeaTarget);
-    const accepted =
-      targetObj?.roleId === 'butler' ||
-      targetObj?.roleId === 'villager' ||
-      draft.wolfMaidTeaAccepted !== false;
-    if (targetObj && accepted) {
-      nextThirdPartySpecialState.wolfMaidActiveTeaSeat = targetObj.seatNumber;
-      if (targetObj.roleId === 'villager') {
-        nextThirdPartySpecialState.wolfMaidActiveVotePenaltySeat = targetObj.seatNumber;
-      } else if (targetObj.roleId === 'seer' || targetObj.roleId === 'witch') {
-        doKill(targetObj.seatNumber, 'wolf_maid_tea_kill');
-      } else if (targetObj.roleId === 'guard' && effectiveGuardTarget != null) {
-        doKill(effectiveGuardTarget, 'wolf_maid_tea_kill');
-      } else if (targetObj.roleId === 'wolf' && draft.wolfMaidExtraKillTarget != null) {
-        doKill(draft.wolfMaidExtraKillTarget, 'wolf_kill');
+    if (
+      round >= 2 &&
+      draft.wolfMaidTeaTarget != null &&
+      initialSeats.some((s) => s.roleId === 'wolf_maid' && s.isAlive) &&
+      !nextThirdPartySpecialState.wolfMaidServedSeats.includes(draft.wolfMaidTeaTarget)
+    ) {
+      nextThirdPartySpecialState.wolfMaidServedSeats.push(draft.wolfMaidTeaTarget);
+      const targetObj = updatedSeats.find((s) => s.seatNumber === draft.wolfMaidTeaTarget);
+      const accepted =
+        targetObj?.roleId === 'butler' ||
+        targetObj?.roleId === 'villager' ||
+        draft.wolfMaidTeaAccepted !== false;
+      if (targetObj && accepted) {
+        nextThirdPartySpecialState.wolfMaidActiveTeaSeat = targetObj.seatNumber;
+        if (targetObj.roleId === 'villager') {
+          nextThirdPartySpecialState.wolfMaidActiveVotePenaltySeat = targetObj.seatNumber;
+        } else if (targetObj.roleId === 'seer' || targetObj.roleId === 'witch') {
+          doKill(targetObj.seatNumber, 'wolf_maid_tea_kill');
+        } else if (targetObj.roleId === 'guard' && effectiveGuardTarget != null) {
+          doKill(effectiveGuardTarget, 'wolf_maid_tea_kill');
+        } else if (targetObj.roleId === 'wolf' && draft.wolfMaidExtraKillTarget != null) {
+          const wmTarget = draft.wolfMaidExtraKillTarget;
+          const wmTargetObj = updatedSeats.find((s) => s.seatNumber === wmTarget);
+          const wmGuarded =
+            (hasAliveGuard &&
+              (effectiveGuardTarget === wmTarget || effectiveGuardSecondTarget === wmTarget)) ||
+            mechGuardTarget === wmTarget ||
+            twinsGuardedSeat === wmTarget;
+          if (
+            !isDreamProtected(wmTarget) &&
+            !isSpecialNightImmune(wmTarget) &&
+            !wmGuarded &&
+            !isCursedFoxSeat(wmTargetObj)
+          ) {
+            doKill(wmTarget, 'wolf_kill');
+          }
+        }
       }
     }
   }
@@ -3231,16 +3810,23 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   );
 
   // 8.69 第 6 批：蝕日侍女、灰太狼、小女孩、警犬與怪盜狼王無敵結算
-  // 8.69a 小女孩：第二晚起狼隊指認小女孩，指認成功由小女孩代替原狼刀目標死亡
+  // 8.69a 小女孩：第二晚起狼隊指認小女孩（須小女孩存活且當晚有有效狼刀），指認成功由小女孩代替原狼刀目標死亡
   if (
     draft.littleGirlIdentifyTarget != null &&
+    initialSeats.some((s) => s.roleId === 'little_girl' && s.isAlive) &&
+    deaths.some((d) => d.reason === 'wolf_kill') &&
     canWolvesIdentifyLittleGirl(round, nextFinalBatchState).allowed
   ) {
     nextFinalBatchState.littleGirlIdentifyUsed = true;
     const identifiedSeat = updatedSeats.find(
       (s) => s.seatNumber === draft.littleGirlIdentifyTarget,
     );
-    if (identifiedSeat?.roleId === 'little_girl') {
+    const caught = identifiedSeat?.roleId === 'little_girl';
+    littleGirlResult = {
+      targetSeat: draft.littleGirlIdentifyTarget,
+      caught,
+    };
+    if (caught && identifiedSeat) {
       const wkIdx = deaths.findIndex((d) => d.reason === 'wolf_kill');
       if (wkIdx !== -1) {
         const rescuedSeat = deaths[wkIdx].seat;
@@ -3256,43 +3842,20 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   // 8.69b 蝕日侍女：第二晚起吞噬非狼玩家並使用其技能
-  const aliveEclipseMaid = initialSeats.find((s) => s.roleId === 'eclipse_maid' && s.isAlive);
-  if (
-    aliveEclipseMaid &&
-    draft.eclipseMaidDevourTarget != null &&
-    canEclipseMaidDevour(initialSeats, round, draft.eclipseMaidDevourTarget).allowed
-  ) {
-    nextFinalBatchState.eclipseMaidDevouredSeatTonight = draft.eclipseMaidDevourTarget;
-    const devoured = initialSeats.find((s) => s.seatNumber === draft.eclipseMaidDevourTarget);
-    if (devoured?.roleId === 'witch' && !witchPoisonUsed) {
-      // 吞女巫：封鎖原女巫毒、蝕日侍女改用毒藥
-      const wpIdx = deaths.findIndex((d) => d.reason === 'witch_poison');
-      if (wpIdx !== -1) {
-        const rescued = deaths[wpIdx].seat;
-        deaths.splice(wpIdx, 1);
-        updatedSeats = updatedSeats.map((s) =>
-          s.seatNumber === rescued
-            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
-            : s,
-        );
-      }
+  if (aliveEclipseMaid && eclipseDevouredSeat != null) {
+    if (eclipseDevouredRoleId === 'witch' && !witchPoisonUsed) {
       if (draft.eclipseMaidUseSkillTarget != null) {
         doKill(draft.eclipseMaidUseSkillTarget, 'eclipse_maid_kill');
         nextWitchPoisonUsed = true;
       }
-    } else if (devoured?.roleId === 'demon_hunter') {
+    } else if (eclipseDevouredRoleId === 'demon_hunter') {
       // 吞獵魔人：蝕日侍女當晚免疫女巫毒藥；狩狼殺狼、狩好自死
-      const maidPoisonIdx = deaths.findIndex(
-        (d) => d.seat === aliveEclipseMaid.seatNumber && d.reason === 'witch_poison',
+      clearDeathsForSeat(aliveEclipseMaid.seatNumber);
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === aliveEclipseMaid.seatNumber
+          ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+          : s,
       );
-      if (maidPoisonIdx !== -1) {
-        deaths.splice(maidPoisonIdx, 1);
-        updatedSeats = updatedSeats.map((s) =>
-          s.seatNumber === aliveEclipseMaid.seatNumber
-            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
-            : s,
-        );
-      }
       if (draft.eclipseMaidUseSkillTarget != null) {
         const huntTarget = initialSeats.find((s) => s.seatNumber === draft.eclipseMaidUseSkillTarget);
         if (huntTarget && isSeatWolfFaction(huntTarget)) {
@@ -3301,8 +3864,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
           doKill(aliveEclipseMaid.seatNumber, 'eclipse_maid_kill');
         }
       }
-    } else if (devoured?.roleId === 'cursed_fox') {
-      // 吞咒狐：蝕日侍女當晚免狼刀
+    } else if (eclipseDevouredRoleId === 'cursed_fox') {
       const maidWolfIdx = deaths.findIndex(
         (d) => d.seat === aliveEclipseMaid.seatNumber && d.reason === 'wolf_kill',
       );
@@ -3315,48 +3877,109 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         );
       }
     } else if (
-      devoured?.roleId === 'miracle_merchant' &&
+      eclipseDevouredRoleId === 'miracle_merchant' &&
       draft.eclipseMaidUseSkillTarget != null
     ) {
       const mTarget = initialSeats.find((s) => s.seatNumber === draft.eclipseMaidUseSkillTarget);
       if (mTarget && isSeatWolfFaction(mTarget)) {
         doKill(aliveEclipseMaid.seatNumber, 'merchant_backfire');
       }
+    } else if (eclipseDevouredRoleId === 'radiant_earl') {
+      // 吞噬流光伯爵反噬蝕日侍女（若流光庇護蝕日侍女則改為無事發生）
+      if (!isSpecialNightImmune(aliveEclipseMaid.seatNumber)) {
+        doKill(aliveEclipseMaid.seatNumber, 'eclipse_maid_kill');
+      }
+    } else if (
+      (eclipseDevouredRoleId === 'seer' ||
+        eclipseDevouredRoleId === 'awakened_seer' ||
+        eclipseDevouredRoleId === 'psychic' ||
+        eclipseDevouredRoleId === 'pure_white_maiden') &&
+      draft.eclipseMaidUseSkillTarget != null
+    ) {
+      const skillTargetSeat = draft.eclipseMaidUseSkillTarget;
+      const targetRoleObj = updatedSeats.find((s) => s.seatNumber === skillTargetSeat);
+      if (eclipseDevouredRoleId === 'seer' || eclipseDevouredRoleId === 'awakened_seer') {
+        const res = getSeerCheckResult(updatedSeats, skillTargetSeat, {
+          conversionState: nextConversionState,
+          thirdPartySpecialState: nextThirdPartySpecialState,
+        });
+        if (res) {
+          eclipseMaidCheckResult = {
+            devouredRoleId: eclipseDevouredRoleId,
+            targetSeat: res.targetSeat,
+            faction: res.faction,
+          };
+        }
+      } else {
+        const res =
+          eclipseDevouredRoleId === 'psychic'
+            ? getPsychicCheckResult(
+                updatedSeats,
+                nextMechWolfState,
+                skillTargetSeat,
+                nextTreasureMasterState,
+              )
+            : getPureWhiteCheckResult(
+                updatedSeats,
+                nextMechWolfState,
+                skillTargetSeat,
+                nextTreasureMasterState,
+              );
+        if (res) {
+          eclipseMaidCheckResult = {
+            devouredRoleId: eclipseDevouredRoleId,
+            targetSeat: res.targetSeat,
+            roleId: res.perceivedRoleId ?? targetRoleObj?.roleId ?? null,
+          };
+        }
+      }
     }
   }
 
   // 8.69c 灰太狼：每晚偷取技能（受喜羊羊防盜阻斷，每人整局限偷一次）
-  if (
-    draft.greyWolfBossStealTarget != null &&
-    canGreyWolfBossSteal(initialSeats, nextFinalBatchState, draft.greyWolfBossStealTarget).allowed
-  ) {
-    nextFinalBatchState.greyWolfBossStolenSeats.push(draft.greyWolfBossStealTarget);
-    const blockedByAntiTheft = happySheepAntiTheftSeat === draft.greyWolfBossStealTarget;
-    const targetObj = initialSeats.find((s) => s.seatNumber === draft.greyWolfBossStealTarget);
-    if (!blockedByAntiTheft && targetObj) {
-      if ((targetObj.roleId === 'wolf' || targetObj.roleId === 'little_grey_wolf') && round >= 2) {
-        // 次夜起偷小狼：狼隊當晚無刀，改由灰太狼代刀
-        const wkIdx = deaths.findIndex((d) => d.reason === 'wolf_kill');
-        if (wkIdx !== -1) {
-          const rescued = deaths[wkIdx].seat;
-          deaths.splice(wkIdx, 1);
-          updatedSeats = updatedSeats.map((s) =>
-            s.seatNumber === rescued
-              ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
-              : s,
-          );
+  if (greyWolfBossValidSteal && greyWolfBossStolenRoleId) {
+    if (greyWolfStoleWolfTonight) {
+      if (draft.greyWolfBossUseSkillTarget != null) {
+        const gTarget = draft.greyWolfBossUseSkillTarget;
+        const gObj = updatedSeats.find((s) => s.seatNumber === gTarget);
+        const gGuarded =
+          (hasAliveGuard &&
+            (effectiveGuardTarget === gTarget || effectiveGuardSecondTarget === gTarget)) ||
+          mechGuardTarget === gTarget ||
+          twinsGuardedSeat === gTarget;
+        if (
+          !isDreamProtected(gTarget) &&
+          !isSpecialNightImmune(gTarget) &&
+          !gGuarded &&
+          !isCursedFoxSeat(gObj)
+        ) {
+          doKill(gTarget, 'grey_wolf_steal_kill');
         }
-        if (draft.greyWolfBossUseSkillTarget != null) {
-          doKill(draft.greyWolfBossUseSkillTarget, 'grey_wolf_steal_kill');
-        }
-      } else if (targetObj.roleId === 'witch' && !witchPoisonUsed) {
-        if (draft.greyWolfBossUseSkillTarget != null) {
-          doKill(draft.greyWolfBossUseSkillTarget, 'grey_wolf_steal_kill');
-          nextWitchPoisonUsed = true;
-        }
-      } else if (targetObj.roleId === 'hunter') {
-        nextFinalBatchState.greyWolfBossBorrowedHunterGun = true;
       }
+    } else if (greyWolfBossStolenRoleId === 'witch' && !witchPoisonUsed) {
+      if (draft.greyWolfBossUseSkillTarget != null) {
+        doKill(draft.greyWolfBossUseSkillTarget, 'grey_wolf_steal_kill');
+        nextWitchPoisonUsed = true;
+      }
+    } else if (greyWolfBossStolenRoleId === 'hunter') {
+      nextFinalBatchState.greyWolfBossBorrowedHunterGun = true;
+    } else if (greyWolfBossStolenRoleId === 'seer' && draft.greyWolfBossUseSkillTarget != null) {
+      const sRes = getSeerCheckResult(updatedSeats, draft.greyWolfBossUseSkillTarget, {
+        conversionState: nextConversionState,
+        thirdPartySpecialState: nextThirdPartySpecialState,
+      });
+      if (sRes) {
+        greyWolfBossSeerResult = {
+          targetSeat: sRes.targetSeat,
+          faction: sRes.faction,
+        };
+      }
+    } else if (
+      greyWolfBossStolenRoleId === 'happy_sheep' &&
+      draft.greyWolfBossIntelligenceGuessCorrect &&
+      draft.greyWolfBossUseSkillTarget != null
+    ) {
+      doKill(draft.greyWolfBossUseSkillTarget, 'grey_wolf_steal_kill');
     }
   }
 
@@ -3368,22 +3991,30 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextFinalBatchState.policeDogUsed = true;
     if (nextFinalBatchState.policeDogMode === 'bite') {
       doKill(draft.policeDogTarget, 'police_dog_bite');
+    } else if (nextFinalBatchState.policeDogMode === 'check') {
+      const dogRes = getSeerCheckResult(updatedSeats, draft.policeDogTarget, {
+        conversionState: nextConversionState,
+        thirdPartySpecialState: nextThirdPartySpecialState,
+      });
+      if (dogRes) {
+        policeDogResult = {
+          targetSeat: dogRes.targetSeat,
+          faction: dogRes.faction,
+        };
+      }
     }
   }
 
   // 8.69e 怪盜狼王無敵：免疫一切夜間死亡
   if (nextFinalBatchState.phantomWolfInvincibleActive) {
     const phantomSeat = updatedSeats.find((s) => s.roleId === 'phantom_wolf_king');
-    if (phantomSeat) {
-      const pIdx = deaths.findIndex((d) => d.seat === phantomSeat.seatNumber);
-      if (pIdx !== -1) {
-        deaths.splice(pIdx, 1);
-        updatedSeats = updatedSeats.map((s) =>
-          s.seatNumber === phantomSeat.seatNumber
-            ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
-            : s,
-        );
-      }
+    if (phantomSeat && deaths.some((d) => d.seat === phantomSeat.seatNumber)) {
+      clearDeathsForSeat(phantomSeat.seatNumber);
+      updatedSeats = updatedSeats.map((s) =>
+        s.seatNumber === phantomSeat.seatNumber
+          ? { ...s, isAlive: true, deathReason: undefined, deathRound: undefined }
+          : s,
+      );
     }
   }
 
@@ -3412,9 +4043,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   for (const record of deaths) {
     const eligibility = checkCanShoot(updatedSeats, record.seat, record.reason, {
       fearedSeat,
+      boardId: input.boardId,
       round,
       ruleOverrides,
       thirdPartySpecialState: nextThirdPartySpecialState,
+      combatState: nextCombatState,
+      finalBatchState: nextFinalBatchState,
+      conversionState: nextConversionState,
+      bloodMoonSealedGood,
     });
     if (eligibility) {
       if (
@@ -3449,6 +4085,8 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       cursedFoxDiedThisResolution: cursedFoxDiedTonight,
       conversionState: nextConversionState,
       thirdPartySpecialState: nextThirdPartySpecialState,
+      wolfGirlState: nextWolfGirlState,
+      boardId: input.boardId,
     },
   );
 
@@ -3502,6 +4140,13 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     pumpkinGhostResult,
     gravekeeperResult,
     awakenedDreamResult,
+    exoticPrinceResult,
+    luckySeerResult,
+    eclipseMaidCheckResult,
+    greyWolfBossSeerResult,
+    policeDogResult,
+    littleGirlResult,
+    mediumResult,
     shootEligibilities,
     victory,
   };

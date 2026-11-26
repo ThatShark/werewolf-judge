@@ -97,6 +97,9 @@ export const DEATH_REASON_LABELS: Record<DeathReason, string> = {
   wolf_maid_tea_kill: '狼僕毒茶出局',
   eclipse_maid_kill: '蝕日侍女吞噬技能擊殺出局',
   grey_wolf_steal_kill: '灰太狼偷竊技能擊殺出局',
+  bai_ze_delayed_death: '白澤神職繼承人延遲出局',
+  ghost_bride_kill: '鬼魂新娘帶刀擊殺出局',
+  evil_merchant_poison: '邪惡商人毒藥毒殺出局',
   detective_execute: '偵探白天處決出局',
   police_dog_bite: '警犬夜間撕咬出局',
   little_girl_caught: '小女孩遭狼隊指認代死出局',
@@ -743,6 +746,59 @@ export function formatNightActionLogs(
   }
   if (draft.alchemyFogTargets && draft.alchemyFogTargets.length > 0) {
     lines.push(`未明之霧：${draft.alchemyFogTargets.map(fmt).join('、')}`);
+  }
+  if (draft.wolfGirlConfessTarget != null) {
+    lines.push(`狼女孩表白：${fmt(draft.wolfGirlConfessTarget)}`);
+  }
+  if (draft.thiefChosenRoleId) {
+    const rName = getRoleById(draft.thiefChosenRoleId)?.name ?? draft.thiefChosenRoleId;
+    lines.push(`盜賊選牌：${rName}`);
+  }
+  if (draft.treasureMasterCardRoleId) {
+    const rName =
+      getRoleById(draft.treasureMasterCardRoleId)?.name ?? draft.treasureMasterCardRoleId;
+    lines.push(`盜寶大師選牌：${rName}`);
+  }
+  if (draft.ghostBrideKillTarget != null) {
+    lines.push(`鬼魂新娘擊殺：${fmt(draft.ghostBrideKillTarget)}`);
+  }
+  if (draft.evilMerchantPoisonActionTarget != null) {
+    lines.push(`邪惡商人毒藥擊殺：${fmt(draft.evilMerchantPoisonActionTarget)}`);
+  }
+  if (entry?.exoticPrinceResult) {
+    lines.push(
+      `異族王子探查：${fmt(entry.exoticPrinceResult.targetSeat)} ➜ ${entry.exoticPrinceResult.foundSleepingBeauty ? '睡美人' : '非睡美人'}`,
+    );
+  }
+  if (entry?.luckySeerResult) {
+    lines.push(
+      `幸運兒查驗：${fmt(entry.luckySeerResult.targetSeat)} ➜ ${entry.luckySeerResult.faction === 'wolf' ? '狼人陣營' : '好人陣營'}`,
+    );
+  }
+  if (entry?.eclipseMaidCheckResult) {
+    lines.push(
+      `蝕日侍女使用查驗：${fmt(entry.eclipseMaidCheckResult.targetSeat)} ➜ ${entry.eclipseMaidCheckResult.faction === 'wolf' ? '狼人陣營' : '好人陣營'}`,
+    );
+  }
+  if (entry?.greyWolfBossSeerResult) {
+    lines.push(
+      `灰太狼使用查驗：${fmt(entry.greyWolfBossSeerResult.targetSeat)} ➜ ${entry.greyWolfBossSeerResult.faction === 'wolf' ? '狼人陣營' : '好人陣營'}`,
+    );
+  }
+  if (entry?.policeDogResult) {
+    lines.push(
+      `警犬查驗：${fmt(entry.policeDogResult.targetSeat)} ➜ ${entry.policeDogResult.faction === 'wolf' ? '狼人陣營' : '好人陣營'}`,
+    );
+  }
+  if (entry?.littleGirlResult) {
+    lines.push(
+      `小女孩指認：${fmt(entry.littleGirlResult.targetSeat)} ➜ ${entry.littleGirlResult.caught ? '抓出大野狼！' : '未命中'}`,
+    );
+  }
+  if (entry?.mediumResult) {
+    lines.push(
+      `通靈者通靈：${fmt(entry.mediumResult.deadSeat)} 號 ➜ 繼承者 ${fmt(entry.mediumResult.heirSeat)}（${entry.mediumResult.skill ?? '無技能'}）`,
+    );
   }
   if (entry?.bearRoar) {
     lines.push(`熊判定：${entry.bearRoar.roared ? '咆哮' : '未咆哮'}`);

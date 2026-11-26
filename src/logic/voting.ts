@@ -16,6 +16,12 @@ export interface TallyExileVotesInput {
   roundIndex?: number;
   /** 詭術師昨晚交換之兩位玩家號碼（隔天白天放逐票數對調） */
   tricksterVoteSwap?: [number, number] | null;
+  /** 槓精白天開槓過半後，本輪失去放逐投票權之座號 */
+  silencedVoterSeat?: number | null;
+  /** 管家上茶給平民：當天放逐投票 +1 票權 */
+  butlerVoteBonusSeat?: number | null;
+  /** 狼僕上茶給平民：當天放逐投票 -1 票權（警長餘 0.5 票） */
+  wolfMaidVotePenaltySeat?: number | null;
 }
 
 function roundVoteScore(value: number): number {
@@ -30,14 +36,16 @@ function roundVoteScore(value: number): number {
 export function getEligibleExileVoters(
   seats: PlayerSeat[],
   pkCandidates: number[] = [],
+  silencedVoterSeat: number | null = null,
 ): number[] {
   const pkSet = pkCandidates.length > 0 ? new Set(pkCandidates) : null;
   return seats
     .filter(
       (seat) =>
         seat.isAlive &&
-        !(seat.roleId === 'idiot' && seat.idiotRevealed) &&
+        !((seat.roleId === 'idiot' || seat.roleId === 'awakened_idiot') && seat.idiotRevealed) &&
         !seat.petrified &&
+        seat.seatNumber !== silencedVoterSeat &&
         (!pkSet || !pkSet.has(seat.seatNumber)),
     )
     .map((seat) => seat.seatNumber)
@@ -79,9 +87,12 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
     pkCandidates = [],
     roundIndex = 1,
     tricksterVoteSwap = null,
+    silencedVoterSeat = null,
+    butlerVoteBonusSeat = null,
+    wolfMaidVotePenaltySeat = null,
   } = input;
 
-  const eligibleVoters = new Set(getEligibleExileVoters(seats, pkCandidates));
+  const eligibleVoters = new Set(getEligibleExileVoters(seats, pkCandidates, silencedVoterSeat));
   const aliveSeatSet = new Set(seats.filter((s) => s.isAlive).map((s) => s.seatNumber));
   const pkSet = pkCandidates.length > 0 ? new Set(pkCandidates) : null;
 
@@ -95,8 +106,11 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
       if (pkSet && pkSet.has(voterSeat)) {
         throw new Error(`${voterSeat} 號為本輪平票 PK 候選人，PK 投票階段禁止投票`);
       }
+      if (silencedVoterSeat !== null && voterSeat === silencedVoterSeat) {
+        throw new Error(`${voterSeat} 號遭槓精開槓奪票，本輪無法投票`);
+      }
       const seatObj = seats.find((s) => s.seatNumber === voterSeat);
-      if (seatObj?.roleId === 'idiot' && seatObj.idiotRevealed) {
+      if ((seatObj?.roleId === 'idiot' || seatObj?.roleId === 'awakened_idiot') && seatObj.idiotRevealed) {
         throw new Error(`${voterSeat} 號（白痴）已翻牌免死，失去放逐投票權`);
       }
       if (seatObj?.petrified) {
@@ -117,9 +131,19 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
       throw new Error(`平票 PK 輪僅能投票給 PK 名單中的玩家（${pkCandidates.join('、')} 號）`);
     }
 
-    const weight = sheriffSeat !== null && voterSeat === sheriffSeat ? sheriffVoteWeight : 1;
-    totals[targetSeat] = roundVoteScore((totals[targetSeat] ?? 0) + weight);
-    votersByTarget[targetSeat] = [...(votersByTarget[targetSeat] ?? []), voterSeat];
+    let weight = sheriffSeat !== null && voterSeat === sheriffSeat ? sheriffVoteWeight : 1;
+    if (butlerVoteBonusSeat !== null && voterSeat === butlerVoteBonusSeat) {
+      weight += 1;
+    }
+    if (wolfMaidVotePenaltySeat !== null && voterSeat === wolfMaidVotePenaltySeat) {
+      weight = Math.max(0, weight - 1);
+    }
+    if (weight > 0) {
+      totals[targetSeat] = roundVoteScore((totals[targetSeat] ?? 0) + weight);
+      votersByTarget[targetSeat] = [...(votersByTarget[targetSeat] ?? []), voterSeat];
+    } else {
+      abstainers.push(voterSeat);
+    }
   }
 
   // 疊加額外票數（例如烏鴉詛咒 +1 票）
@@ -140,24 +164,30 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
   // 詭術師隔天白天票數對調（僅當兩位玩家皆存活且在投票候選內時對調其總票數與得票來源）
   if (tricksterVoteSwap) {
     const [seatA, seatB] = tricksterVoteSwap;
-    const scoreA = totals[seatA] ?? 0;
-    const scoreB = totals[seatB] ?? 0;
-    const votersA = votersByTarget[seatA] ?? [];
-    const votersB = votersByTarget[seatB] ?? [];
-    if (scoreA > 0 || scoreB > 0) {
-      if (scoreB > 0) {
-        totals[seatA] = scoreB;
-        votersByTarget[seatA] = votersB;
-      } else {
-        delete totals[seatA];
-        delete votersByTarget[seatA];
-      }
-      if (scoreA > 0) {
-        totals[seatB] = scoreA;
-        votersByTarget[seatB] = votersA;
-      } else {
-        delete totals[seatB];
-        delete votersByTarget[seatB];
+    const bothValid =
+      aliveSeatSet.has(seatA) &&
+      aliveSeatSet.has(seatB) &&
+      (!pkSet || (pkSet.has(seatA) && pkSet.has(seatB)));
+    if (bothValid) {
+      const scoreA = totals[seatA] ?? 0;
+      const scoreB = totals[seatB] ?? 0;
+      const votersA = votersByTarget[seatA] ?? [];
+      const votersB = votersByTarget[seatB] ?? [];
+      if (scoreA > 0 || scoreB > 0) {
+        if (scoreB > 0) {
+          totals[seatA] = scoreB;
+          votersByTarget[seatA] = votersB;
+        } else {
+          delete totals[seatA];
+          delete votersByTarget[seatA];
+        }
+        if (scoreA > 0) {
+          totals[seatB] = scoreA;
+          votersByTarget[seatB] = votersA;
+        } else {
+          delete totals[seatB];
+          delete votersByTarget[seatB];
+        }
       }
     }
   }

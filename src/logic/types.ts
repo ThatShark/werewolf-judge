@@ -315,6 +315,8 @@ export interface BoardDefinition {
   compositionNote?: string;
   /** 板子級首夜／全局特殊限制（源自 docs/boards-raw.md） */
   specialRules?: string[];
+  /** 首夜狼人禁止刀人（無狼刀） */
+  firstNightNoWolfKill?: boolean;
   /** 多人數板子可選的預設人數列表 */
   presetPlayerCounts?: number[];
   /** 自動結算支援層級（full: 全自動結算；partial_manual: 含進階角色需手動標記輔助） */
@@ -432,6 +434,9 @@ export type DeathReason =
   | 'police_dog_bite'
   | 'little_girl_caught'
   | 'pandora_day_gun'
+  | 'bai_ze_delayed_death'
+  | 'ghost_bride_kill'
+  | 'evil_merchant_poison'
   | 'manual_judge';
 
 export interface PlayerSeat {
@@ -534,6 +539,8 @@ export interface ExiledRecord {
   seatNumber: number;
   roleId: string | null;
   infectedBySeedWolf?: boolean;
+  convertedByAwakenedGargoyle?: boolean;
+  effectiveFaction?: 'wolf' | 'good' | 'third_party';
 }
 
 export interface GargoyleCheckRecord {
@@ -650,6 +657,14 @@ export interface InterferenceRuntimeState {
   awakenedWitchAntidoteUsed: boolean;
   awakenedWitchPoisonsUsed: number;
   awakenedWitchUsedHelpers: number[];
+  /** 當晚有效的換位對（供白天夜槍目標對調使用） */
+  activeNightSwapPairs?: Array<[number, number]>;
+  /** 當晚／今日受搗蛋鬼耍寶的座號（供獵人日／夜槍自射使用） */
+  activeTroublemakerPrankedSeat?: number | null;
+  /** 當晚多位死者座號（供煉金魔女法老之蛇擇一救活） */
+  alchemySnakePendingVictimSeats?: number[];
+  /** 當晚受寂夜導師／白晝學者增幅之座號 */
+  amplifiedSeatsTonight?: number[];
 }
 
 /** 第 3 批：免疫、反傷、額外傷害與特殊擊殺類角色持久化狀態 */
@@ -720,7 +735,9 @@ export interface ConversionRuntimeState {
   puppetSeat: number | null;
   zombieInfectedSeats: number[];
   chameleonWolfSeat: number | null;
+  chameleonOriginalRoleId?: string | null;
   chameleonJoinedTeam: boolean;
+  awakenedGargoyleConvertedSeats?: number[];
   thiefBottomCards: string[];
   thiefChosenRoleId: string | null;
   jackRipperFanaticSeat: number | null;
@@ -778,6 +795,7 @@ export interface ThirdPartySpecialRuntimeState {
   evilMerchantGunHolderSeat: number | null;
   evilMerchantPoisonHolderSeat: number | null;
   evilMerchantDisabled: boolean;
+  evilMerchantLastDayNoGunWolfDied?: boolean;
   // 通靈者
   mediumChanneledDeadSeats: number[];
   mediumInheritedHeirs: Array<{
@@ -835,6 +853,19 @@ export interface NightActionDraft {
   wolfTarget: number | null;
   witchUseAntidote: boolean;
   witchPoisonTarget: number | null;
+  witchSecondPoisonTarget?: number | null;
+  guardSecondTarget?: number | null;
+  radiantEarlSecondShieldTarget?: number | null;
+  mentorAmplifySoloKillTarget?: number | null;
+  awakenedGargoyleConvertTargets?: number[];
+  demonHunterTargets?: Array<{ actorSeat: number; targetSeat: number }>;
+  scentPhantomChains?: Array<[number, number]>;
+  mediumSkillActions?: Array<{ actorSeat: number; targetSeat: number }>;
+  eclipseMaidDevourDualTargets?: [number, number] | null;
+  greyWolfBossIntelligenceGuessCorrect?: boolean | null;
+  ghostBrideKillTarget?: number | null;
+  evilMerchantPoisonActionTarget?: number | null;
+  chameleonWolfOriginalRoleId?: string | null;
   poisonerTarget?: number | null;
   seerCheckTarget: number | null;
   psychicCheckTarget: number | null;
@@ -1088,6 +1119,24 @@ export interface NightHistoryEntry {
   pumpkinGhostResult?: PsychicCheckOutcome | null;
   gravekeeperResult?: GravekeeperExileOutcome | null;
   awakenedDreamResult?: AwakenedDreamCheckOutcome | null;
+  exoticPrinceResult?: { targetSeat: number; foundSleepingBeauty: boolean } | null;
+  luckySeerResult?: {
+    source?: 'miracle' | 'black_market' | 'super_black_market';
+    actorSeat?: number;
+    targetSeat: number;
+    faction: 'wolf' | 'good';
+    roleId?: string;
+  } | null;
+  eclipseMaidCheckResult?: {
+    devouredRoleId: string;
+    targetSeat: number;
+    faction?: 'wolf' | 'good';
+    roleId?: string | null;
+  } | null;
+  greyWolfBossSeerResult?: { targetSeat: number; faction: 'wolf' | 'good' } | null;
+  policeDogResult?: { targetSeat: number; faction: 'wolf' | 'good' } | null;
+  littleGirlResult?: { targetSeat: number; caught: boolean } | null;
+  mediumResult?: { deadSeat: number; heirSeat: number; skill: string | null } | null;
 }
 
 export interface PendingNightAnnouncement {
@@ -1226,6 +1275,12 @@ export interface GameState {
   /** 玩家雙模式筆記本（持久化於 localStorage） */
   notebook: NotebookState;
 
+  /** 夜間毒師用毒持久化狀態／盜賊剩餘兩張底牌／入夜前與放逐前快照（供時間回溯與定序王子重投） */
+  poisonerPoisonUsed?: boolean;
+  thiefBottomCards?: string[];
+  preNightSnapshot?: unknown | null;
+  preExileSnapshot?: unknown | null;
+
   /** 歷史紀錄與勝負 */
   nightHistory: NightHistoryEntry[];
   dayHistory: DayHistoryEntry[];
@@ -1257,9 +1312,19 @@ export interface VictoryResult {
 
 export interface ShootEligibility {
   seatNumber: number;
-  roleId: 'hunter' | 'wolf_king' | 'awakened_hunter' | 'lucky_gun';
+  roleId:
+    | 'hunter'
+    | 'wolf_king'
+    | 'awakened_hunter'
+    | 'lucky_gun'
+    | 'awakened_wolf_king'
+    | 'wolf_gun'
+    | 'pandora_day_gun'
+    | 'evil_merchant_gun'
+    | 'grey_wolf_gun';
   canShoot: boolean;
   reason: string;
+  shotsRemaining?: number;
 }
 
 export interface SeerCheckOutcome {
@@ -1276,6 +1341,7 @@ export interface VictoryCheckOptions {
   cursedFoxDiedThisResolution?: boolean;
   conversionState?: ConversionRuntimeState;
   thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
+  wolfGirlState?: WolfGirlRuntimeState;
   boardId?: string;
 }
 
@@ -1374,6 +1440,26 @@ export interface NightResolutionResult {
   pumpkinGhostResult: PsychicCheckOutcome | null;
   gravekeeperResult: GravekeeperExileOutcome | null;
   awakenedDreamResult: AwakenedDreamCheckOutcome | null;
+  luckySeerResult?: {
+    source?: 'miracle' | 'black_market' | 'super_black_market';
+    actorSeat?: number;
+    targetSeat: number;
+    faction: 'wolf' | 'good';
+    roleId?: string;
+  } | null;
+  exoticPrinceResult?: { targetSeat: number; foundSleepingBeauty: boolean } | null;
+  maskedWolfCheckResult?: { targetSeat: number; inDanceFloor: boolean } | null;
+  policeDogResult?: { targetSeat: number; faction: 'wolf' | 'good' } | null;
+  mediumSeerResult?: { actorSeat: number; targetSeat: number; faction: 'wolf' | 'good' } | null;
+  eclipseMaidCheckResult?: {
+    devouredRoleId: string;
+    targetSeat: number;
+    faction?: 'wolf' | 'good';
+    roleId?: string | null;
+  } | null;
+  greyWolfBossSeerResult?: { targetSeat: number; faction: 'wolf' | 'good' } | null;
+  littleGirlResult?: { targetSeat: number; caught: boolean } | null;
+  mediumResult?: { deadSeat: number; heirSeat: number; skill: string | null } | null;
   shootEligibilities: ShootEligibility[];
   victory: VictoryResult;
 }

@@ -57,7 +57,9 @@ export function DayAnnouncementScreen() {
   const reviveWithAlchemySnake = useGameStore((s) => s.reviveWithAlchemySnake);
   const triggerWhiteCatDelayedDeath = useGameStore((s) => s.triggerWhiteCatDelayedDeath);
   const triggerOldRascalDelayedDeath = useGameStore((s) => s.triggerOldRascalDelayedDeath);
+  const triggerBaiZeDelayedDeath = useGameStore((s) => s.triggerBaiZeDelayedDeath);
   const triggerShoot = useGameStore((s) => s.triggerShoot);
+  const awakenedHunterShoot = useGameStore((s) => s.awakenedHunterShoot);
   const skipShoot = useGameStore((s) => s.skipShoot);
   const transferSheriffBadge = useGameStore((s) => s.transferSheriffBadge);
   const destroySheriffBadge = useGameStore((s) => s.destroySheriffBadge);
@@ -112,19 +114,33 @@ export function DayAnnouncementScreen() {
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
   }, [deaths, seats, isOnlineJudge]);
 
+  const snakeVictimSeats = useMemo(() => {
+    const raw = [
+      ...(interferenceState?.alchemySnakePendingVictimSeats ?? []),
+      ...(interferenceState?.alchemySnakePendingVictimSeat != null
+        ? [interferenceState.alchemySnakePendingVictimSeat]
+        : []),
+    ];
+    return Array.from(new Set(raw)).filter((num) =>
+      seats.some((s) => s.seatNumber === num && !s.isAlive),
+    );
+  }, [interferenceState, seats]);
+
   const canAlchemySnakeRevive =
     !isOnlineJudge &&
     Boolean(interferenceState) &&
     !interferenceState?.alchemySnakeUsed &&
-    interferenceState?.alchemySnakePendingVictimSeat !== null;
+    snakeVictimSeats.length > 0;
   const hasWhiteCatPending = seats.some(
     (s) => s.isAlive && s.roleId === 'white_cat' && s.whiteCatRevealed,
   );
   const hasOldRascalPending = seats.some((s) => s.isAlive && s.oldRascalDelayedDeath);
+  const hasBaiZePending = seats.some((s) => s.isAlive && s.baiZeDelayedDeath);
   const delayedSkillCount =
     (canAlchemySnakeRevive ? 1 : 0) +
     (hasWhiteCatPending ? 1 : 0) +
-    (hasOldRascalPending ? 1 : 0);
+    (hasOldRascalPending ? 1 : 0) +
+    (hasBaiZePending ? 1 : 0);
 
   const hasPendingShooters = pendingShooters.length > 0;
   const hasPendingBadgeTransfer = sheriffState.pendingBadgeTransferFrom !== null;
@@ -370,6 +386,7 @@ export function DayAnnouncementScreen() {
                   shooter={shooter}
                   seats={seats}
                   onShoot={triggerShoot}
+                  onAwakenedHunterShoot={awakenedHunterShoot}
                   onSkip={skipShoot}
                 />
               ))}
@@ -452,23 +469,24 @@ export function DayAnnouncementScreen() {
         placement="bottom"
       >
         <div className="divide-y divide-subtle">
-          {canAlchemySnakeRevive && interferenceState && (
-            <div className="flex items-center justify-between gap-3 py-3">
-              <div className="text-[14px] font-medium text-primary tabular-nums">
-                法老之蛇救活 {formatSeatNum(interferenceState.alchemySnakePendingVictimSeat!)} 號
+          {canAlchemySnakeRevive &&
+            snakeVictimSeats.map((victimSeat) => (
+              <div key={victimSeat} className="flex items-center justify-between gap-3 py-3">
+                <div className="text-[14px] font-medium text-primary tabular-nums">
+                  法老之蛇救活 {formatSeatNum(victimSeat)} 號
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    reviveWithAlchemySnake(victimSeat);
+                    setDelayedSkillsDrawerOpen(false);
+                  }}
+                  className="min-h-11 shrink-0 rounded-md bg-good px-3.5 text-[12px] font-semibold text-inverse"
+                >
+                  發動救活
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  reviveWithAlchemySnake(interferenceState.alchemySnakePendingVictimSeat!);
-                  setDelayedSkillsDrawerOpen(false);
-                }}
-                className="min-h-11 shrink-0 rounded-md bg-good px-3.5 text-[12px] font-semibold text-inverse"
-              >
-                發動救活
-              </button>
-            </div>
-          )}
+            ))}
 
           {hasWhiteCatPending && (
             <div className="flex items-center justify-between gap-3 py-3">
@@ -493,6 +511,22 @@ export function DayAnnouncementScreen() {
                 type="button"
                 onClick={() => {
                   triggerOldRascalDelayedDeath();
+                  setDelayedSkillsDrawerOpen(false);
+                }}
+                className="min-h-11 shrink-0 rounded-md bg-wolf px-3.5 text-[12px] font-semibold text-primary"
+              >
+                結算出局
+              </button>
+            </div>
+          )}
+
+          {hasBaiZePending && (
+            <div className="flex items-center justify-between gap-3 py-3">
+              <div className="text-[14px] font-medium text-primary">白澤神職繼承人延遲出局</div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerBaiZeDelayedDeath();
                   setDelayedSkillsDrawerOpen(false);
                 }}
                 className="min-h-11 shrink-0 rounded-md bg-wolf px-3.5 text-[12px] font-semibold text-primary"

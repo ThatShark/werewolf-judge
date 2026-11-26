@@ -773,6 +773,9 @@ const GOD_SKILL_DEATH_REASONS: ReadonlySet<DeathReason> = new Set([
   'dream_catcher_consecutive',
   'dream_catcher_link',
   'awakened_dream_catcher_kill',
+  'demon_hunter_kill',
+  'socialite_link',
+  'awakened_hunter_shoot',
 ]);
 
 /** 戰狼免疫所有神職技能傷害，只能透過白天放逐投票出局 */

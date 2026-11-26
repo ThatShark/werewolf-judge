@@ -6900,6 +6900,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
   {
     "id": "10p-animal-dream",
     "name": "10 人局 - 動物夢境",
+    "firstNightNoWolfKill": true,
     "playerCount": 10,
     "playerCountFilter": "10",
     "keywords": [
@@ -18018,6 +18019,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
   {
     "id": "12p-animal-dream",
     "name": "12 人局 - 動物夢境",
+    "firstNightNoWolfKill": true,
     "playerCount": 12,
     "playerCountFilter": "12",
     "keywords": [
@@ -20234,7 +20236,19 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ],
           "actionType": "wolf_kill",
           "openPrompt": "狼人與小女孩請睜眼",
-          "actionPrompt": "請選擇要擊殺的目標\n請指認小女孩，三秒後投票，三、二、一",
+          "actionPrompt": "請選擇要擊殺的目標",
+          "closePrompt": "狼人與小女孩請閉眼"
+        },
+        {
+          "stepId": "little_girl_identify",
+          "actorLabel": "狼人與小女孩",
+          "actorRoleIds": [
+            "wolf",
+            "big_bad_wolf"
+          ],
+          "actionType": "little_girl_identify",
+          "openPrompt": "狼隊指認小女孩",
+          "actionPrompt": "請指認小女孩，三秒後投票，三、二、一（整局限一次）",
           "closePrompt": "狼人與小女孩請閉眼"
         },
         {
@@ -21173,6 +21187,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "守衛請閉眼"
         },
         {
+          "stepId": "puppet_wolf_choose",
+          "actorLabel": "傀儡",
+          "actorRoleIds": [
+            "puppet_wolf"
+          ],
+          "actionType": "puppet_wolf_choose",
+          "openPrompt": "狼人請睜眼（傀儡選傀儡）",
+          "actionPrompt": "請選擇相鄰的一位玩家成為傀儡",
+          "closePrompt": "傀儡選擇完畢"
+        },
+        {
           "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
@@ -21182,7 +21207,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ],
           "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
-          "actionPrompt": "請選擇一位傀儡\n請選擇要擊殺的目標",
+          "actionPrompt": "請選擇要擊殺的目標",
           "closePrompt": "狼人請閉眼"
         },
         {
@@ -23416,6 +23441,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
+          "stepId": "step_1",
+          "actorLabel": "阿努比斯",
+          "actorRoleIds": [
+            "anubis"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "阿努比斯請睜眼",
+          "actionPrompt": "(確認阿努比斯是誰)",
+          "closePrompt": "阿努比斯請閉眼"
+        },
+        {
           "stepId": "dream_catcher_dream",
           "actorLabel": "攝夢人",
           "actorRoleIds": [
@@ -23425,17 +23461,6 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "openPrompt": "攝夢人請睜眼",
           "actionPrompt": "請選擇要攝夢的玩家",
           "closePrompt": "攝夢人請閉眼"
-        },
-        {
-          "stepId": "step_2",
-          "actorLabel": "阿努比斯",
-          "actorRoleIds": [
-            "anubis"
-          ],
-          "actionType": "confirm_only",
-          "openPrompt": "阿努比斯請睜眼",
-          "actionPrompt": "(確認阿努比斯是誰)",
-          "closePrompt": "阿努比斯請閉眼"
         },
         {
           "stepId": "alchemy_witch_fog",
@@ -23496,20 +23521,6 @@ export const ALL_BOARDS: BoardDefinition[] = [
       ],
       "subsequentNights": [
         {
-          "stepId": "dream_catcher_dream",
-          "actorLabel": "攝夢人",
-          "actorRoleIds": [
-            "dream_catcher"
-          ],
-          "actionType": "dream_catcher_dream",
-          "openPrompt": "攝夢人請睜眼",
-          "actionPrompt": "請選擇要攝夢的玩家",
-          "closePrompt": "攝夢人請閉眼",
-          "judgeTips": [
-            "情境條件：煉金魔女尚未使用法老之蛇"
-          ]
-        },
-        {
           "stepId": "anubis_scale",
           "actorLabel": "阿努比斯",
           "actorRoleIds": [
@@ -23519,6 +23530,20 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "openPrompt": "阿努比斯請睜眼",
           "actionPrompt": "請選擇要置於天平的兩位玩家",
           "closePrompt": "阿努比斯請閉眼",
+          "judgeTips": [
+            "情境條件：煉金魔女尚未使用法老之蛇"
+          ]
+        },
+        {
+          "stepId": "dream_catcher_dream",
+          "actorLabel": "攝夢人",
+          "actorRoleIds": [
+            "dream_catcher"
+          ],
+          "actionType": "dream_catcher_dream",
+          "openPrompt": "攝夢人請睜眼",
+          "actionPrompt": "請選擇要攝夢的玩家",
+          "closePrompt": "攝夢人請閉眼",
           "judgeTips": [
             "情境條件：煉金魔女尚未使用法老之蛇"
           ]
@@ -24203,6 +24228,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
   {
     "id": "12p-wolf-girl",
     "name": "12 人局 - 狼女孩",
+    "firstNightNoWolfKill": true,
     "playerCount": 12,
     "playerCountFilter": "12",
     "keywords": [
@@ -26294,15 +26320,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
-          "stepId": "step_1",
+          "stepId": "jack_ripper_action",
           "actorLabel": "開膛手傑克",
           "actorRoleIds": [],
-          "actionType": "confirm_only",
+          "actionType": "jack_ripper_action",
           "openPrompt": "開膛手傑克請睜眼",
-          "actionPrompt": "請選擇要擊殺的目標",
+          "actionPrompt": "請選擇一名玩家成為狂熱粉",
           "closePrompt": "開膛手傑克請閉眼",
           "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+            "第二身分版：首夜指定一名狂熱粉，待開膛手傑克或狂熱粉任一方死亡後，自次夜起每晚可擊殺一人。"
           ]
         },
         {
@@ -26386,6 +26412,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
         }
       ],
       "subsequentNights": [
+        {
+          "stepId": "jack_ripper_action",
+          "actorLabel": "開膛手傑克",
+          "actorRoleIds": [],
+          "actionType": "jack_ripper_action",
+          "openPrompt": "開膛手傑克請睜眼",
+          "actionPrompt": "（若已解鎖殺人權限）請選擇要擊殺的目標",
+          "closePrompt": "開膛手傑克請閉眼"
+        },
         {
           "stepId": "guard_protect",
           "actorLabel": "守衛",
@@ -26526,6 +26561,15 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "automationLevel": "partial_manual",
     "nightSchedule": {
       "firstNight": [
+        {
+          "stepId": "sleeping_beauty_pick",
+          "actorLabel": "睡美人（法官抽籤）",
+          "actorRoleIds": [],
+          "actionType": "sleeping_beauty_pick",
+          "openPrompt": "法官指定／抽取睡美人",
+          "actionPrompt": "請指定（或隨機抽取）一位玩家成為睡美人（若抽中異族王子則本場無睡美人）",
+          "closePrompt": "睡美人確認完畢"
+        },
         {
           "stepId": "wolf_kill",
           "actorLabel": "狼人",
@@ -27815,19 +27859,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "攝夢人請閉眼"
         },
         {
-          "stepId": "step_4",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "mech_wolf",
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇要擊殺的目標",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "awakened_gargoyle_convert",
@@ -27991,19 +28032,16 @@ export const ALL_BOARDS: BoardDefinition[] = [
           ]
         },
         {
-          "stepId": "step_5",
+          "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
             "mech_wolf",
             "awakened_gargoyle"
           ],
-          "actionType": "confirm_only",
+          "actionType": "wolf_kill",
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "請選擇擊殺的目標",
-          "closePrompt": "狼人請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
+          "closePrompt": "狼人請閉眼"
         },
         {
           "stepId": "witch_action",
@@ -30106,6 +30144,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
   {
     "id": "12p-treasure-master",
     "name": "12 人局 - 盜寶大師",
+    "firstNightNoWolfKill": true,
     "playerCount": 12,
     "playerCountFilter": "12",
     "keywords": [
@@ -30335,6 +30374,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
   {
     "id": "multi-hunter",
     "name": "娛樂局 - 獵殺潛狼 / 獵人局",
+    "firstNightNoWolfKill": true,
     "playerCount": 6,
     "playerCountRange": [
       6,
@@ -30410,6 +30450,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
   {
     "id": "multi-lianliankan",
     "name": "娛樂局 - 連連看",
+    "firstNightNoWolfKill": true,
     "playerCount": 10,
     "playerCountFilter": "multi",
     "keywords": [

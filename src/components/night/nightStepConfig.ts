@@ -171,6 +171,8 @@ export function getInitialTargetForStep(
       return draft.policeDogTarget ?? null;
     case 'little_girl_identify':
       return draft.littleGirlIdentifyTarget ?? null;
+    case 'wolf_girl_confess':
+      return draft.wolfGirlConfessTarget ?? null;
     default:
       return null;
   }

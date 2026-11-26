@@ -30,6 +30,8 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const exilePkSpeakingOrder = useGameStore((s) => s.exilePkSpeakingOrder ?? []);
   const voteInputMode = useGameStore((s) => s.voteInputMode);
   const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
+  const finalBatchState = useGameStore((s) => s.finalBatchState);
+  const interferenceState = useGameStore((s) => s.interferenceState);
   const undoStack = useGameStore((s) => s.undoStack);
 
   const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
@@ -120,6 +122,10 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
       extraVotes: normalizedExtraVotes,
       pkCandidates: exilePkCandidates,
       roundIndex: isPkRound ? 2 : 1,
+      tricksterVoteSwap: interferenceState?.activeTricksterVoteSwap ?? null,
+      silencedVoterSeat: finalBatchState?.contrarianSilencedVoterSeat ?? null,
+      butlerVoteBonusSeat: thirdPartySpecialState?.butlerActiveVoteBonusSeat ?? null,
+      wolfMaidVotePenaltySeat: thirdPartySpecialState?.wolfMaidActiveVotePenaltySeat ?? null,
     });
     const entries = Object.entries(raw.record.totals);
     const maxVotes = entries.reduce((m, [, v]) => Math.max(m, v), 0);
@@ -140,7 +146,33 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     eligibleVoters.length,
     exilePkCandidates,
     isPkRound,
+    interferenceState?.activeTricksterVoteSwap,
+    finalBatchState?.contrarianSilencedVoterSeat,
+    thirdPartySpecialState?.butlerActiveVoteBonusSeat,
+    thirdPartySpecialState?.wolfMaidActiveVotePenaltySeat,
   ]);
+
+  const activeModifierTags = useMemo(() => {
+    const tags: string[] = [];
+    if (finalBatchState?.contrarianSilencedVoterSeat != null) {
+      tags.push(`開槓禁票 ${formatSeatNum(finalBatchState.contrarianSilencedVoterSeat)} 號`);
+    }
+    if (thirdPartySpecialState?.butlerActiveVoteBonusSeat != null) {
+      tags.push(`管家加票 ${formatSeatNum(thirdPartySpecialState.butlerActiveVoteBonusSeat)} 號(+1)`);
+    }
+    if (thirdPartySpecialState?.wolfMaidActiveVotePenaltySeat != null) {
+      tags.push(`狼僕減票 ${formatSeatNum(thirdPartySpecialState.wolfMaidActiveVotePenaltySeat)} 號(-1)`);
+    }
+    if (thirdPartySpecialState?.crowActiveCursedSeat != null) {
+      tags.push(`烏鴉詛咒 ${formatSeatNum(thirdPartySpecialState.crowActiveCursedSeat)} 號(+1)`);
+    }
+    if (interferenceState?.activeTricksterVoteSwap) {
+      tags.push(
+        `詭術換票 ${formatSeatNum(interferenceState.activeTricksterVoteSwap[0])}↔${formatSeatNum(interferenceState.activeTricksterVoteSwap[1])}`,
+      );
+    }
+    return tags;
+  }, [finalBatchState, thirdPartySpecialState, interferenceState]);
 
   const targetSeatObjects = useMemo(
     () => targetSeats.map((num) => seats.find((s) => s.seatNumber === num)).filter(Boolean) as typeof seats,
@@ -375,6 +407,19 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
           逐號點選
         </button>
       </div>
+
+      {activeModifierTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 rounded border border-subtle bg-surface px-2.5 py-2">
+          {activeModifierTags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded border border-info/40 bg-info-tint/60 px-2 py-0.5 text-[11px] font-semibold text-info"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
 
       {lastTallyNotice && (
         <div className="border-l-2 border-sheriff bg-surface px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">

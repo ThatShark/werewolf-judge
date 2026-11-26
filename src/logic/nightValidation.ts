@@ -1,8 +1,15 @@
 import { getRoleById } from '../data/roles';
+import { isSeatEffectiveWolf } from './factionHelpers';
+import { isSeatAsleep } from './thirdPartySpecialRoles';
 import { isSeatWolfFaction } from './topFiveRoles';
 import type {
   ActionCheckResult,
   CombatRuntimeState,
+  ConversionRuntimeState,
+  FinalBatchRuntimeState,
+  GargoyleRuntimeState,
+  HiddenWolfRuntimeState,
+  InterferenceRuntimeState,
   NightActionDraft,
   NightActionType,
   NightStepScript,
@@ -10,6 +17,7 @@ import type {
   PumpkinGhostRuntimeState,
   RuleOverrides,
   ThirdPartySpecialRuntimeState,
+  TreasureMasterRuntimeState,
 } from './types';
 
 export interface NightStepLockEvaluation {
@@ -36,6 +44,13 @@ export interface EvaluateNightStepLockInput {
   combatState: CombatRuntimeState;
   thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
   firstNightNoWolfKill?: boolean;
+  conversionState?: ConversionRuntimeState;
+  finalBatchState?: FinalBatchRuntimeState;
+  interferenceState?: InterferenceRuntimeState;
+  hiddenWolfState?: HiddenWolfRuntimeState;
+  gargoyleState?: GargoyleRuntimeState;
+  treasureMasterState?: TreasureMasterRuntimeState;
+  boardId?: string;
 }
 
 /**
@@ -68,27 +83,87 @@ export function evaluateNightStepLockState(
     combatState,
     thirdPartySpecialState,
     firstNightNoWolfKill = false,
+    conversionState,
+    finalBatchState,
+    interferenceState,
+    hiddenWolfState,
+    gargoyleState,
+    treasureMasterState,
+    boardId,
   } = input;
 
   if (isClaimStage) {
     return { locked: false, reason: null };
   }
 
-  const matchingActorSeats =
-    step.actorRoleIds.length === 0
+  const isJackSecondIdStep =
+    step.actionType === 'jack_ripper_action' && boardId === '12p-jack-the-ripper-2';
+
+  const matchingActorSeats = isJackSecondIdStep
+    ? seats.filter((s) => s.secondRoleId === 'jack_the_ripper')
+    : step.actorRoleIds.length === 0
       ? []
       : seats.filter((s) => Boolean(s.roleId) && step.actorRoleIds.includes(s.roleId!));
   const aliveActors = matchingActorSeats.filter((s) => s.isAlive);
 
-  // 1. 角色已出局
-  if (matchingActorSeats.length > 0 && aliveActors.length === 0) {
+  // 取得可落刀之有效狼人清單（排除尚未歸隊的孤狼：隱狼、石像鬼、未單獨執刀之盜寶大師）
+  const aliveKnifeWolves =
+    step.actionType === 'wolf_kill'
+      ? seats.filter((s) => {
+          if (!s.isAlive) return false;
+          if (s.roleId === 'hidden_wolf' && !hiddenWolfState?.hasJoinedWolfTeam && !s.infectedBySeedWolf) {
+            return false;
+          }
+          if (s.roleId === 'gargoyle' && !gargoyleState?.hasJoinedWolfTeam && !s.infectedBySeedWolf) {
+            return false;
+          }
+          if (s.roleId === 'night_noble' && !s.infectedBySeedWolf) {
+            return false;
+          }
+          if (s.roleId === 'wolf_girl' && !s.infectedBySeedWolf) {
+            return false;
+          }
+          if (s.roleId === 'treasure_master' && !s.infectedBySeedWolf) {
+            // 若場上尚有其他有效狼人，盜寶大師尚未歸隊執刀
+            const hasOtherEffectiveWolf = seats.some(
+              (other) =>
+                other.isAlive &&
+                other.seatNumber !== s.seatNumber &&
+                other.roleId !== 'hidden_wolf' &&
+                other.roleId !== 'gargoyle' &&
+                other.roleId !== 'treasure_master' &&
+                other.roleId !== 'night_noble' &&
+                other.roleId !== 'wolf_girl' &&
+                (isSeatWolfFaction(other) ||
+                  isSeatEffectiveWolf(other, { conversionState, thirdPartySpecialState })),
+            );
+            if (hasOtherEffectiveWolf || !treasureMasterState) {
+              return false;
+            }
+          }
+          return (
+            isSeatWolfFaction(s) ||
+            isSeatEffectiveWolf(s, { conversionState, thirdPartySpecialState })
+          );
+        })
+      : [];
+
+  // 1. 角色已出局（狼人落刀改以有效可執刀狼人判定，避免隱狼/感染狼/覺醒狼已接刀卻被誤鎖）
+  if (step.actionType === 'wolf_kill') {
+    if (matchingActorSeats.length > 0 && aliveKnifeWolves.length === 0) {
+      return {
+        locked: true,
+        reason: '場上可落刀狼人皆已出局（僅存未歸隊孤狼或無狼刀）：今晚無法落刀，操作已鎖死。',
+      };
+    }
+  } else if (matchingActorSeats.length > 0 && aliveActors.length === 0) {
     return {
       locked: true,
       reason: '該角色已出局：請照常唸詞並停頓防暴露，技能操作已鎖死。',
     };
   }
 
-  // 2. 血月封印（所有好人神職）
+  // 2. 血月封印（所有好人神職；雙子與異族王子屬於平民分類，不受影響）
   const isGoodGodStep =
     step.actorRoleIds.length > 0 &&
     step.actorRoleIds.every((roleId) => {
@@ -102,7 +177,7 @@ export function evaluateNightStepLockState(
     };
   }
 
-  // 3. 狼隊步驟：首夜無刀或夢魘恐懼到狼人
+  // 3. 狼隊步驟：首夜無刀、夢魘恐懼、全員沉睡，或僅存單狼遭冰凍／石化／魅惑／削弱歸零
   if (step.actionType === 'wolf_kill') {
     if (firstNightNoWolfKill && round === 1) {
       return {
@@ -114,11 +189,67 @@ export function evaluateNightStepLockState(
       draft.nightmareFearTarget != null
         ? seats.find((s) => s.seatNumber === draft.nightmareFearTarget)
         : undefined;
-    if (fearedSeat && isSeatWolfFaction(fearedSeat)) {
+    if (
+      fearedSeat &&
+      (isSeatWolfFaction(fearedSeat) ||
+        isSeatEffectiveWolf(fearedSeat, { conversionState, thirdPartySpecialState }))
+    ) {
       return {
         locked: true,
         reason: `狼隊遭夢魘恐懼（${fearedSeat.seatNumber} 號被恐懼）：今晚狼隊強制空刀，所有座位已鎖死。`,
       };
+    }
+    if (
+      aliveKnifeWolves.length > 0 &&
+      aliveKnifeWolves.every((w) => isSeatAsleep(seats, thirdPartySpecialState, w.seatNumber))
+    ) {
+      return {
+        locked: true,
+        reason: '所有存活狼人皆處於睡美人沉睡狀態：今晚狼隊強制空刀，所有座位已鎖死。',
+      };
+    }
+    if (aliveKnifeWolves.length === 1) {
+      const soleWolf = aliveKnifeWolves[0];
+      if (soleWolf.petrified || draft.medusaPetrifyTarget === soleWolf.seatNumber) {
+        return {
+          locked: true,
+          reason: `唯一執刀狼（${soleWolf.seatNumber} 號）遭梅杜莎石化：今晚無法落刀，所有座位已鎖死。`,
+        };
+      }
+      if (draft.penguinFreezeTarget === soleWolf.seatNumber) {
+        return {
+          locked: true,
+          reason: `唯一執刀狼（${soleWolf.seatNumber} 號）遭企鵝冰凍：今晚無法落刀，所有座位已鎖死。`,
+        };
+      }
+      if (draft.foxCubCharmTarget === soleWolf.seatNumber) {
+        return {
+          locked: true,
+          reason: `唯一執刀狼（${soleWolf.seatNumber} 號）遭狐妖魅惑：今晚無法落刀，所有座位已鎖死。`,
+        };
+      }
+      const weakenedByMentor =
+        draft.silentNightMentorMode === 'weaken' &&
+        draft.silentNightMentorTarget === soleWolf.seatNumber;
+      const weakenedByScholar =
+        draft.daylightScholarMode === 'weaken' &&
+        draft.daylightScholarTarget === soleWolf.seatNumber;
+      const amplifiedByMentor =
+        draft.silentNightMentorMode === 'amplify' &&
+        draft.silentNightMentorTarget === soleWolf.seatNumber;
+      const amplifiedByScholar =
+        draft.daylightScholarMode === 'amplify' &&
+        draft.daylightScholarTarget === soleWolf.seatNumber;
+      const delta =
+        (weakenedByMentor ? -1 : amplifiedByMentor ? 1 : 0) +
+        (weakenedByScholar ? -1 : amplifiedByScholar ? 1 : 0);
+      if (1 + delta <= 0) {
+        return {
+          locked: true,
+          remainingSkillUses: 0,
+          reason: `唯一執刀狼（${soleWolf.seatNumber} 號）技能被削弱至 0 次：今晚無法落刀，所有座位已鎖死。`,
+        };
+      }
     }
   }
 
@@ -130,8 +261,12 @@ export function evaluateNightStepLockState(
     step.actionType !== 'confirm_only';
 
   if (isSingleActorAction) {
-    // 4. 夢魘恐懼到當前行動角色
+    // 4. 夢魘恐懼到當前行動角色（混血兒與邱比特首夜選榜樣/連情侶不因恐懼鎖死選取）
+    const isExemptFromFearLock =
+      round === 1 &&
+      (step.actionType === 'hybrid_choose' || step.actionType === 'cupid_link');
     if (
+      !isExemptFromFearLock &&
       draft.nightmareFearTarget != null &&
       aliveActors.every((s) => s.seatNumber === draft.nightmareFearTarget)
     ) {
@@ -141,11 +276,15 @@ export function evaluateNightStepLockState(
       };
     }
 
-    // 5. 梅杜莎石化（當晚或持續石化）
+    // 5. 梅杜莎石化（當晚或持續石化；柏修斯免疫石化除非被種狼感染）
+    const isPerseusExempt = (s: PlayerSeat) =>
+      s.roleId === 'perseus' && !s.infectedBySeedWolf;
     if (
       step.actionType !== 'medusa_petrify' &&
       aliveActors.every(
-        (s) => Boolean(s.petrified) || s.seatNumber === draft.medusaPetrifyTarget,
+        (s) =>
+          !isPerseusExempt(s) &&
+          (Boolean(s.petrified) || s.seatNumber === draft.medusaPetrifyTarget),
       )
     ) {
       return {
@@ -166,24 +305,10 @@ export function evaluateNightStepLockState(
       };
     }
 
-    // 7. 蝕時狼妃封鎖
-    if (
-      step.actionType !== 'time_eclipse_lock' &&
-      draft.timeEclipseTarget != null &&
-      aliveActors.every((s) => s.seatNumber === draft.timeEclipseTarget)
-    ) {
-      return {
-        locked: true,
-        reason: `遭蝕時狼妃封鎖（${draft.timeEclipseTarget} 號）：今晚無法使用技能，所有座位已鎖死。`,
-      };
-    }
-
-    // 8. 睡美人沉睡
-    const sleepingSet = new Set(thirdPartySpecialState?.sleepingSeats ?? []);
+    // 7. 睡美人沉睡（使用 isSeatAsleep，外族王子先天免疫）
     if (
       step.actionType !== 'sleeping_beauty_pick' &&
-      sleepingSet.size > 0 &&
-      aliveActors.every((s) => sleepingSet.has(s.seatNumber))
+      aliveActors.every((s) => isSeatAsleep(seats, thirdPartySpecialState, s.seatNumber))
     ) {
       return {
         locked: true,
@@ -191,7 +316,10 @@ export function evaluateNightStepLockState(
       };
     }
 
-    // 9. 寂夜導師／白晝學者 增幅／削弱（檢查是否導致剩餘技能次數歸零）
+    // 8. 寂夜導師／白晝學者 增幅／削弱（覺醒石像鬼與尋香魅影不受削弱；女巫削弱仍可用解藥）
+    const isExemptFromWeaken =
+      step.actionType === 'awakened_gargoyle_convert' ||
+      step.actionType === 'scent_phantom_link';
     if (
       step.actionType !== 'silent_night_mentor_action' &&
       step.actionType !== 'daylight_scholar_action'
@@ -204,8 +332,10 @@ export function evaluateNightStepLockState(
         aliveActors.every((s) => s.seatNumber === draft.silentNightMentorTarget)
       ) {
         if (draft.silentNightMentorMode === 'weaken') {
-          delta -= 1;
-          sources.push('寂夜導師削弱');
+          if (!isExemptFromWeaken) {
+            delta -= 1;
+            sources.push('寂夜導師削弱');
+          }
         } else if (draft.silentNightMentorMode === 'amplify') {
           delta += 1;
           sources.push('寂夜導師增幅');
@@ -217,8 +347,10 @@ export function evaluateNightStepLockState(
         aliveActors.every((s) => s.seatNumber === draft.daylightScholarTarget)
       ) {
         if (draft.daylightScholarMode === 'weaken') {
-          delta -= 1;
-          sources.push('白晝學者削弱');
+          if (!isExemptFromWeaken) {
+            delta -= 1;
+            sources.push('白晝學者削弱');
+          }
         } else if (draft.daylightScholarMode === 'amplify') {
           delta += 1;
           sources.push('白晝學者增幅');
@@ -227,6 +359,14 @@ export function evaluateNightStepLockState(
       if (sources.length > 0) {
         const remainingUses = Math.max(0, 1 + delta);
         if (remainingUses <= 0) {
+          if (step.actionType === 'witch_action' && !witchAntidoteUsed) {
+            return {
+              locked: false,
+              remainingSkillUses: 0,
+              reason: null,
+              modifierNotice: `受${sources.join('＋')}影響：今晚無法使用毒藥，但仍可使用解藥救人。`,
+            };
+          }
           return {
             locked: true,
             remainingSkillUses: 0,
@@ -262,6 +402,36 @@ export function evaluateNightStepLockState(
     return {
       locked: true,
       reason: '女巫解藥與毒藥皆已耗盡：請照常唸詞，所有座位已鎖死。',
+    };
+  }
+  if (
+    step.actionType === 'awakened_witch_action' &&
+    interferenceState?.awakenedWitchAntidoteUsed &&
+    (interferenceState?.awakenedWitchPoisonsUsed ?? 0) >= 3
+  ) {
+    return {
+      locked: true,
+      reason: '覺醒女巫解藥與三瓶毒藥皆已耗盡：所有座位已鎖死。',
+    };
+  }
+  if (step.actionType === 'fortune_teller_mark' && interferenceState?.fortuneTellerUsed) {
+    return {
+      locked: true,
+      reason: '命運先知預言標記已使用過：本局無法重複發動，所有座位已鎖死。',
+    };
+  }
+  if (
+    step.actionType === 'police_dog_action' &&
+    (!finalBatchState?.policeDogActivatedRound ||
+      round < finalBatchState.policeDogActivatedRound ||
+      finalBatchState?.policeDogUsed)
+  ) {
+    return {
+      locked: true,
+      reason:
+        !finalBatchState?.policeDogActivatedRound || round < finalBatchState.policeDogActivatedRound
+          ? '警犬尚未被偵探處決激活：今晚無法行動，所有座位已鎖死。'
+          : '警犬技能已使用完畢：所有座位已鎖死。',
     };
   }
   if (step.actionType === 'pumpkin_ghost_check' && !pumpkinGhostState.hasInherited) {
@@ -333,6 +503,11 @@ export function checkMandatoryNightTarget(
     case 'awakened_lonely_girl_choose':
       if (round === 1 && pendingTarget === null) {
         return { allowed: false, reason: '覺醒孤獨少女第一晚必選一名榜樣' };
+      }
+      return { allowed: true };
+    case 'wolf_girl_confess':
+      if (round === 1 && pendingTarget === null) {
+        return { allowed: false, reason: '狼女孩第一晚必選一名告白對象' };
       }
       return { allowed: true };
     case 'cupid_link':

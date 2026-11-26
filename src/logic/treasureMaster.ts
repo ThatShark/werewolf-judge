@@ -1,4 +1,5 @@
 import { getRoleById } from '../data/roles';
+import { isSeatEffectiveWolf } from './factionHelpers';
 import { syncMechWolfTeamStatus } from './mechWolf';
 import type {
   ActionCheckResult,
@@ -160,8 +161,7 @@ export function shouldTreasureMasterJoinWolfTeam(
 
   const hasAliveOtherWolf = seats.some((seat) => {
     if (!seat.isAlive || seat.roleId === 'treasure_master') return false;
-    const role = getRoleById(seat.roleId);
-    return role?.faction === 'wolf';
+    return isSeatEffectiveWolf(seat);
   });
 
   return !hasAliveOtherWolf;
@@ -199,8 +199,7 @@ export function isTreasureMasterLastWolfMasked(
 
   const otherAliveWolves = seats.filter((seat) => {
     if (!seat.isAlive || seat.seatNumber === targetSeat) return false;
-    const role = getRoleById(seat.roleId);
-    return role?.faction === 'wolf';
+    return isSeatEffectiveWolf(seat);
   });
 
   return otherAliveWolves.length === 0;

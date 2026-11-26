@@ -26,6 +26,13 @@ function getEffectiveSide(
   thirdPartySpecialState?: ThirdPartySpecialRuntimeState,
 ): 'wolf' | 'villager' | 'god' | null {
   if (!seat.roleId) return null;
+  // 百變狼王變身後底牌改為目標神職，仍計入狼人陣營
+  if (
+    conversionState?.chameleonWolfSeat === seat.seatNumber &&
+    conversionState.chameleonOriginalRoleId === 'chameleon_wolf_king'
+  ) {
+    return 'wolf';
+  }
   // 被種狼感染或覺醒石像鬼轉化為狼人者，即時改計入狼人陣營
   if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) {
     return 'wolf';
@@ -39,6 +46,21 @@ function getEffectiveSide(
   if (seat.roleId === 'wild_child') {
     return conversionState?.wildChildTurnedWolf ? 'wolf' : 'villager';
   }
+  if (seat.roleId === 'avenger') {
+    if (conversionState?.avengerAlignedFaction === 'wolf') return 'wolf';
+    if (conversionState?.avengerAlignedFaction === 'good') return 'god';
+    return null;
+  }
+  if (seat.roleId === 'shadow') {
+    if (conversionState?.shadowAvengerThirdParty) return null;
+    if (conversionState?.shadowInheritedRoleId) {
+      const inh = getRoleById(conversionState.shadowInheritedRoleId);
+      if (inh?.faction === 'wolf') return 'wolf';
+      if (inh?.category === 'god') return 'god';
+      if (inh?.category === 'villager') return 'villager';
+    }
+    return null;
+  }
   if (seat.roleId === 'awakened_lonely_girl') {
     if (conversionState?.awakenedLonelyGirlStatus === 'wolf') return 'wolf';
     if (
@@ -50,7 +72,7 @@ function getEffectiveSide(
       if (inh?.category === 'god') return 'god';
       return 'villager';
     }
-    return 'villager';
+    return null;
   }
   if (seat.roleId === 'treasure_master' && treasureMasterState?.affiliation) {
     return treasureMasterState.affiliation;
@@ -148,13 +170,38 @@ export function checkVictory(
       if (seat.baiZeDualFaction) hasAnyGod = true;
     } else if (side === 'god') hasAnyGod = true;
 
-    // 若原好人（神職／平民）被種狼感染轉為狼人，本局仍視為原本存在該陣營邊，避免最後一神／最後一民被感染時漏判屠邊
-    if (seat.infectedBySeedWolf && seat.roleId) {
+    // 若原好人（神職／平民）被種狼感染或覺醒石像鬼轉化為狼人，本局仍視為原本存在該陣營邊，避免最後一神／最後一民被轉化時漏判屠邊
+    if ((seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) && seat.roleId) {
       const origRole = getRoleById(seat.roleId);
       if (origRole?.category === 'villager') hasAnyVillager = true;
       else if (origRole?.category === 'god') hasAnyGod = true;
     }
   }
+
+  // 若場上仍有未出局的獨立屠城第三方（人狼戀、鬼魂新娘三人組、白蛇／許仙），好人與狼人尚未將其淘汰前不得截胡結束遊戲
+  const conv = options.conversionState;
+  const hasAliveIndependentThirdParty = (() => {
+    if (conv?.cupidAffiliation === 'third_party' && conv.cupidLovers) {
+      const cupidSeat = seats.find((s) => s.roleId === 'cupid');
+      const loverA = seats.find((s) => s.seatNumber === conv.cupidLovers![0]);
+      const loverB = seats.find((s) => s.seatNumber === conv.cupidLovers![1]);
+      if (cupidSeat?.isAlive || loverA?.isAlive || loverB?.isAlive) return true;
+    }
+    if (conv?.ghostBrideGroomSeat != null) {
+      const bride = seats.find((s) => s.roleId === 'ghost_bride');
+      const groom = seats.find((s) => s.seatNumber === conv.ghostBrideGroomSeat);
+      const witness =
+        conv.ghostBrideWitnessSeat != null
+          ? seats.find((s) => s.seatNumber === conv.ghostBrideWitnessSeat)
+          : undefined;
+      if (bride?.isAlive || groom?.isAlive || witness?.isAlive) return true;
+    }
+    const hasAliveSnakeOrXu = seats.some(
+      (s) => s.isAlive && (s.roleId === 'white_snake_seer' || s.roleId === 'xu_xian_phantom'),
+    );
+    if (hasAliveSnakeOrXu) return true;
+    return false;
+  })();
 
   const { wolves, villagers, gods } = countAliveFactions(
     seats,
@@ -168,13 +215,15 @@ export function checkVictory(
   const godsEliminated = hasAnyGod && gods === 0;
   const hasGoodRoles = hasAnyVillager || hasAnyGod;
 
-  const wolfWon = !hasGoodRoles
+  const wolfWon = hasAliveIndependentThirdParty
     ? false
-    : ruleOverrides.victoryMode === 'slaughter_all'
-      ? (!hasAnyVillager || villagers === 0) && (!hasAnyGod || gods === 0)
-      : villagersEliminated || godsEliminated;
+    : !hasGoodRoles
+      ? false
+      : ruleOverrides.victoryMode === 'slaughter_all'
+        ? (!hasAnyVillager || villagers === 0) && (!hasAnyGod || gods === 0)
+        : villagersEliminated || godsEliminated;
 
-  const goodWon = hasAnyWolf && wolves === 0;
+  const goodWon = !hasAliveIndependentThirdParty && hasAnyWolf && wolves === 0;
 
   // 咒狐／睡美人勝利覆蓋：當好人或狼人任一方達成勝利條件時
   if (wolfWon || goodWon) {

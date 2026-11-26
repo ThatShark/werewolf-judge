@@ -33,6 +33,7 @@ export function DayVoteScreen() {
   const forceContinueAfterVictory = useGameStore((s) => s.forceContinueAfterVictory);
 
   const triggerShoot = useGameStore((s) => s.triggerShoot);
+  const awakenedHunterShoot = useGameStore((s) => s.awakenedHunterShoot);
   const skipShoot = useGameStore((s) => s.skipShoot);
   const transferSheriffBadge = useGameStore((s) => s.transferSheriffBadge);
   const destroySheriffBadge = useGameStore((s) => s.destroySheriffBadge);
@@ -223,6 +224,7 @@ export function DayVoteScreen() {
                 shooter={shooter}
                 seats={seats}
                 onShoot={triggerShoot}
+                onAwakenedHunterShoot={awakenedHunterShoot}
                 onSkip={skipShoot}
               />
             ))}

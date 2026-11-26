@@ -72,8 +72,8 @@ describe('實測流程與規則修復驗證（自爆即時死亡／連鎖開槍�
     ).toThrow('已出局');
   });
 
-  it('連鎖開槍：白狼王自爆帶走獵人、潘朵拉手槍射殺覺醒獵人、獵人與狼王互射皆可連鎖排入開槍', () => {
-    // 1. 白狼王自爆帶走獵人 -> 獵人可連鎖開槍
+  it('連鎖開槍：白狼王自爆帶走一般獵人不可開槍（僅覺醒獵人可開）、潘朵拉手槍射殺覺醒獵人與獵人狼王互射皆可連鎖', () => {
+    // 1. 白狼王自爆帶走一般獵人 -> 獵人不可連鎖開槍（被帶走者無技能）
     const seatsA = makeSeats([
       'white_wolf_king',
       'wolf',
@@ -93,9 +93,7 @@ describe('實測流程與規則修復驗證（自爆即時死亡／連鎖開槍�
     expect(wwk.allowed).toBe(true);
     expect(wwk.seats[0].isAlive).toBe(false);
     expect(wwk.seats[4].isAlive).toBe(false);
-    expect(wwk.chainedShootEligibility?.canShoot).toBe(true);
-    expect(wwk.chainedShootEligibility?.seatNumber).toBe(5);
-    expect(wwk.chainedShootEligibility?.roleId).toBe('hunter');
+    expect(wwk.chainedShootEligibility?.canShoot).toBe(false);
 
     // 2. 潘朵拉手槍射殺覺醒獵人 -> 覺醒獵人可連鎖開槍
     const seatsB = makeSeats(['wolf', 'wolf', 'villager', 'villager', 'awakened_hunter', 'seer']);

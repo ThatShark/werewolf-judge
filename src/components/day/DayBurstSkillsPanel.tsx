@@ -84,10 +84,15 @@ export function DayBurstSkillsPanel({
     [seats],
   );
 
+  const finalBatchState = useGameStore((s) => s.finalBatchState);
+  const interferenceState = useGameStore((s) => s.interferenceState);
+  const combatState = useGameStore((s) => s.combatState);
+  const conversionState = useGameStore((s) => s.conversionState);
+
   // 計算整合抽屜內可用技能總數
   const availableSkillCount = useMemo(() => {
     let count = 0;
-    if (!isOnlineJudge && aliveKnight && !knightDuelUsed) count += 1;
+    if (!isOnlineJudge && aliveKnight && !knightDuelUsed && !electionActive) count += 1;
     if (!isOnlineJudge && !inExileVoteStage && aliveWhiteWolfKing) count += 1;
     if (!isOnlineJudge && aliveGoodExploders.length > 0) count += 1;
     if (isJackSecondIdentityBoard(seats, selectedBoardId ?? undefined)) count += 1;
@@ -99,10 +104,53 @@ export function DayBurstSkillsPanel({
     }
     if (seats.some((s) => s.isAlive && s.roleId === 'wolf_girl')) count += 1;
     if (seats.some((s) => s.isAlive && s.maskedDelayedDeath)) count += 1;
+    if (seats.some((s) => s.isAlive && s.whiteCatRevealed)) count += 1;
+    if (seats.some((s) => s.isAlive && s.oldRascalDelayedDeath)) count += 1;
+    if (seats.some((s) => s.isAlive && s.baiZeDelayedDeath)) count += 1;
+    if (seats.some((s) => s.isAlive && s.roleId === 'bai_ze')) count += 1;
+    if (seats.some((s) => s.isAlive && s.roleId === 'pufferfish') && !combatState?.pufferfishBombUsed) {
+      count += 1;
+    }
+    if (
+      seats.some((s) => s.roleId === 'avenger' && !s.isAlive) &&
+      !conversionState?.avengerInstantWin
+    ) {
+      count += 1;
+    }
+    if (seats.some((s) => s.isAlive && s.roleId === 'nine_tails_wolf')) count += 1;
+    if (seats.some((s) => s.isAlive && s.roleId === 'detective') && !finalBatchState?.detectiveUsed) {
+      count += 1;
+    }
+    if (seats.some((s) => s.isAlive && s.roleId === 'contrarian') && !finalBatchState?.contrarianUsed) {
+      count += 1;
+    }
+    if (
+      round >= 2 &&
+      seats.some((s) => s.isAlive && s.roleId === 'white_night_envoy') &&
+      !finalBatchState?.whiteNightEnvoyUsed
+    ) {
+      count += 1;
+    }
+    if (
+      seats.some((s) => s.isAlive && s.roleId === 'sequence_prince') &&
+      !finalBatchState?.sequencePrinceUsed
+    ) {
+      count += 1;
+    }
+    if (seats.some((s) => s.isAlive && s.roleId === 'pandora')) count += 1;
+    if (
+      seats.some((s) => s.isAlive && s.roleId === 'alchemy_witch') &&
+      !interferenceState?.alchemySnakeUsed &&
+      ((interferenceState?.alchemySnakePendingVictimSeats?.length ?? 0) > 0 ||
+        interferenceState?.alchemySnakePendingVictimSeat != null)
+    ) {
+      count += 1;
+    }
     return count;
   }, [
     isOnlineJudge,
     inExileVoteStage,
+    electionActive,
     aliveKnight,
     knightDuelUsed,
     aliveWhiteWolfKing,
@@ -111,6 +159,11 @@ export function DayBurstSkillsPanel({
     selectedBoardId,
     thirdPartySpecialState,
     aliveSeats,
+    round,
+    finalBatchState,
+    interferenceState,
+    combatState,
+    conversionState,
   ]);
 
   const selectedExplodeObj = seats.find((s) => s.seatNumber === selectedExplodeSeat);
@@ -237,42 +290,50 @@ export function DayBurstSkillsPanel({
                   騎士 {formatSeatNum(aliveKnight.seatNumber)} 號
                 </span>
               </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {aliveSeats
-                  .filter((s) => s.seatNumber !== aliveKnight.seatNumber)
-                  .map((seat) => {
-                    const active = selectedKnightTarget === seat.seatNumber;
-                    return (
-                      <button
-                        key={seat.seatNumber}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() =>
-                          setSelectedKnightTarget((prev) =>
-                            prev === seat.seatNumber ? null : seat.seatNumber,
-                          )
-                        }
-                        className={`min-h-11 rounded-md text-[14px] font-semibold tabular-nums transition ${
-                          active
-                            ? 'border-selected-good bg-good-tint text-good'
-                            : 'border border-subtle bg-canvas text-secondary'
-                        }`}
-                      >
-                        {formatSeatNum(seat.seatNumber)}
-                      </button>
-                    );
-                  })}
-              </div>
-              <button
-                type="button"
-                disabled={disabled || selectedKnightTarget === null}
-                onClick={() => setConfirmKnightOpen(true)}
-                className="min-h-12 w-full rounded-md bg-good px-4 text-[14px] font-semibold text-inverse disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
-              >
-                {selectedKnightTargetObj
-                  ? `決鬥 ${formatSeatNum(selectedKnightTargetObj.seatNumber)} 號`
-                  : '選擇決鬥目標'}
-              </button>
+              {electionActive ? (
+                <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-2 text-[12px] text-sheriff">
+                  警長競選階段無法發動騎士決鬥
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {aliveSeats
+                      .filter((s) => s.seatNumber !== aliveKnight.seatNumber)
+                      .map((seat) => {
+                        const active = selectedKnightTarget === seat.seatNumber;
+                        return (
+                          <button
+                            key={seat.seatNumber}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() =>
+                              setSelectedKnightTarget((prev) =>
+                                prev === seat.seatNumber ? null : seat.seatNumber,
+                              )
+                            }
+                            className={`min-h-11 rounded-md text-[14px] font-semibold tabular-nums transition ${
+                              active
+                                ? 'border-selected-good bg-good-tint text-good'
+                                : 'border border-subtle bg-canvas text-secondary'
+                            }`}
+                          >
+                            {formatSeatNum(seat.seatNumber)}
+                          </button>
+                        );
+                      })}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={disabled || selectedKnightTarget === null}
+                    onClick={() => setConfirmKnightOpen(true)}
+                    className="min-h-12 w-full rounded-md bg-good px-4 text-[14px] font-semibold text-inverse disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
+                  >
+                    {selectedKnightTargetObj
+                      ? `決鬥 ${formatSeatNum(selectedKnightTargetObj.seatNumber)} 號`
+                      : '選擇決鬥目標'}
+                  </button>
+                </>
+              )}
             </div>
           )}
 

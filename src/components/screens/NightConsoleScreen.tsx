@@ -50,14 +50,21 @@ import {
   canWolfBeautyCharm,
   canWolfRavenClawKill,
   canWolfYoungerBrotherAwakenedKill,
+  areAllAliveWolvesAsleep,
+  canPoisonerUsePoison,
+  canThiefChooseCard,
+  canTreasureMasterChooseCard,
   checkMandatoryNightTarget,
   createInitialCombatState,
   createInitialConversionState,
+  createInitialFinalBatchState,
   createInitialGargoyleState,
+  createInitialHiddenWolfState,
   createInitialInterferenceState,
   createInitialPumpkinGhostState,
   createInitialSeedWolfState,
   createInitialSuperGravekeeperState,
+  createInitialTreasureMasterState,
   evaluateAwakenedDreamTargetActed,
   evaluateMoonSpiritHowl,
   evaluateNightStepLockState,
@@ -80,11 +87,12 @@ import {
   getStepClaimSummary,
   getUnclaimedSeatNumbers,
   getWolfWitchCheckResult,
+  isFirstNightNoWolfKillBoard,
   isJackSecondIdentityBoard,
   isLuckySkillAllowedOnRound,
   isSeatWolfFaction,
 } from '../../logic';
-import type { ActionCheckResult } from '../../logic/types';
+import type { ActionCheckResult, MerchantGiftItem } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { InfoFlashcardModal, type InfoFlashcardData } from '../common/InfoFlashcardModal';
@@ -152,6 +160,19 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const conversionState = useGameStore(
     (s) => s.conversionState ?? createInitialConversionState(),
   );
+  const hiddenWolfState = useGameStore(
+    (s) => s.hiddenWolfState ?? createInitialHiddenWolfState(),
+  );
+  const treasureMasterState = useGameStore(
+    (s) => s.treasureMasterState ?? createInitialTreasureMasterState(),
+  );
+  const finalBatchState = useGameStore(
+    (s) => s.finalBatchState ?? createInitialFinalBatchState(),
+  );
+  const poisonerPoisonUsed = useGameStore((s) => s.poisonerPoisonUsed ?? false);
+  const thiefBottomCards = useGameStore(
+    (s) => s.thiefBottomCards ?? s.conversionState?.thiefBottomCards ?? [],
+  );
 
   const claimSeatRole = useGameStore((s) => s.claimSeatRole);
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
@@ -170,15 +191,20 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const currentStep = steps[currentStepIndex];
 
   // 防誤觸預選狀態（本地草稿，點擊「確認紀錄」才寫入 Store）
-  const [pendingTarget, setPendingTarget] = useState<number | null>(() =>
-    currentStep
-      ? getInitialTargetForStep(
-          currentStep.actionType,
-          currentNightDraft,
-          isJackSecondIdentityBoard(seats, board?.id),
-        )
-      : null,
-  );
+  const [pendingTarget, setPendingTarget] = useState<number | null>(() => {
+    if (!currentStep) return null;
+    if (currentStep.actionType === 'ghost_bride_link' && round >= 2) {
+      return currentNightDraft.ghostBrideKillTarget ?? null;
+    }
+    if (currentStep.actionType === 'poisoner_poison') {
+      return currentNightDraft.poisonerTarget ?? null;
+    }
+    return getInitialTargetForStep(
+      currentStep.actionType,
+      currentNightDraft,
+      isJackSecondIdentityBoard(seats, board?.id),
+    );
+  });
   const [pendingUseAntidote, setPendingUseAntidote] = useState<boolean>(
     () => currentNightDraft.witchUseAntidote,
   );
@@ -198,6 +224,21 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     () => currentNightDraft.alchemyFogTargets ?? [],
   );
   const [pendingAmplifyMode, setPendingAmplifyMode] = useState<'amplify' | 'weaken' | null>(null);
+  const [pendingThiefRoleId, setPendingThiefRoleId] = useState<string | null>(
+    () => currentNightDraft.thiefChosenRoleId ?? null,
+  );
+  const [pendingTreasureCardRoleId, setPendingTreasureCardRoleId] = useState<string | null>(
+    () => currentNightDraft.treasureMasterCardRoleId ?? null,
+  );
+  const [pendingEvilPoisonTarget, setPendingEvilPoisonTarget] = useState<number | null>(
+    () => currentNightDraft.evilMerchantPoisonActionTarget ?? null,
+  );
+  const [pendingMerchantItem, setPendingMerchantItem] = useState<MerchantGiftItem>(
+    () =>
+      currentNightDraft.miracleMerchantItem ??
+      currentNightDraft.blackMarketItem ??
+      'seer_check',
+  );
   const [pendingAwHelpersApproved, setPendingAwHelpersApproved] = useState<boolean>(true);
   const [pendingAssassinRoleId, setPendingAssassinRoleId] = useState<string>('');
   const [pendingWardenChoices, setPendingWardenChoices] = useState<
@@ -241,13 +282,19 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   // 切換步驟或回合時重置本地預選與防窺狀態
   useEffect(() => {
     if (!currentStep) return;
-    setPendingTarget(
-      getInitialTargetForStep(
-        currentStep.actionType,
-        currentNightDraft,
-        isJackSecondIdentityBoard(seats, board?.id),
-      ),
-    );
+    if (currentStep.actionType === 'ghost_bride_link' && round >= 2) {
+      setPendingTarget(currentNightDraft.ghostBrideKillTarget ?? null);
+    } else if (currentStep.actionType === 'poisoner_poison') {
+      setPendingTarget(currentNightDraft.poisonerTarget ?? null);
+    } else {
+      setPendingTarget(
+        getInitialTargetForStep(
+          currentStep.actionType,
+          currentNightDraft,
+          isJackSecondIdentityBoard(seats, board?.id),
+        ),
+      );
+    }
     setPendingUseAntidote(currentNightDraft.witchUseAntidote);
     setPendingSeedWolfInfect(currentNightDraft.seedWolfInfectTarget != null);
     setPendingDualTargets(
@@ -293,6 +340,14 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         : currentStep.actionType === 'daylight_scholar_action'
           ? (currentNightDraft.daylightScholarMode ?? null)
           : null,
+    );
+    setPendingThiefRoleId(currentNightDraft.thiefChosenRoleId ?? null);
+    setPendingTreasureCardRoleId(currentNightDraft.treasureMasterCardRoleId ?? null);
+    setPendingEvilPoisonTarget(currentNightDraft.evilMerchantPoisonActionTarget ?? null);
+    setPendingMerchantItem(
+      currentStep.actionType === 'black_market_gift'
+        ? (currentNightDraft.blackMarketItem ?? 'seer_check')
+        : (currentNightDraft.miracleMerchantItem ?? 'seer_check'),
     );
     setPendingAwHelpersApproved(currentNightDraft.awakenedWitchHelpersApproved ?? true);
     setRevealConfirmed(false);
@@ -401,6 +456,14 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       pumpkinGhostState,
       combatState,
       thirdPartySpecialState,
+      firstNightNoWolfKill: board ? isFirstNightNoWolfKillBoard(board) : false,
+      conversionState,
+      finalBatchState,
+      interferenceState,
+      hiddenWolfState,
+      gargoyleState,
+      treasureMasterState,
+      boardId: board?.id,
     });
   }, [
     currentStep,
@@ -414,6 +477,13 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     pumpkinGhostState,
     combatState,
     thirdPartySpecialState,
+    board,
+    conversionState,
+    finalBatchState,
+    interferenceState,
+    hiddenWolfState,
+    gargoyleState,
+    treasureMasterState,
   ]);
 
   const isSkillLocked = !isClaimStage && stepLockEval.locked;
@@ -460,6 +530,18 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   const unclaimedSeats = useMemo(() => getUnclaimedSeatNumbers(seats), [seats]);
 
+  const drunkSeerOutcome = useMemo(() => {
+    if (
+      !currentStep ||
+      currentStep.actionType !== 'drunk_seer_check' ||
+      !revealConfirmed ||
+      pendingTarget === null
+    ) {
+      return null;
+    }
+    return getDrunkSeerCheckResult(seats, pendingTarget, { manualOverride: pendingDrunkManual });
+  }, [currentStep, revealConfirmed, pendingTarget, seats, pendingDrunkManual]);
+
   if (!board || !currentStep) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-subtle bg-surface p-6 text-center text-sm text-secondary">
@@ -488,7 +570,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     (currentStep.actionType === 'mech_wolf_night_action' &&
       mechWolfState.learnedRoleId === 'psychic');
 
-  // 夢魘恐懼到狼人 → 整晚狼隊空刀；種狼開啟感染 → 女巫顯示空刀
+  // 夢魘恐懼到狼人 → 整晚狼隊空刀；種狼開啟感染／首夜無刀／全狼沉睡／灰太狼偷小狼 → 女巫顯示空刀
   const fearedSeatObj =
     currentNightDraft.nightmareFearTarget != null
       ? seats.find((s) => s.seatNumber === currentNightDraft.nightmareFearTarget)
@@ -496,8 +578,18 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   const wolfTeamFearedTonight = Boolean(fearedSeatObj && isSeatWolfFaction(fearedSeatObj));
   const seedWolfAliveCanInfect =
     seats.some((s) => s.roleId === 'seed_wolf' && s.isAlive) && !seedWolfState.infectUsed;
+  const greyWolfStoleWolfRole =
+    round >= 2 &&
+    currentNightDraft.greyWolfBossStealTarget != null &&
+    ['wolf', 'little_grey_wolf'].includes(
+      seats.find((s) => s.seatNumber === currentNightDraft.greyWolfBossStealTarget)?.roleId ?? '',
+    );
   const effectiveWolfTargetForWitch =
-    wolfTeamFearedTonight || currentNightDraft.seedWolfInfectTarget != null
+    wolfTeamFearedTonight ||
+    currentNightDraft.seedWolfInfectTarget != null ||
+    (board && isFirstNightNoWolfKillBoard(board) && round === 1) ||
+    areAllAliveWolvesAsleep(seats, thirdPartySpecialState) ||
+    greyWolfStoleWolfRole
       ? null
       : currentNightDraft.wolfTarget;
 
@@ -546,6 +638,20 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           return canWitchUsePoison(seats, pendingUseAntidote, pendingTarget, witchPoisonUsed);
         }
         return { allowed: true };
+      case 'poisoner_poison':
+        return actorSeatsAlive
+          ? canPoisonerUsePoison(seats, pendingTarget, poisonerPoisonUsed)
+          : { allowed: true };
+      case 'thief_choose':
+        return round === 1 && actorSeatsAlive && thiefBottomCards.length === 2
+          ? canThiefChooseCard(thiefBottomCards, pendingThiefRoleId)
+          : { allowed: true };
+      case 'treasure_master_choose':
+        return actorSeatsAlive && treasureMasterState.bottomCards.length === 3
+          ? canTreasureMasterChooseCard(treasureMasterState, seats, pendingTreasureCardRoleId, {
+              allowSkip: false,
+            })
+          : { allowed: true };
       case 'mech_wolf_learn':
         return round === 1 && mechWolfSeat?.isAlive
           ? canMechWolfLearn(seats, pendingTarget, ruleOverrides, round)
@@ -578,12 +684,12 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
   // 查驗即時結果（僅於點擊「確認紀錄」鎖定後揭曉）
   const seerOutcome =
     currentStep.actionType === 'seer_check' && revealConfirmed && pendingTarget !== null
-      ? getSeerCheckResult(seats, pendingTarget)
+      ? getSeerCheckResult(seats, pendingTarget, { conversionState, thirdPartySpecialState })
       : null;
 
   const psychicOutcome =
     currentStep.actionType === 'psychic_check' && revealConfirmed && pendingTarget !== null
-      ? getPsychicCheckResult(seats, effectiveMechWolfForPreview, pendingTarget)
+      ? getPsychicCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
       : null;
 
   const mechWolfPsychicOutcome =
@@ -591,7 +697,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     mechWolfState.learnedRoleId === 'psychic' &&
     revealConfirmed &&
     pendingTarget !== null
-      ? getPsychicCheckResult(seats, mechWolfState, pendingTarget)
+      ? getPsychicCheckResult(seats, mechWolfState, pendingTarget, treasureMasterState)
       : null;
 
   // 第 1 批查驗與資訊感知即時結果
@@ -608,11 +714,6 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       ? getLanternSeerCheckResult(seats, pendingTarget)
       : null;
 
-  const drunkSeerOutcome =
-    currentStep.actionType === 'drunk_seer_check' && revealConfirmed && pendingTarget !== null
-      ? getDrunkSeerCheckResult(seats, pendingTarget, { manualOverride: pendingDrunkManual })
-      : null;
-
   const foolSeerOutcome =
     currentStep.actionType === 'fool_seer_check' && revealConfirmed && pendingTarget !== null
       ? getFoolSeerCheckResult(seats, pendingTarget)
@@ -625,17 +726,17 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   const gargoyleOutcome =
     currentStep.actionType === 'gargoyle_check' && revealConfirmed && pendingTarget !== null
-      ? getGargoyleCheckResult(seats, effectiveMechWolfForPreview, pendingTarget)
+      ? getGargoyleCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
       : null;
 
   const wolfWitchOutcome =
     currentStep.actionType === 'wolf_witch_check' && revealConfirmed && pendingTarget !== null
-      ? getWolfWitchCheckResult(seats, effectiveMechWolfForPreview, pendingTarget)
+      ? getWolfWitchCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
       : null;
 
   const pureWhiteOutcome =
     currentStep.actionType === 'pure_white_check' && revealConfirmed && pendingTarget !== null
-      ? getPureWhiteCheckResult(seats, effectiveMechWolfForPreview, pendingTarget)
+      ? getPureWhiteCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
       : null;
 
   const demonWolfOutcome =
@@ -648,7 +749,13 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     revealConfirmed &&
     pendingTarget !== null &&
     pumpkinGhostState.hasInherited
-      ? getPumpkinGhostCheckResult(seats, pumpkinGhostState, effectiveMechWolfForPreview, pendingTarget)
+      ? getPumpkinGhostCheckResult(
+          seats,
+          pumpkinGhostState,
+          effectiveMechWolfForPreview,
+          pendingTarget,
+          treasureMasterState,
+        )
       : null;
 
   const gravekeeperOutcome =
@@ -706,6 +813,8 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     currentStep.actionType !== 'nine_tailed_fox_check' &&
     currentStep.actionType !== 'awakened_dream_catcher_judge' &&
     currentStep.actionType !== 'alchemy_witch_snake' &&
+    currentStep.actionType !== 'thief_choose' &&
+    currentStep.actionType !== 'treasure_master_choose' &&
     currentStep.actionType !== 'confirm_only' &&
     !(isInfoRevealStep && revealConfirmed);
 
@@ -1283,8 +1392,32 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           },
         };
       }
+      case 'ghost_bride_link': {
+        if (round >= 2) {
+          return {
+            selected: pendingTarget === seatNumber,
+            disabled: !isAlive,
+            reason: !isAlive ? '已出局' : undefined,
+            onSelect: toggleTarget,
+          };
+        }
+        const [a, b] = pendingDualTargets;
+        return {
+          selected: a === seatNumber || b === seatNumber,
+          disabled: !isAlive,
+          reason: !isAlive ? '已出局' : undefined,
+          onSelect: () => {
+            setPendingDualTargets(([first, second]) => {
+              if (first === seatNumber) return [second, null];
+              if (second === seatNumber) return [first, null];
+              if (first === null) return [seatNumber, second];
+              if (second === null) return [first, seatNumber];
+              return [second, seatNumber];
+            });
+          },
+        };
+      }
       case 'cupid_link':
-      case 'ghost_bride_link':
       case 'scent_phantom_link':
       case 'xu_xian_action': {
         const [a, b] = pendingDualTargets;
@@ -1440,6 +1573,25 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             });
           },
         };
+      case 'poisoner_poison': {
+        const check = canPoisonerUsePoison(seats, seatNumber, poisonerPoisonUsed);
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !check.allowed,
+          reason: check.allowed ? undefined : check.reason,
+          onSelect: toggleTarget,
+        };
+      }
+      case 'wolf_girl_confess': {
+        const isSelf = seat?.roleId === 'wolf_girl';
+        const isWolf = seat ? isSeatWolfFaction(seat) : false;
+        return {
+          selected: pendingTarget === seatNumber,
+          disabled: !isAlive || isSelf || isWolf,
+          reason: !isAlive ? '已出局' : isSelf ? '不可選自己' : isWolf ? '不可表白狼人' : undefined,
+          onSelect: toggleTarget,
+        };
+      }
       default:
         return {
           selected: false,
@@ -1467,6 +1619,18 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           witchUseAntidote: pendingUseAntidote,
           witchPoisonTarget: pendingUseAntidote ? null : pendingTarget,
         });
+        break;
+      case 'poisoner_poison':
+        updateNightDraft({ poisonerTarget: pendingTarget });
+        break;
+      case 'wolf_girl_confess':
+        updateNightDraft({ wolfGirlConfessTarget: pendingTarget });
+        break;
+      case 'thief_choose':
+        updateNightDraft({ thiefChosenRoleId: pendingThiefRoleId });
+        break;
+      case 'treasure_master_choose':
+        updateNightDraft({ treasureMasterCardRoleId: pendingTreasureCardRoleId });
         break;
       case 'seer_check':
         updateNightDraft({ seerCheckTarget: pendingTarget });
@@ -1660,10 +1824,14 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         updateNightDraft({ cupidLoversPair: pendingDualTargets });
         break;
       case 'ghost_bride_link':
-        updateNightDraft({
-          ghostBrideGroomTarget: pendingDualTargets[0],
-          ghostBrideWitnessTarget: pendingDualTargets[1],
-        });
+        if (round >= 2) {
+          updateNightDraft({ ghostBrideKillTarget: pendingTarget });
+        } else {
+          updateNightDraft({
+            ghostBrideGroomTarget: pendingDualTargets[0],
+            ghostBrideWitnessTarget: pendingDualTargets[1],
+          });
+        }
         break;
       case 'scent_phantom_link':
         updateNightDraft({ scentPhantomChainPair: pendingDualTargets });
@@ -1738,13 +1906,13 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       case 'miracle_merchant_gift':
         updateNightDraft({
           miracleMerchantTarget: pendingTarget,
-          miracleMerchantItem: currentNightDraft.miracleMerchantItem ?? 'seer_check',
+          miracleMerchantItem: pendingMerchantItem,
         });
         break;
       case 'black_market_gift':
         updateNightDraft({
           blackMarketTarget: pendingTarget,
-          blackMarketItem: currentNightDraft.blackMarketItem ?? 'seer_check',
+          blackMarketItem: pendingMerchantItem,
         });
         break;
       case 'super_black_market_gift':
@@ -1756,12 +1924,17 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           },
         });
         break;
-      case 'evil_merchant_gift':
+      case 'evil_merchant_gift': {
+        const evilGiftType = round === 1 ? 'hunter_gun' : 'witch_poison';
         updateNightDraft({
           evilMerchantTarget: pendingTarget,
-          evilMerchantGiftType: round === 1 ? 'hunter_gun' : 'witch_poison',
+          evilMerchantGiftType: pendingTarget !== null ? evilGiftType : null,
+          ...(thirdPartySpecialState?.evilMerchantPoisonHolderSeat != null
+            ? { evilMerchantPoisonActionTarget: pendingEvilPoisonTarget }
+            : {}),
         });
         break;
+      }
       case 'medium_channel':
         updateNightDraft({
           mediumDeadSeat: pendingDualTargets[0],
@@ -1774,9 +1947,18 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       case 'wolf_maid_tea':
         updateNightDraft({ wolfMaidTeaTarget: pendingTarget, wolfMaidTeaAccepted: true });
         break;
-      case 'lucky_item_action':
-        updateNightDraft({ luckyItemTargetSeat: pendingTarget });
+      case 'lucky_item_action': {
+        const luckyActorSeat =
+          thirdPartySpecialState?.miracleLuckySeat ??
+          thirdPartySpecialState?.blackMarketLuckySeat ??
+          thirdPartySpecialState?.superBlackMarketGifts.find((g) => !g.used)?.seat ??
+          null;
+        updateNightDraft({
+          luckyItemActorSeat: luckyActorSeat,
+          luckyItemTargetSeat: pendingTarget,
+        });
         break;
+      }
       case 'eclipse_maid_devour':
         updateNightDraft({
           eclipseMaidDevourTarget: pendingDualTargets[0],
@@ -3446,6 +3628,8 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
               currentStep.actionType === 'nine_tails_mark' ||
               currentStep.actionType === 'bai_ze_clear' ||
               currentStep.actionType === 'crow_curse' ||
+              currentStep.actionType === 'poisoner_poison' ||
+              currentStep.actionType === 'wolf_girl_confess' ||
               currentStep.actionType === 'miracle_merchant_gift' ||
               currentStep.actionType === 'black_market_gift' ||
               currentStep.actionType === 'evil_merchant_gift' ||
@@ -3454,11 +3638,176 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
               currentStep.actionType === 'lucky_item_action' ||
               currentStep.actionType === 'happy_sheep_action' ||
               currentStep.actionType === 'police_dog_action' ||
-              currentStep.actionType === 'little_girl_identify') && (
+              currentStep.actionType === 'little_girl_identify' ||
+              (currentStep.actionType === 'ghost_bride_link' && round >= 2)) && (
               <div className="rounded-md border border-subtle bg-canvas px-3 py-2 text-center text-xs font-bold text-primary">
                 {pendingTarget !== null
                   ? `已預選目標：${pendingTarget} 號（點擊下方按鈕確認紀錄）`
                   : '請點選上方座位選擇技能目標（或直接確認跳過）'}
+              </div>
+            )}
+
+            {currentStep.actionType === 'thief_choose' && (
+              <div className="space-y-2 rounded-md border border-third-border bg-canvas p-2.5 text-xs">
+                <div className="font-bold text-third">
+                  🎭 盜賊底牌二選一（點擊選擇首夜變身身分）
+                </div>
+                {thiefBottomCards.length === 0 ? (
+                  <div className="text-secondary">尚無底牌紀錄（可直接確認跳過）</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {thiefBottomCards.map((roleId, idx) => {
+                      const roleInfo = getRoleById(roleId);
+                      const check = canThiefChooseCard(thiefBottomCards, roleId);
+                      const picked = pendingThiefRoleId === roleId;
+                      return (
+                        <button
+                          key={`${roleId}-${idx}`}
+                          type="button"
+                          disabled={!check.allowed}
+                          onClick={() => setPendingThiefRoleId(roleId)}
+                          className={`min-h-11 rounded-md border px-3 py-2 text-xs font-bold transition ${
+                            picked
+                              ? 'border-selected-third bg-third-tint text-third'
+                              : !check.allowed
+                                ? 'cursor-not-allowed border-subtle bg-surface text-muted'
+                                : 'border-subtle bg-surface text-primary hover:border-strong'
+                          }`}
+                        >
+                          {roleInfo?.name ?? roleId}
+                          {!check.allowed && '（必選狼牌）'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep.actionType === 'treasure_master_choose' && (
+              <div className="space-y-2 rounded-md border border-sheriff-border bg-canvas p-2.5 text-xs">
+                <div className="flex items-center justify-between gap-2 font-bold text-sheriff">
+                  <span>💎 盜寶大師三選一底牌</span>
+                  <span>
+                    歸屬：
+                    {treasureMasterState.affiliation === 'wolf'
+                      ? '狼人陣營'
+                      : treasureMasterState.affiliation === 'god'
+                        ? '神職陣營'
+                        : treasureMasterState.affiliation === 'villager'
+                          ? '平民陣營'
+                          : '未判定'}
+                  </span>
+                </div>
+                {treasureMasterState.bottomCards.length === 0 ? (
+                  <div className="text-secondary">尚未配置三張底牌（請先於開局設定底牌）</div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {treasureMasterState.bottomCards.map((roleId) => {
+                      const roleInfo = getRoleById(roleId);
+                      const check = canTreasureMasterChooseCard(treasureMasterState, seats, roleId, {
+                        allowSkip: false,
+                      });
+                      const picked = pendingTreasureCardRoleId === roleId;
+                      return (
+                        <button
+                          key={roleId}
+                          type="button"
+                          disabled={!check.allowed}
+                          onClick={() => setPendingTreasureCardRoleId(roleId)}
+                          className={`min-h-11 rounded-md border px-2 py-2 text-xs font-bold transition ${
+                            picked
+                              ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                              : !check.allowed
+                                ? 'cursor-not-allowed border-subtle bg-surface text-muted line-through'
+                                : 'border-subtle bg-surface text-primary hover:border-strong'
+                          }`}
+                        >
+                          {roleInfo?.name ?? roleId}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(currentStep.actionType === 'miracle_merchant_gift' ||
+              currentStep.actionType === 'black_market_gift') && (
+              <div className="space-y-1.5 rounded-md border border-sheriff-border bg-canvas p-2.5 text-xs">
+                <div className="font-bold text-sheriff">🎁 選擇贈禮道具類型</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(currentStep.actionType === 'miracle_merchant_gift'
+                    ? ([
+                        ['seer_check', '🔮 查驗'],
+                        ['witch_poison', '☠️ 毒藥'],
+                        ['guard_shield', '🛡️ 守衛盾'],
+                      ] as const)
+                    : ([
+                        ['seer_check', '🔮 查驗'],
+                        ['witch_poison', '☠️ 毒藥'],
+                        ['hunter_gun', '🔫 獵槍'],
+                      ] as const)
+                  ).map(([item, label]) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setPendingMerchantItem(item)}
+                      className={`min-h-10 rounded-md border px-2 font-bold ${
+                        pendingMerchantItem === item
+                          ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
+                          : 'border-subtle bg-surface text-secondary'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentStep.actionType === 'evil_merchant_gift' && (
+              <div className="space-y-2 rounded-md border border-wolf-border bg-canvas p-2.5 text-xs">
+                <div className="font-bold text-wolf">
+                  {round === 1
+                    ? '🔫 第一晚固定贈送獵人槍（不可選自己）'
+                    : thirdPartySpecialState?.evilMerchantLastDayNoGunWolfDied
+                      ? '☠️ 昨日有非帶槍狼出局：今晚可改贈毒藥'
+                      : '⛔ 昨日無非帶槍狼出局：今晚不可贈送毒藥'}
+                </div>
+                {thirdPartySpecialState?.evilMerchantPoisonHolderSeat != null && (
+                  <div className="space-y-1.5 border-t border-subtle pt-1.5">
+                    <div className="font-bold text-wolf">
+                      ☠️ 持毒狼（{thirdPartySpecialState.evilMerchantPoisonHolderSeat} 號）指定今晚毒殺目標：
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {seats
+                        .filter(
+                          (s) =>
+                            s.isAlive &&
+                            s.seatNumber !== thirdPartySpecialState.evilMerchantPoisonHolderSeat,
+                        )
+                        .map((s) => (
+                          <button
+                            key={s.seatNumber}
+                            type="button"
+                            onClick={() =>
+                              setPendingEvilPoisonTarget((prev) =>
+                                prev === s.seatNumber ? null : s.seatNumber,
+                              )
+                            }
+                            className={`min-h-10 rounded-md border text-xs font-bold tabular-nums ${
+                              pendingEvilPoisonTarget === s.seatNumber
+                                ? 'border-selected-wolf bg-wolf-tint text-wolf'
+                                : 'border-subtle bg-surface text-secondary'
+                            }`}
+                          >
+                            {s.seatNumber}號
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -3515,7 +3864,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             )}
 
             {(currentStep.actionType === 'cupid_link' ||
-              currentStep.actionType === 'ghost_bride_link' ||
+              (currentStep.actionType === 'ghost_bride_link' && round === 1) ||
               currentStep.actionType === 'scent_phantom_link' ||
               currentStep.actionType === 'xu_xian_action') && (
               <div className="rounded-md border border-pink-400/40 bg-pink-950/35 px-3 py-2 text-center text-xs font-bold text-pink-100">

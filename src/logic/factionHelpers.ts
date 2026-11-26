@@ -40,6 +40,24 @@ export function isSeatEffectiveWolf(
   ) {
     return getRoleById(options.conversionState.awakenedLonelyGirlInheritedRoleId)?.faction === 'wolf';
   }
+  if (
+    seat.roleId === 'avenger' &&
+    options.conversionState?.avengerAlignedFaction === 'wolf'
+  ) {
+    return true;
+  }
+  if (
+    seat.roleId === 'shadow' &&
+    options.conversionState?.shadowInheritedRoleId
+  ) {
+    return getRoleById(options.conversionState.shadowInheritedRoleId)?.faction === 'wolf';
+  }
+  if (
+    options.conversionState?.chameleonWolfSeat === seat.seatNumber &&
+    options.conversionState.chameleonOriginalRoleId === 'chameleon_wolf_king'
+  ) {
+    return true;
+  }
   return getRoleById(seat.roleId)?.faction === 'wolf';
 }
 

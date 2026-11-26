@@ -95,7 +95,7 @@ export function mergeRuleOverrides(
   };
 }
 
-/** 依板子規則特徵自動套用對應的預設 RuleOverrides（混血兒計邊／白痴追刀／屠城／女巫自救） */
+/** 依板子規則特徵自動套用對應的預設 RuleOverrides（混血兒計邊／白痴追刀／屠城／女巫自救／吞警徽） */
 export function getDefaultRuleOverridesForBoard(boardId?: string | null): RuleOverrides {
   const base: RuleOverrides = {
     ...DEFAULT_RULE_OVERRIDES,
@@ -105,21 +105,31 @@ export function getDefaultRuleOverridesForBoard(boardId?: string | null): RuleOv
   if (
     boardId === '12p-hybrid' ||
     boardId === '12p-wind-espionage' ||
-    boardId === '10p-cloud-tracking' ||
-    boardId === '12p-cloud-exploration'
+    boardId === '10p-board-15uqrqo' ||
+    boardId === '12p-board-1hfx9f2'
   ) {
     base.hybridCountsAsVillager = true;
   }
   if (boardId === 'multi-avenger-shadow') {
     base.idiotNeedsExtraKill = true;
   }
-  if (boardId === '10p-cupid' || boardId === '12p-cupid') {
+  if (boardId === '10p-cupid' || boardId === '12p-cupid' || boardId === '12p-cupid-thief') {
     base.victoryMode = 'slaughter_all';
   }
-  if (boardId === '12p-green-prairie' || boardId === '12p-green-grassland') {
+  if (boardId === '12p-board-1hlxijo') {
     base.witchSelfSave = 'always';
   }
+  if (boardId === '12p-fool-seer') {
+    base.badgeSwallowRule = 'single_explode';
+  }
   return base;
+}
+
+/** 判斷板子是否於第一晚禁用狼人刀人（依顯式設定或首夜排程無 wolf_kill 步驟） */
+export function isFirstNightNoWolfKillBoard(board?: BoardDefinition | null): boolean {
+  if (!board) return false;
+  if (board.firstNightNoWolfKill) return true;
+  return !board.nightSchedule.firstNight.some((step) => step.actionType === 'wolf_kill');
 }
 
 export const DEFAULT_HOST_MODE: HostModeConfig = {
@@ -619,13 +629,17 @@ export function finalizePhysicalDealVillagers(seats: PlayerSeat[]): PlayerSeat[]
 }
 
 /**
- * 線上發牌模式：依板子配置隨機洗牌並分配身分至所有座位（支援注入 rng 供單元測試驗證）。
+ * 線上發牌模式：依板子配置隨機洗牌並分配身分至所有座位（同時產出盜賊／盜寶大師底牌）。
  */
-export function dealRandomRoles(
+export function dealBoardRolesWithBottomCards(
   board: BoardDefinition,
   seats: PlayerSeat[],
   rng: () => number = Math.random,
-): PlayerSeat[] {
+): {
+  seats: PlayerSeat[];
+  thiefBottomCards: string[];
+  treasureMasterBottomCards: string[];
+} {
   const wolfPool: string[] = [];
   for (const slot of board.composition.wolf) {
     for (let i = 0; i < slot.count; i += 1) {
@@ -648,6 +662,9 @@ export function dealRandomRoles(
   };
 
   let pool: string[] = [];
+  let thiefBottomCards: string[] = [];
+  let treasureMasterBottomCards: string[] = [];
+
   if (board.name.includes('獵殺潛狼')) {
     const wolfCount = seats.length === 12 ? 4 : seats.length === 10 ? 3 : 2;
     const hunterCount = Math.max(0, seats.length - wolfCount);
@@ -655,6 +672,38 @@ export function dealRandomRoles(
       ...Array<string>(wolfCount).fill('wolf'),
       ...Array<string>(hunterCount).fill('hunter'),
     ];
+  } else if (board.id === '12p-cupid-thief') {
+    const remaining = [...wolfPool, ...otherPool];
+    const thiefIdx = remaining.indexOf('thief');
+    if (thiefIdx !== -1) {
+      remaining.splice(thiefIdx, 1);
+    }
+    const wolfRoleIds = new Set(board.composition.wolf.map((w) => w.roleId));
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const candidate = [...remaining];
+      shuffle(candidate);
+      const bottom = candidate.slice(seats.length - 1);
+      if (bottom.length === 2 && bottom.every((id) => wolfRoleIds.has(id))) {
+        continue;
+      }
+      thiefBottomCards = bottom;
+      pool = ['thief', ...candidate.slice(0, seats.length - 1)];
+      break;
+    }
+    if (pool.length === 0) {
+      shuffle(remaining);
+      thiefBottomCards = remaining.slice(seats.length - 1);
+      pool = ['thief', ...remaining.slice(0, seats.length - 1)];
+    }
+  } else if (board.id === '12p-treasure-master') {
+    const remaining = [...wolfPool, ...otherPool];
+    const tmIdx = remaining.indexOf('treasure_master');
+    if (tmIdx !== -1) {
+      remaining.splice(tmIdx, 1);
+    }
+    shuffle(remaining);
+    treasureMasterBottomCards = remaining.slice(seats.length - 1);
+    pool = ['treasure_master', ...remaining.slice(0, seats.length - 1)];
   } else if (wolfPool.length + otherPool.length >= seats.length) {
     shuffle(otherPool);
     const neededOthers = Math.max(0, seats.length - wolfPool.length);
@@ -669,8 +718,23 @@ export function dealRandomRoles(
 
   shuffle(pool);
 
-  return seats.map((seat, idx) => ({
-    ...seat,
-    roleId: pool[idx] ?? null,
-  }));
+  return {
+    seats: seats.map((seat, idx) => ({
+      ...seat,
+      roleId: pool[idx] ?? null,
+    })),
+    thiefBottomCards,
+    treasureMasterBottomCards,
+  };
+}
+
+/**
+ * 線上發牌模式：依板子配置隨機洗牌並分配身分至所有座位（支援注入 rng 供單元測試驗證）。
+ */
+export function dealRandomRoles(
+  board: BoardDefinition,
+  seats: PlayerSeat[],
+  rng: () => number = Math.random,
+): PlayerSeat[] {
+  return dealBoardRolesWithBottomCards(board, seats, rng).seats;
 }

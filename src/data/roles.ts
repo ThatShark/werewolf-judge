@@ -761,7 +761,7 @@ export const ROLES_BY_ID: Record<string, RoleDefinition> = {
     "name": "雙子",
     "aliases": [],
     "faction": "good",
-    "category": "god",
+    "category": "villager",
     "description": "平民陣營，首晚會互相睜眼交流。當一方出局，另一方也會跟隨出局，並在下一晚能共同決定守護一位玩家免於狼刀。"
   },
   "lantern_seer": {
@@ -1126,7 +1126,7 @@ export const ROLES_BY_ID: Record<string, RoleDefinition> = {
     "name": "異族王子",
     "aliases": [],
     "faction": "good",
-    "category": "god",
+    "category": "villager",
     "description": "平民，從第二晚開始，每晚可以查驗一位玩家是否為睡美人，若查驗成功會被告知，且立刻清除場上睡眠狀態。異族王子不受睡眠影響，若法官抽中異族王子為睡美人，則本場沒有睡美人。"
   },
   "mute_elder": {

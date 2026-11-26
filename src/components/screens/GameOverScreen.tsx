@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
-import { isSeatWolfFaction } from '../../logic';
+import { isSeatEffectiveWolf } from '../../logic';
 import { formatNotebookExportText, hasNotebookContent } from '../../logic/notebook';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -31,6 +31,8 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
   const winReason = useGameStore((s) => s.winReason);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const mechWolfState = useGameStore((s) => s.mechWolfState);
+  const conversionState = useGameStore((s) => s.conversionState);
+  const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const notebook = useGameStore((s) => s.notebook);
   const nightHistory = useGameStore((s) => s.nightHistory);
@@ -52,13 +54,43 @@ export function GameOverScreen({ onOpenNotebook }: GameOverScreenProps) {
 
   const winningSeats = useMemo(() => {
     if (!winner || winner === 'draw') return seats;
+    const tpSeatNumbers = new Set<number>();
+    if (conversionState?.cupidAffiliation === 'third_party' && conversionState.cupidLovers) {
+      tpSeatNumbers.add(conversionState.cupidLovers[0]);
+      tpSeatNumbers.add(conversionState.cupidLovers[1]);
+      const cupid = seats.find((s) => s.roleId === 'cupid');
+      if (cupid) tpSeatNumbers.add(cupid.seatNumber);
+    }
+    if (conversionState?.ghostBrideGroomSeat != null) {
+      tpSeatNumbers.add(conversionState.ghostBrideGroomSeat);
+      if (conversionState.ghostBrideWitnessSeat != null) {
+        tpSeatNumbers.add(conversionState.ghostBrideWitnessSeat);
+      }
+      const bride = seats.find((s) => s.roleId === 'ghost_bride');
+      if (bride) tpSeatNumbers.add(bride.seatNumber);
+    }
+    if (conversionState?.shadowAvengerThirdParty) {
+      const av = seats.find((s) => s.roleId === 'avenger');
+      const sh = seats.find((s) => s.roleId === 'shadow');
+      if (av) tpSeatNumbers.add(av.seatNumber);
+      if (sh) tpSeatNumbers.add(sh.seatNumber);
+    }
     return seats.filter((seat) => {
       const role = getRoleById(seat.roleId);
-      if (winner === 'wolf') return isSeatWolfFaction(seat);
-      if (winner === 'third_party') return role?.faction === 'third_party';
-      return !isSeatWolfFaction(seat) && role?.faction !== 'third_party';
+      const isEffectiveWolf = isSeatEffectiveWolf(seat, {
+        conversionState,
+        thirdPartySpecialState,
+      });
+      const isTp =
+        tpSeatNumbers.has(seat.seatNumber) ||
+        seat.secondRoleId === 'jack_the_ripper' ||
+        seat.secondRoleId === 'fanatic' ||
+        role?.faction === 'third_party';
+      if (winner === 'wolf') return isEffectiveWolf && !isTp;
+      if (winner === 'third_party') return isTp;
+      return !isEffectiveWolf && !isTp;
     });
-  }, [seats, winner]);
+  }, [seats, winner, conversionState, thirdPartySpecialState]);
 
   const timelineRounds = useMemo(() => {
     const maxRound = Math.max(

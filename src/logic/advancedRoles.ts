@@ -1,4 +1,5 @@
 import { getRoleById } from '../data/roles';
+import { shouldWhiteCatSurviveDeath } from './interferenceRoles';
 import type {
   ActionCheckResult,
   BearRoarResult,
@@ -75,6 +76,16 @@ export function applyWolfBeautyCharmDeath(
   const charmed = seats.find((seat) => seat.seatNumber === activeCharmedSeat);
   if (!charmed || !charmed.isAlive) {
     return { seats, charmedDeathSeat: null };
+  }
+
+  const whiteCatCheck = shouldWhiteCatSurviveDeath(charmed, 'wolf_beauty_charm');
+  if (whiteCatCheck.survive) {
+    return {
+      seats: seats.map((seat) =>
+        seat.seatNumber === activeCharmedSeat ? { ...seat, whiteCatRevealed: true } : seat,
+      ),
+      charmedDeathSeat: null,
+    };
   }
 
   const updatedSeats = seats.map((seat) =>
@@ -218,7 +229,39 @@ export function evaluateBearRoar(
 
   const leftIsWolf = leftNeighbor ? isSeatWolfForBear(leftNeighbor, mechWolfState) : false;
   const rightIsWolf = rightNeighbor ? isSeatWolfForBear(rightNeighbor, mechWolfState) : false;
-  const roared = leftIsWolf || rightIsWolf;
+  let roared = leftIsWolf || rightIsWolf;
+
+  // 若機械狼學到熊且存活（未被夢魘恐懼），視為場上存在第二頭熊：任一頭熊鄰居含狼即咆哮
+  let mechBearRoared = false;
+  if (mechWolfState.learnedRoleId === 'bear') {
+    const mechIdx = sortedSeats.findIndex((seat) => seat.roleId === 'mech_wolf');
+    if (
+      mechIdx !== -1 &&
+      sortedSeats[mechIdx].isAlive &&
+      !(fearedSeat !== null && sortedSeats[mechIdx].seatNumber === fearedSeat)
+    ) {
+      let mechLeft: PlayerSeat | null = null;
+      let mechRight: PlayerSeat | null = null;
+      for (let offset = 1; offset < total; offset += 1) {
+        const cand = sortedSeats[(mechIdx + offset) % total];
+        if (cand.isAlive) {
+          mechLeft = cand;
+          break;
+        }
+      }
+      for (let offset = 1; offset < total; offset += 1) {
+        const cand = sortedSeats[(mechIdx - offset + total * 2) % total];
+        if (cand.isAlive) {
+          mechRight = cand;
+          break;
+        }
+      }
+      mechBearRoared =
+        (mechLeft ? isSeatWolfForBear(mechLeft, mechWolfState) : false) ||
+        (mechRight ? isSeatWolfForBear(mechRight, mechWolfState) : false);
+      if (mechBearRoared) roared = true;
+    }
+  }
 
   const neighborDesc = `左鄰 ${leftNeighbor?.seatNumber ?? '無'} 號、右鄰 ${rightNeighbor?.seatNumber ?? '無'} 號`;
 
@@ -229,7 +272,9 @@ export function evaluateBearRoar(
     rightNeighborSeat: rightNeighbor?.seatNumber ?? null,
     roared,
     reason: roared
-      ? `熊咆哮了（${neighborDesc} 中存在狼人陣營）`
+      ? mechBearRoared && !(leftIsWolf || rightIsWolf)
+        ? '雙熊咆哮了（機械狼學習熊，其鄰居中存在狼人陣營）'
+        : `熊咆哮了（${neighborDesc} 中存在狼人陣營）`
       : `熊沒有咆哮（${neighborDesc} 皆非狼人陣營）`,
   };
 }

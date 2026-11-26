@@ -3405,6 +3405,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     nextSuperGravekeeperState,
   );
 
+  // 一晚死亡名單強制依座號由小到大排序，避免洩漏狼刀／毒殺／連帶先後順序
+  deaths.sort((a, b) => a.seat - b.seat);
+
   const shootEligibilities: ShootEligibility[] = [];
   for (const record of deaths) {
     const eligibility = checkCanShoot(updatedSeats, record.seat, record.reason, {

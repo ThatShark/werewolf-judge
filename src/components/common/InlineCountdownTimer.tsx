@@ -5,6 +5,12 @@ interface InlineCountdownTimerProps {
   title: string;
   initialSeconds?: number;
   presets?: readonly number[];
+  /** 當前發言者標示（選填，例如「04 號（第 1 / 3 位）」） */
+  currentSpeakerLabel?: string;
+  canPrev?: boolean;
+  canNext?: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
 function formatSec(sec: number): string {
@@ -17,6 +23,11 @@ export function InlineCountdownTimer({
   title,
   initialSeconds = 90,
   presets = [60, 90, 120],
+  currentSpeakerLabel,
+  canPrev = false,
+  canNext = false,
+  onPrev,
+  onNext,
 }: InlineCountdownTimerProps) {
   const [duration, setDuration] = useState(initialSeconds);
   const [remaining, setRemaining] = useState(initialSeconds);
@@ -67,14 +78,26 @@ export function InlineCountdownTimer({
     chimedRef.current = false;
   };
 
+  const resetTimer = () => {
+    setRunning(false);
+    setRemaining(duration);
+    chimedRef.current = false;
+  };
+
   return (
     <div className="rounded-lg border border-subtle bg-surface p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[12px] font-semibold text-secondary">{title}</div>
-          <div className="mt-0.5 text-[12px] text-muted">
-            {remaining === 0 ? '時間到' : running ? '倒數中' : '就緒'}
-          </div>
+          {currentSpeakerLabel ? (
+            <div className="mt-0.5 truncate text-[14px] font-semibold tabular-nums text-primary">
+              {currentSpeakerLabel}
+            </div>
+          ) : (
+            <div className="mt-0.5 text-[12px] text-muted">
+              {remaining === 0 ? '時間到' : running ? '倒數中' : '就緒'}
+            </div>
+          )}
         </div>
         <div
           className={`shrink-0 font-mono text-[28px] font-bold leading-none tabular-nums ${
@@ -134,16 +157,43 @@ export function InlineCountdownTimer({
         ))}
         <button
           type="button"
-          onClick={() => {
-            setRunning(false);
-            setRemaining(duration);
-            chimedRef.current = false;
-          }}
+          onClick={resetTimer}
           className="min-h-9 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:border-strong hover:text-primary"
         >
           重設
         </button>
       </div>
+
+      {(onPrev || onNext) && (
+        <div className="grid grid-cols-2 gap-1.5 border-t border-subtle pt-2">
+          {onPrev && (
+            <button
+              type="button"
+              disabled={!canPrev}
+              onClick={() => {
+                resetTimer();
+                onPrev();
+              }}
+              className="min-h-11 rounded-md border border-subtle bg-canvas px-3 text-[12px] font-semibold text-secondary hover:border-strong hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ← 上一位
+            </button>
+          )}
+          {onNext && (
+            <button
+              type="button"
+              disabled={!canNext}
+              onClick={() => {
+                resetTimer();
+                onNext();
+              }}
+              className={`${onPrev ? '' : 'col-span-2'} min-h-11 rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40`}
+            >
+              下一位 →
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

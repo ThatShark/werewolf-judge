@@ -1,3 +1,4 @@
+import { formatChineseDay } from './formatters';
 import type {
   NotebookMode,
   NotebookStageColumn,
@@ -60,10 +61,11 @@ export function buildNotebookStages(
   }
 
   for (let day = 1; day <= maxDay; day += 1) {
+    const chineseDay = formatChineseDay(day);
     stages.push({
       key: `day_${day}`,
-      label: `第 ${day} 天白天`,
-      shortLabel: `D${day}`,
+      label: `${chineseDay}白天`,
+      shortLabel: chineseDay,
     });
   }
 

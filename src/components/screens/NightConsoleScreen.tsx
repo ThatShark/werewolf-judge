@@ -5,6 +5,8 @@ import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import {
   applyMechWolfLearn,
+  formatChineseDay,
+  formatChineseNight,
   canAwakenedDreamCatcherDream,
   canAwakenedGargoyleConvert,
   canAwakenedIdiotShield,
@@ -2043,7 +2045,8 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     if (seerOutcome) {
       return {
         eyebrow: '預言家查驗結果',
-        headline: `${formatSeatNum(seerOutcome.targetSeat)} 號 · ${seerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
+        subject: `${formatSeatNum(seerOutcome.targetSeat)} 號`,
+        headline: seerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）',
         tone: seerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
@@ -2051,7 +2054,8 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       const rName = getRoleById(psychicOutcome.perceivedRoleId)?.name ?? psychicOutcome.perceivedRoleId;
       return {
         eyebrow: '通靈師查驗底牌',
-        headline: `${formatSeatNum(psychicOutcome.targetSeat)} 號 · ${rName}`,
+        subject: `${formatSeatNum(psychicOutcome.targetSeat)} 號`,
+        headline: rName,
         tone: 'third',
       };
     }
@@ -2061,45 +2065,49 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
         mechWolfPsychicOutcome.perceivedRoleId;
       return {
         eyebrow: '機械狼查驗底牌',
-        headline: `${formatSeatNum(mechWolfPsychicOutcome.targetSeat)} 號 · ${rName}`,
+        subject: `${formatSeatNum(mechWolfPsychicOutcome.targetSeat)} 號`,
+        headline: rName,
         tone: 'third',
       };
     }
     if (awakenedSeerOutcome) {
       return {
         eyebrow: '覺醒預言家雙驗',
+        subject: `${formatSeatNum(awakenedSeerOutcome.targetSeats[0])} 號、${formatSeatNum(awakenedSeerOutcome.targetSeats[1])} 號`,
         headline:
           awakenedSeerOutcome.result === 'double_good' ? '雙金水（皆好人）' : '疑似狼人（含狼）',
-        detail: `查驗對象：${formatSeatNum(awakenedSeerOutcome.targetSeats[0])} 號、${formatSeatNum(awakenedSeerOutcome.targetSeats[1])} 號`,
         tone: awakenedSeerOutcome.result === 'double_good' ? 'good' : 'wolf',
       };
     }
     if (lanternSeerOutcome) {
       return {
         eyebrow: '燈影預言家查驗',
-        headline: `${formatSeatNum(lanternSeerOutcome.targetSeat)} 號 · ${lanternSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
+        subject: `${formatSeatNum(lanternSeerOutcome.targetSeat)} 號`,
+        headline: lanternSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）',
         tone: lanternSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
     if (drunkSeerOutcome) {
       return {
         eyebrow: '查驗結果',
-        headline: `${formatSeatNum(drunkSeerOutcome.targetSeat)} 號 · ${drunkSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
+        subject: `${formatSeatNum(drunkSeerOutcome.targetSeat)} 號`,
+        headline: drunkSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）',
         tone: drunkSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
     if (foolSeerOutcome) {
       return {
         eyebrow: '愚言家查驗結果',
-        headline: `${formatSeatNum(foolSeerOutcome.targetSeat)} 號 · ${foolSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）'}`,
+        subject: `${formatSeatNum(foolSeerOutcome.targetSeat)} 號`,
+        headline: foolSeerOutcome.faction === 'wolf' ? '狼人陣營（查殺）' : '好人陣營（金水）',
         tone: foolSeerOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
     if (foxOutcome) {
       return {
         eyebrow: '狐狸查驗結果',
+        subject: `${foxOutcome.checkedSeats.map(formatSeatNum).join('、')} 號`,
         headline: foxOutcome.hasWolf ? '含狼人（技能保留）' : '全好人（技能失效）',
-        detail: `範圍：${foxOutcome.checkedSeats.map(formatSeatNum).join('、')} 號`,
         tone: foxOutcome.hasWolf ? 'wolf' : 'sheriff',
       };
     }
@@ -2108,14 +2116,16 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
       const rName = getRoleById(exactCheck.perceivedRoleId)?.name ?? exactCheck.perceivedRoleId;
       return {
         eyebrow: `${currentStep.actorLabel} · 底牌查驗`,
-        headline: `${formatSeatNum(exactCheck.targetSeat)} 號 · ${rName}`,
+        subject: `${formatSeatNum(exactCheck.targetSeat)} 號`,
+        headline: rName,
         tone: 'third',
       };
     }
     if (demonWolfOutcome) {
       return {
         eyebrow: '惡魔查驗結果',
-        headline: `${formatSeatNum(demonWolfOutcome.targetSeat)} 號 · ${demonWolfOutcome.roleType === 'god' ? '神職' : '平民'}`,
+        subject: `${formatSeatNum(demonWolfOutcome.targetSeat)} 號`,
+        headline: demonWolfOutcome.roleType === 'god' ? '神職' : '平民',
         tone: 'third',
       };
     }
@@ -2127,10 +2137,12 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
     ) {
       return {
         eyebrow: '守墓人驗屍結果',
-        headline:
-          gravekeeperOutcome.exiledSeat !== null
-            ? `${formatSeatNum(gravekeeperOutcome.exiledSeat)} 號 · ${gravekeeperOutcome.faction === 'wolf' ? '狼人陣營' : '好人陣營'}`
-            : '昨日無放逐紀錄',
+        ...(gravekeeperOutcome.exiledSeat !== null
+          ? {
+              subject: `${formatSeatNum(gravekeeperOutcome.exiledSeat)} 號`,
+              headline: gravekeeperOutcome.faction === 'wolf' ? '狼人陣營' : '好人陣營',
+            }
+          : { headline: '昨日無放逐紀錄' }),
         tone: gravekeeperOutcome.faction === 'wolf' ? 'wolf' : 'good',
       };
     }
@@ -2377,11 +2389,11 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      {/* 1. 頂部極簡狀態列：當前睜眼角色 ＋ 右上角進度數字 */}
+      {/* 1. 頂部極簡狀態列：當晚階段進度（例如：第 2 / 7 階段） */}
       <section className="flex shrink-0 items-center justify-between gap-2 border-b border-subtle pb-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <h1 className="truncate text-[18px] font-semibold leading-6 text-primary">
-            {currentStep.actorLabel}
+          <h1 className="truncate text-[18px] font-semibold leading-6 tabular-nums text-primary">
+            第 {currentStepIndex + 1} / {steps.length} 階段
           </h1>
           {isClaimStage && (
             <span className="shrink-0 rounded-md border border-sheriff-border bg-sheriff-tint px-1.5 py-0.5 text-[12px] font-semibold text-sheriff">
@@ -2446,9 +2458,6 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
               </button>
             </>
           )}
-          <span className="pl-1 text-[14px] font-semibold tabular-nums text-sheriff">
-            {currentStepIndex + 1} / {steps.length}
-          </span>
         </div>
       </section>
 
@@ -2528,15 +2537,20 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
             </div>
           )}
 
-          {/* 資訊與結果區塊（移至台詞正下方，含放大展示給玩家看按鈕） */}
+          {/* 資訊與結果區塊（移至台詞正下方，座號與陣營／結果強制分行排版，含放大展示給玩家看按鈕） */}
           {currentFlashcardCandidate && (
             <div className="flex items-center justify-between gap-2 rounded-md border border-subtle bg-surface px-3 py-2">
               <div className="min-w-0 flex-1">
                 <div className="text-[12px] font-medium text-secondary">
                   {currentFlashcardCandidate.eyebrow}
                 </div>
+                {currentFlashcardCandidate.subject && (
+                  <div className="mt-0.5 text-[14px] font-semibold leading-5 tabular-nums text-primary">
+                    {currentFlashcardCandidate.subject}
+                  </div>
+                )}
                 <div
-                  className={`truncate text-[14px] font-semibold tabular-nums ${
+                  className={`break-keep text-[14px] font-semibold leading-5 tabular-nums ${
                     currentFlashcardCandidate.tone === 'wolf'
                       ? 'text-wolf'
                       : currentFlashcardCandidate.tone === 'good'
@@ -3071,7 +3085,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
                             {pumpkinGhostState.inheritedHistory
                               .map(
                                 (h) =>
-                                  `N${h.round}:${h.targetSeat}號(${
+                                  `${formatChineseNight(h.round)}:${h.targetSeat}號(${
                                     getRoleById(h.perceivedRoleId)?.name ?? h.perceivedRoleId
                                   })`,
                               )
@@ -3172,7 +3186,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
                             {exiledHistory
                               .map(
                                 (r) =>
-                                  `D${r.round}:${r.seatNumber}號(${
+                                  `${formatChineseDay(r.round)}:${r.seatNumber}號(${
                                     getGravekeeperFactionForRecord(r) === 'wolf' ? '狼' : '好'
                                   })`,
                               )

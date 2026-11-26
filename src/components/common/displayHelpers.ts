@@ -130,6 +130,10 @@ export const RULE_TOGGLE_META: Record<
     label: '吞警徽規則',
     description: '警長競選期間狼人自爆時，採雙爆吞警徽或單爆吞警徽。',
   },
+  sheriffVoteWeight: {
+    label: '警長投票加權',
+    description: '警長於白天放逐投票時的票權加權（多0.5票總計 1.5 票，或多1票總計 2 票）。',
+  },
   victoryMode: {
     label: '勝利條件',
     description: '屠邊（殺光所有平民或所有神職）或屠城（殺光全部好人）。',
@@ -454,7 +458,8 @@ export function buildGameReplayText(
       if (deaths.length === 0) {
         lines.push('  • 天亮結果：平安夜');
       } else {
-        const deathStr = deaths
+        const deathStr = [...deaths]
+          .sort((a, b) => a.seat - b.seat)
           .map((d) => `${d.seat} 號（${formatDeathReason(d.reason)}）`)
           .join('、');
         lines.push(`  • 天亮結果：${deathStr}`);

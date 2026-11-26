@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatChineseDay, formatChineseNight } from '../../logic';
 import type {
   DayHistoryEntry,
   NightActionDraft,
@@ -84,7 +85,7 @@ export function HistoryDrawer({
                     : 'border border-subtle bg-canvas text-secondary hover:border-strong hover:text-primary'
                 }`}
               >
-                第 {r} 晚
+                {formatChineseNight(r)}
               </button>
             ))}
           </div>
@@ -94,7 +95,7 @@ export function HistoryDrawer({
           {inProgressNight && selectedRound === 'all' && (
             <section className="border-l-2 border-sheriff py-3 pl-3">
               <h3 className="text-[12px] font-semibold tabular-nums text-sheriff">
-                第 {inProgressNight.round} 晚（進行中）
+                {formatChineseNight(inProgressNight.round)}（進行中）
               </h3>
               {liveLines.length === 0 ? (
                 <p className="mt-1 text-[12px] text-muted">尚未確認行動目標。</p>
@@ -123,7 +124,7 @@ export function HistoryDrawer({
                   {night && (
                     <div className="space-y-1.5">
                       <div className="text-[12px] font-semibold text-secondary">
-                        第 {round} 晚 · 技能對象與結果
+                        {formatChineseNight(round)} · 技能對象與結果
                       </div>
                       {nightSkillLines.length > 0 && (
                         <ul className="space-y-1 text-[14px] text-primary tabular-nums">
@@ -137,11 +138,13 @@ export function HistoryDrawer({
                         <p className="text-[14px] text-good">平安夜</p>
                       ) : (
                         <ul className="space-y-1 text-[14px] text-wolf tabular-nums">
-                          {night.deaths.map((d, i) => (
-                            <li key={i}>
-                              • {formatSeatNum(d.seat)} 號（{DEATH_REASON_LABELS[d.reason]}）
-                            </li>
-                          ))}
+                          {[...night.deaths]
+                            .sort((a, b) => a.seat - b.seat)
+                            .map((d, i) => (
+                              <li key={i}>
+                                • {formatSeatNum(d.seat)} 號（{DEATH_REASON_LABELS[d.reason]}）
+                              </li>
+                            ))}
                         </ul>
                       )}
                     </div>
@@ -149,7 +152,7 @@ export function HistoryDrawer({
                   {day && day.events.length > 0 && (
                     <div className="space-y-1 border-t border-subtle pt-2">
                       <div className="text-[12px] font-semibold text-secondary">
-                        第 {round} 天 · 白天事件
+                        {formatChineseDay(round)} · 白天事件
                       </div>
                       <ul className="space-y-1 text-[14px] text-secondary tabular-nums">
                         {day.events.map((evt, i) => (

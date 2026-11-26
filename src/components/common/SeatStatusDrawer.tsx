@@ -3,7 +3,7 @@ import { getRoleById } from '../../data/roles';
 import { checkVictory } from '../../logic';
 import type { BoardDefinition, ManualVictoryOverrideKind } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
-import { formatDeathReason, formatSeatNum, getRoleBadgeClasses } from './displayHelpers';
+import { formatDeathReason, getRoleBadgeClasses } from './displayHelpers';
 
 interface SeatStatusDrawerProps {
   open: boolean;
@@ -107,15 +107,21 @@ export function SeatStatusDrawer({ open, board, onClose }: SeatStatusDrawerProps
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`w-6 shrink-0 text-[14px] font-semibold tabular-nums ${
-                          seat.isAlive ? 'text-primary' : 'text-muted line-through'
+                        className={`shrink-0 text-[14px] font-semibold tabular-nums ${
+                          seat.isAlive ? 'text-primary' : 'text-muted'
                         }`}
                       >
-                        {formatSeatNum(seat.seatNumber)}
+                        {seat.seatNumber}號
                       </span>
-                      <span className="truncate text-[14px] text-primary">
-                        {seat.nickname.trim() || `${seat.seatNumber}號`}
-                      </span>
+                      {seat.nickname.trim() && (
+                        <span
+                          className={`truncate text-[14px] ${
+                            seat.isAlive ? 'text-primary' : 'text-muted'
+                          }`}
+                        >
+                          {seat.nickname.trim()}
+                        </span>
+                      )}
                       {!maskRoles && role && (
                         <span
                           className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[12px] font-medium ${getRoleBadgeClasses(role.id)}`}
@@ -124,7 +130,7 @@ export function SeatStatusDrawer({ open, board, onClose }: SeatStatusDrawerProps
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 pl-8 text-[12px] text-muted tabular-nums">
+                    <div className="mt-0.5 text-[12px] text-muted tabular-nums">
                       {seat.isAlive
                         ? seat.idiotRevealed
                           ? '存活 · 白痴已翻牌'

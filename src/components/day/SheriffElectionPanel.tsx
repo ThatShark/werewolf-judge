@@ -38,6 +38,9 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const [pendingWithdrawSeat, setPendingWithdrawSeat] = useState<number | null>(null);
   const [lastOutcomeNotice, setLastOutcomeNotice] = useState<string | null>(null);
+  const [speakingIdx, setSpeakingIdx] = useState(0);
+  const [pkSpeakingIdx, setPkSpeakingIdx] = useState(0);
+  const sheriffVoteWeight = ruleOverrides.sheriffVoteWeight ?? 1.5;
 
   const aliveSeats = useMemo(() => seats.filter((s) => s.isAlive), [seats]);
   const electionActive = isSheriffElectionActive(sheriffState);
@@ -112,7 +115,7 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
           <span className="text-secondary">警長競選結果</span>
           {sheriffState.badgeStatus === 'active' && sheriffState.sheriffSeat !== null ? (
             <span className="font-semibold tabular-nums text-sheriff">
-              警長 {formatSeatNum(sheriffState.sheriffSeat)} 號（1.5 票）
+              警長 {formatSeatNum(sheriffState.sheriffSeat)} 號（{sheriffVoteWeight} 票）
             </span>
           ) : sheriffState.badgeStatus === 'swallowed' ? (
             <span className="font-semibold text-wolf">警上自爆吞警徽</span>
@@ -180,6 +183,8 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
           onClick={() => {
             startSheriffElection(selectedSignupSeats);
             setVotesDraft({});
+            setSpeakingIdx(0);
+            setPkSpeakingIdx(0);
             setLastOutcomeNotice(null);
           }}
           className="min-h-12 w-full rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
@@ -201,6 +206,8 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         ? sheriffState.initialSpeakingOrder.filter((sn) => sheriffState.candidates.includes(sn))
         : speakingQueue.filter((sn) => sheriffState.candidates.includes(sn));
     const dirLabel = speakingMeta?.direction === 'counterclockwise' ? '逆時針' : '順時針';
+    const clampedIdx = Math.min(speakingIdx, order.length);
+    const currentSeat = clampedIdx < order.length ? order[clampedIdx] : null;
 
     return (
       <section className="space-y-3">
@@ -214,25 +221,39 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
             發言順序（點擊候選人可隨時「退水」）：
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {order.map((seatNum, idx) => (
-              <div
-                key={seatNum}
-                className="flex items-center gap-1.5 rounded-md border border-subtle bg-canvas px-2.5 py-1.5"
-              >
-                <span className="text-[12px] text-muted tabular-nums">{idx + 1}.</span>
-                <span className="text-[14px] font-semibold tabular-nums text-primary">
-                  {formatSeatNum(seatNum)} 號
-                </span>
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => setPendingWithdrawSeat(seatNum)}
-                  className="min-h-8 rounded border border-subtle bg-surface px-2 text-[12px] text-secondary hover:border-wolf-border hover:text-wolf"
+            {order.map((seatNum, idx) => {
+              const isCurrent = idx === clampedIdx;
+              const isDone = idx < clampedIdx;
+              return (
+                <div
+                  key={seatNum}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 ${
+                    isCurrent
+                      ? 'border-selected-sheriff bg-sheriff-tint'
+                      : isDone
+                        ? 'border border-subtle bg-canvas opacity-55'
+                        : 'border border-subtle bg-canvas'
+                  }`}
                 >
-                  退水
-                </button>
-              </div>
-            ))}
+                  <span className="text-[12px] text-muted tabular-nums">{idx + 1}.</span>
+                  <span
+                    className={`text-[14px] font-semibold tabular-nums ${
+                      isCurrent ? 'text-sheriff' : 'text-primary'
+                    }`}
+                  >
+                    {formatSeatNum(seatNum)} 號
+                  </span>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => setPendingWithdrawSeat(seatNum)}
+                    className="min-h-8 rounded border border-subtle bg-surface px-2 text-[12px] text-secondary hover:border-wolf-border hover:text-wolf"
+                  >
+                    退水
+                  </button>
+                </div>
+              );
+            })}
           </div>
           {sheriffState.withdrawnSeats.length > 0 && (
             <div className="border-t border-subtle pt-2 text-[12px] text-muted tabular-nums">
@@ -241,7 +262,20 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
           )}
         </div>
 
-        <InlineCountdownTimer title="警上競選發言倒數" />
+        <InlineCountdownTimer
+          title="警上競選發言倒數"
+          initialSeconds={120}
+          presets={[60, 90, 120]}
+          currentSpeakerLabel={
+            currentSeat !== null
+              ? `${formatSeatNum(currentSeat)} 號（第 ${clampedIdx + 1} / ${order.length} 位）`
+              : '全體上警者發言完畢'
+          }
+          canPrev={clampedIdx > 0}
+          canNext={clampedIdx < order.length}
+          onPrev={() => setSpeakingIdx((prev) => Math.max(0, prev - 1))}
+          onNext={() => setSpeakingIdx((prev) => Math.min(order.length, prev + 1))}
+        />
 
         <button
           type="button"
@@ -280,6 +314,8 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
       sheriffState.initialSpeakingOrder,
       sheriffState.pkCandidates,
     );
+    const clampedPkIdx = Math.min(pkSpeakingIdx, pkOrder.length);
+    const currentPkSeat = clampedPkIdx < pkOrder.length ? pkOrder[clampedPkIdx] : null;
 
     return (
       <section className="space-y-3">
@@ -291,19 +327,42 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
         <div className="space-y-2 rounded-lg border border-sheriff-border bg-surface p-3">
           <div className="text-[12px] text-secondary">PK 逆序發言名單：</div>
           <div className="flex flex-wrap gap-1.5">
-            {pkOrder.map((seatNum, idx) => (
-              <span
-                key={seatNum}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-sheriff-border bg-sheriff-tint px-3 text-[14px] font-semibold tabular-nums text-sheriff"
-              >
-                <span className="text-[12px] text-secondary">{idx + 1}.</span>
-                {formatSeatNum(seatNum)} 號
-              </span>
-            ))}
+            {pkOrder.map((seatNum, idx) => {
+              const isCurrent = idx === clampedPkIdx;
+              const isDone = idx < clampedPkIdx;
+              return (
+                <span
+                  key={seatNum}
+                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-[14px] font-semibold tabular-nums ${
+                    isCurrent
+                      ? 'bg-sheriff text-inverse'
+                      : isDone
+                        ? 'border border-subtle bg-canvas text-muted opacity-55'
+                        : 'border border-sheriff-border bg-sheriff-tint text-sheriff'
+                  }`}
+                >
+                  <span className="text-[12px] opacity-80">{idx + 1}.</span>
+                  {formatSeatNum(seatNum)} 號
+                </span>
+              );
+            })}
           </div>
         </div>
 
-        <InlineCountdownTimer title="警長平票 PK 發言倒數" />
+        <InlineCountdownTimer
+          title="警長平票 PK 發言倒數"
+          initialSeconds={60}
+          presets={[30, 60, 90]}
+          currentSpeakerLabel={
+            currentPkSeat !== null
+              ? `${formatSeatNum(currentPkSeat)} 號（第 ${clampedPkIdx + 1} / ${pkOrder.length} 位）`
+              : '全體 PK 候選人發言完畢'
+          }
+          canPrev={clampedPkIdx > 0}
+          canNext={clampedPkIdx < pkOrder.length}
+          onPrev={() => setPkSpeakingIdx((prev) => Math.max(0, prev - 1))}
+          onNext={() => setPkSpeakingIdx((prev) => Math.min(pkOrder.length, prev + 1))}
+        />
 
         <button
           type="button"

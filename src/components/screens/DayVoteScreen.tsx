@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { getBoardById } from '../../data/boards';
+import { formatChineseDay, formatChineseNight, getExitResolutionStage } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { InlineCountdownTimer } from '../common/InlineCountdownTimer';
@@ -83,7 +84,7 @@ export function DayVoteScreen() {
       />
 
       {/* 2. 白天四階段嚴格進度條（鎖定在階段四：放逐投票） */}
-      <DayStageStepper currentStage="exile_vote" showSheriffStage={showSheriffStage} />
+      <DayStageStepper currentStage="exile_vote" showSheriffStage={showSheriffStage} round={round} />
 
       {forceContinueAfterVictory && (
         <div className="shrink-0 border-l-2 border-sheriff bg-sheriff-tint px-3 py-1 text-[12px] font-semibold text-sheriff">
@@ -91,52 +92,61 @@ export function DayVoteScreen() {
         </div>
       )}
 
-      {/* 3. 中央單一任務工作區：放逐計票 OR 放逐後遺言與入夜確認 */}
+      {/* 3. 中央單一任務工作區：放逐計票 OR 放逐後先結算技能／移交警徽，再發表遺言 */}
       <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
-        {exileResolvedToday ? (
-          <section className="space-y-3">
-            <div className="rounded-lg border border-subtle bg-surface p-3.5 space-y-2">
-              <div
-                className={`border-l-2 pl-3 ${
-                  exileResolvedToday.outcome === 'exile'
-                    ? 'border-wolf'
-                    : exileResolvedToday.outcome === 'no_exile'
-                      ? 'border-good'
-                      : 'border-sheriff'
-                }`}
-              >
-                <div className="text-[12px] font-semibold text-secondary">
-                  D{round} 放逐結果已結算
+        {exileResolvedToday ? (() => {
+          const exitStage = getExitResolutionStage({
+            pendingShootersCount: pendingShooters.length,
+            hasPendingBadgeTransfer,
+            hasLastWords: exileResolvedToday.outcome === 'exile' && exileResolvedToday.seat !== null,
+          });
+          return (
+            <section className="space-y-3">
+              <div className="rounded-lg border border-subtle bg-surface p-3.5 space-y-2">
+                <div
+                  className={`border-l-2 pl-3 ${
+                    exileResolvedToday.outcome === 'exile'
+                      ? 'border-wolf'
+                      : exileResolvedToday.outcome === 'no_exile'
+                        ? 'border-good'
+                        : 'border-sheriff'
+                  }`}
+                >
+                  <div className="text-[12px] font-semibold text-secondary">
+                    {formatChineseDay(round)} 放逐結果已結算
+                  </div>
+                  <h2 className="mt-0.5 text-[18px] font-semibold leading-6 text-primary tabular-nums">
+                    {exileResolvedToday.summary}
+                  </h2>
                 </div>
-                <h2 className="mt-0.5 text-[18px] font-semibold leading-6 text-primary tabular-nums">
-                  {exileResolvedToday.summary}
-                </h2>
+                <p className="text-[12px] text-secondary">
+                  {exitStage === 'skills_and_badge'
+                    ? '請先完成出局技能與警徽移交／撕毀，結算完畢後再由被放逐者發表遺言。'
+                    : exitStage === 'last_words'
+                      ? '出局技能與警徽已結算完畢，請被放逐者發表遺言，完畢後直接進入黑夜。'
+                      : '本日放逐階段已結束，可直接進入下一個夜晚。'}
+                </p>
               </div>
-              <p className="text-[12px] text-secondary">
-                {exileResolvedToday.outcome === 'exile'
-                  ? '請被放逐者發表遺言並處理技能，完畢後直接進入黑夜。'
-                  : '本日放逐階段已結束，可直接進入下一個夜晚。'}
-              </p>
-            </div>
 
-            {exileResolvedToday.outcome === 'exile' && exileResolvedToday.seat !== null && (
-              <InlineCountdownTimer
-                title={`${formatSeatNum(exileResolvedToday.seat)} 號放逐遺言倒數`}
-              />
-            )}
+              {exitStage === 'last_words' && exileResolvedToday.seat !== null && (
+                <InlineCountdownTimer
+                  title={`${formatSeatNum(exileResolvedToday.seat)} 號放逐遺言倒數`}
+                />
+              )}
 
-            {canSequencePrinceRevote && (
-              <button
-                type="button"
-                disabled={hasBlockingPendingAction}
-                onClick={() => triggerSequencePrinceRevote()}
-                className="min-h-12 w-full rounded-md border border-third-border bg-third-tint px-4 text-[14px] font-semibold text-third hover:opacity-90 disabled:opacity-40"
-              >
-                定序王子翻牌：重新進行放逐投票
-              </button>
-            )}
-          </section>
-        ) : (
+              {canSequencePrinceRevote && (
+                <button
+                  type="button"
+                  disabled={hasBlockingPendingAction}
+                  onClick={() => triggerSequencePrinceRevote()}
+                  className="min-h-12 w-full rounded-md border border-third-border bg-third-tint px-4 text-[14px] font-semibold text-third hover:opacity-90 disabled:opacity-40"
+                >
+                  定序王子翻牌：重新進行放逐投票
+                </button>
+              )}
+            </section>
+          );
+        })() : (
           <ExileVotePanel disabled={hasBlockingPendingAction} />
         )}
       </div>
@@ -176,8 +186,8 @@ export function DayVoteScreen() {
             : hasPendingBadgeTransfer
               ? '請先交接警徽'
               : exileResolvedToday?.outcome === 'exile'
-                ? `遺言完畢 → 進入第 ${round + 1} 晚`
-                : `進入第 ${round + 1} 晚`}
+                ? `遺言完畢 → 進入${formatChineseNight(round + 1)}`
+                : `進入${formatChineseNight(round + 1)}`}
         </button>
       </footer>
 
@@ -222,9 +232,9 @@ export function DayVoteScreen() {
 
       <ConfirmModal
         open={confirmNextNightOpen}
-        title={`進入第 ${round + 1} 晚`}
+        title={`進入${formatChineseNight(round + 1)}`}
         description="確定跳過投票結束白天並進入下一個夜晚？"
-        confirmLabel={`進入第 ${round + 1} 晚`}
+        confirmLabel={`進入${formatChineseNight(round + 1)}`}
         tone="primary"
         onConfirm={() => {
           setConfirmNextNightOpen(false);

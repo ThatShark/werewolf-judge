@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { playSoftTimerChime } from '../../audio/timerChime';
-import { isSheriffElectionActive, resolveDaySpeakingRule } from '../../logic';
+import {
+  SHERIFF_SPEAK_DURATION_SEC,
+  formatChineseDay,
+  isSheriffElectionActive,
+  resolveDaySpeakingRule,
+} from '../../logic';
 import type { SpeakingOrderMode } from '../../logic/types';
 import { useGameStore } from '../../store/gameStore';
 import { formatSeatNum } from '../common/displayHelpers';
 
-const TIMER_PRESETS = [60, 90, 120] as const;
+const TIMER_PRESETS = [60, 90, 120, 150] as const;
 
 const MODE_LABELS: Record<SpeakingOrderMode, string> = {
   random: '隨機',
@@ -37,6 +42,7 @@ export function SpeakingTimerPanel() {
   const setDefaultSpeakDuration = useGameStore((s) => s.setDefaultSpeakDuration);
   const generateSpeakingOrder = useGameStore((s) => s.generateSpeakingOrder);
   const nextSpeaker = useGameStore((s) => s.nextSpeaker);
+  const prevSpeaker = useGameStore((s) => s.prevSpeaker);
   const adjustSpeakerTime = useGameStore((s) => s.adjustSpeakerTime);
   const tickSpeakerTimer = useGameStore((s) => s.tickSpeakerTimer);
   const resetSpeakingOrder = useGameStore((s) => s.resetSpeakingOrder);
@@ -121,7 +127,7 @@ export function SpeakingTimerPanel() {
   );
   const allowSheriffDeadSide =
     activeSheriffSeat !== null &&
-    nightDeadSeats.length === 1 &&
+    nightDeadSeats.length > 0 &&
     Boolean(ruleOverrides.sheriffUseDeadSideOnDeath);
   const showDeadSideButtons = activeSheriffSeat === null || allowSheriffDeadSide;
   const currentSpeakerSeat =
@@ -158,7 +164,11 @@ export function SpeakingTimerPanel() {
 
   const handleToggleStartPause = () => {
     if (!timerRunning && remainingSeconds === 0) {
-      adjustSpeakerTime(defaultSpeakDurationSec);
+      const resetDuration =
+        activeSheriffSeat !== null && currentSpeakerSeat === activeSheriffSeat
+          ? SHERIFF_SPEAK_DURATION_SEC
+          : defaultSpeakDurationSec;
+      adjustSpeakerTime(resetDuration);
     }
     setTimerRunning((prev) => !prev);
   };
@@ -177,7 +187,7 @@ export function SpeakingTimerPanel() {
                 ? `發言中 ${currentSpeakerIndex + 1} / ${speakingQueue.length}`
                 : isSpeakingFinished
                   ? `發言完畢 ${speakingQueue.length} / ${speakingQueue.length}`
-                  : `D${round} 發言計時`}
+                  : `${formatChineseDay(round)} 發言計時`}
             </div>
             <div className="mt-0.5 truncate text-[18px] font-semibold leading-6 tabular-nums text-primary">
               {currentSpeakerSeat !== null
@@ -234,7 +244,7 @@ export function SpeakingTimerPanel() {
           </button>
         </div>
 
-        <div className="mt-2 flex items-center gap-1.5">
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
           {TIMER_PRESETS.map((sec) => (
             <button
               key={sec}
@@ -243,7 +253,7 @@ export function SpeakingTimerPanel() {
                 setTimerRunning(false);
                 setDefaultSpeakDuration(sec);
               }}
-              className={`min-h-10 flex-1 rounded-md text-[12px] font-semibold tabular-nums transition ${
+              className={`min-h-10 rounded-md text-[12px] font-semibold tabular-nums transition ${
                 defaultSpeakDurationSec === sec
                   ? 'border-selected-sheriff bg-sheriff-tint text-sheriff'
                   : 'border border-subtle bg-canvas text-secondary hover:border-strong'
@@ -252,6 +262,20 @@ export function SpeakingTimerPanel() {
               {sec}s
             </button>
           ))}
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            disabled={speakingQueue.length === 0 || currentSpeakerIndex <= 0}
+            onClick={() => {
+              setTimerRunning(false);
+              prevSpeaker();
+            }}
+            className="min-h-11 rounded-md border border-subtle bg-canvas px-3 text-[12px] font-semibold text-secondary hover:border-strong hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ← 上一位
+          </button>
           <button
             type="button"
             disabled={currentSpeakerSeat === null}
@@ -259,7 +283,7 @@ export function SpeakingTimerPanel() {
               setTimerRunning(false);
               nextSpeaker();
             }}
-            className="min-h-10 flex-[1.5] rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-11 rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             下一位 →
           </button>
@@ -268,7 +292,7 @@ export function SpeakingTimerPanel() {
 
       {/* 發言順序抽取 */}
       <div className="space-y-2">
-        {deadAnchorChoices.length > 1 && (
+        {showDeadSideButtons && deadAnchorChoices.length > 1 && (
           <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
             <span className="text-secondary">基準死者</span>
             {deadAnchorChoices.map((seatNum) => (

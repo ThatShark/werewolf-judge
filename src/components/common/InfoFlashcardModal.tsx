@@ -2,6 +2,8 @@ export type FlashcardTone = 'good' | 'wolf' | 'sheriff' | 'third' | 'neutral';
 
 export interface InfoFlashcardData {
   eyebrow: string;
+  /** 第一行主體（例如座號 `04 號`），與下方陣營／結果強制分行排版 */
+  subject?: string;
   headline: string;
   detail?: string;
   tone?: FlashcardTone;
@@ -65,8 +67,13 @@ export function InfoFlashcardModal({ data, onClose }: InfoFlashcardModalProps) {
         className={`mx-auto w-full max-w-md border-l-4 bg-surface px-6 py-8 text-left ${TONE_BORDER[tone]}`}
       >
         <div className="text-[14px] font-semibold text-secondary">{data.eyebrow}</div>
+        {data.subject && (
+          <div className="mt-3 text-[32px] font-bold leading-tight tracking-tight tabular-nums text-primary sm:text-[38px]">
+            {data.subject}
+          </div>
+        )}
         <div
-          className={`mt-3 text-[36px] font-bold leading-tight tracking-tight tabular-nums sm:text-[44px] ${TONE_TEXT[tone]}`}
+          className={`${data.subject ? 'mt-1.5' : 'mt-3'} break-keep whitespace-pre-line text-[32px] font-bold leading-snug tracking-tight tabular-nums sm:text-[40px] ${TONE_TEXT[tone]}`}
         >
           {data.headline}
         </div>

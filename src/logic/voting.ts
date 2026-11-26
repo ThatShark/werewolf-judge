@@ -24,15 +24,43 @@ function roundVoteScore(value: number): number {
 
 /**
  * 取得白天放逐投票具投票權的座位清單：
- * 所有存活玩家，自動排除「已翻牌免死之白痴」與「遭梅杜莎石化之玩家」。
+ * 所有存活玩家，自動排除「已翻牌免死之白痴」、「遭梅杜莎石化之玩家」，
+ * 以及「平票 PK 輪中進入 PK 的候選人（pkCandidates）」。
  */
-export function getEligibleExileVoters(seats: PlayerSeat[]): number[] {
+export function getEligibleExileVoters(
+  seats: PlayerSeat[],
+  pkCandidates: number[] = [],
+): number[] {
+  const pkSet = pkCandidates.length > 0 ? new Set(pkCandidates) : null;
   return seats
     .filter(
-      (seat) => seat.isAlive && !(seat.roleId === 'idiot' && seat.idiotRevealed) && !seat.petrified,
+      (seat) =>
+        seat.isAlive &&
+        !(seat.roleId === 'idiot' && seat.idiotRevealed) &&
+        !seat.petrified &&
+        (!pkSet || !pkSet.has(seat.seatNumber)),
     )
     .map((seat) => seat.seatNumber)
     .sort((a, b) => a - b);
+}
+
+/**
+ * 計算放逐平票 PK 發言順序：
+ * 嚴格依「當天白天發言順序的逆序」排列平票候選人；
+ * 若尚未記錄當天發言順序，則依平票座號降序作為安全後備。
+ */
+export function getExilePkSpeakingOrder(
+  daySpeakingOrder: number[] | undefined,
+  pkCandidates: number[],
+): number[] {
+  if (pkCandidates.length === 0) return [];
+  const pkSet = new Set(pkCandidates);
+  if (daySpeakingOrder && daySpeakingOrder.length > 0) {
+    const filtered = daySpeakingOrder.filter((seat) => pkSet.has(seat));
+    const missing = pkCandidates.filter((seat) => !filtered.includes(seat)).sort((a, b) => a - b);
+    return [...filtered, ...missing].reverse();
+  }
+  return [...pkCandidates].sort((a, b) => b - a);
 }
 
 /**
@@ -53,7 +81,7 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
     tricksterVoteSwap = null,
   } = input;
 
-  const eligibleVoters = new Set(getEligibleExileVoters(seats));
+  const eligibleVoters = new Set(getEligibleExileVoters(seats, pkCandidates));
   const aliveSeatSet = new Set(seats.filter((s) => s.isAlive).map((s) => s.seatNumber));
   const pkSet = pkCandidates.length > 0 ? new Set(pkCandidates) : null;
 
@@ -64,6 +92,9 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
   for (const [voterKey, targetSeat] of Object.entries(votes)) {
     const voterSeat = Number(voterKey);
     if (!eligibleVoters.has(voterSeat)) {
+      if (pkSet && pkSet.has(voterSeat)) {
+        throw new Error(`${voterSeat} 號為本輪平票 PK 候選人，PK 投票階段禁止投票`);
+      }
       const seatObj = seats.find((s) => s.seatNumber === voterSeat);
       if (seatObj?.roleId === 'idiot' && seatObj.idiotRevealed) {
         throw new Error(`${voterSeat} 號（白痴）已翻牌免死，失去放逐投票權`);
@@ -253,6 +284,23 @@ export function assignAllVotesToCandidate(
   const result: Record<number, number | null> = {};
   for (const voterSeat of eligibleVoters) {
     result[voterSeat] = voterSeat === candidateSeat ? null : candidateSeat;
+  }
+  return result;
+}
+
+/**
+ * 「全取消」快捷清除：一鍵清空目前投給 candidateSeat 的所有投票（轉為 null 棄票），
+ * 保留投給其他候選人的票。
+ */
+export function clearVotesForCandidate(
+  votes: Record<number, number | null>,
+  candidateSeat: number,
+): Record<number, number | null> {
+  const result: Record<number, number | null> = { ...votes };
+  for (const [voterKey, target] of Object.entries(result)) {
+    if (target === candidateSeat) {
+      result[Number(voterKey)] = null;
+    }
   }
   return result;
 }

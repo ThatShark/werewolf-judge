@@ -60,6 +60,7 @@ export const DEFAULT_RULE_OVERRIDES: RuleOverrides = {
   witchSelfSave: 'never',
   enableSheriff: true,
   badgeSwallowRule: 'double_explode',
+  sheriffVoteWeight: 1.5,
   victoryMode: 'slaughter_side',
   mechWolfForceLearnNight1: true,
   luckyFirstNightSkills: cloneLuckyFirstNightSkills(),
@@ -256,7 +257,8 @@ export function getHostModeDescriptor(hostMode: HostModeConfig): HostModeDescrip
   };
 }
 
-export const DEFAULT_SPEAK_DURATION_SEC = 90;
+export const DEFAULT_SPEAK_DURATION_SEC = 120;
+export const SHERIFF_SPEAK_DURATION_SEC = 150;
 
 export function createInitialMechWolfState(): MechWolfRuntimeState {
   return {

@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
 import {
   assignAllVotesToCandidate,
+  clearVotesForCandidate,
   getBatch5ExileExtraVotes,
   getEligibleExileVoters,
+  getExilePkSpeakingOrder,
   tallyExileVotes,
   toggleVoterForCandidate,
   votesByVoterToByCandidate,
 } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { InlineCountdownTimer } from '../common/InlineCountdownTimer';
 import { SlideDrawer } from '../common/SlideDrawer';
 import { formatSeatNum, splitSeatsIntoSymmetricColumns } from '../common/displayHelpers';
 
@@ -18,13 +21,19 @@ interface ExileVotePanelProps {
 
 export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const seats = useGameStore((s) => s.seats);
+  const ruleOverrides = useGameStore((s) => s.ruleOverrides);
   const sheriffState = useGameStore((s) => s.sheriffState);
+  const speakingQueue = useGameStore((s) => s.speakingQueue);
+  const speakingMeta = useGameStore((s) => s.speakingMeta);
   const exilePkCandidates = useGameStore((s) => s.exilePkCandidates);
+  const exilePkStage = useGameStore((s) => s.exilePkStage ?? 'none');
+  const exilePkSpeakingOrder = useGameStore((s) => s.exilePkSpeakingOrder ?? []);
   const voteInputMode = useGameStore((s) => s.voteInputMode);
   const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const undoStack = useGameStore((s) => s.undoStack);
 
   const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
+  const advanceExilePkToVoting = useGameStore((s) => s.advanceExilePkToVoting);
   const submitExileVotes = useGameStore((s) => s.submitExileVotes);
   const exilePlayer = useGameStore((s) => s.exilePlayer);
   const undoLastStep = useGameStore((s) => s.undoLastStep);
@@ -38,9 +47,15 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const [quickExileSeat, setQuickExileSeat] = useState<number | null>(null);
   const [confirmQuickExileOpen, setConfirmQuickExileOpen] = useState(false);
   const [lastTallyNotice, setLastTallyNotice] = useState<string | null>(null);
+  const [pkSpeakerIdx, setPkSpeakerIdx] = useState(0);
 
+  const sheriffVoteWeight = ruleOverrides.sheriffVoteWeight ?? 1.5;
+  const isPkRound = exilePkCandidates.length > 0;
   const aliveSeats = useMemo(() => seats.filter((s) => s.isAlive), [seats]);
-  const eligibleVoters = useMemo(() => getEligibleExileVoters(seats), [seats]);
+  const eligibleVoters = useMemo(
+    () => getEligibleExileVoters(seats, exilePkCandidates),
+    [seats, exilePkCandidates],
+  );
   const activeSheriffSeat =
     sheriffState.badgeStatus === 'active' ? sheriffState.sheriffSeat : null;
 
@@ -101,7 +116,10 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
       seats,
       votes: normalizedVotes,
       sheriffSeat: activeSheriffSeat,
+      sheriffVoteWeight,
       extraVotes: normalizedExtraVotes,
+      pkCandidates: exilePkCandidates,
+      roundIndex: isPkRound ? 2 : 1,
     });
     const entries = Object.entries(raw.record.totals);
     const maxVotes = entries.reduce((m, [, v]) => Math.max(m, v), 0);
@@ -113,7 +131,16 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
             .sort((a, b) => a - b)
         : [];
     return { ...raw, totals: raw.record.totals, topSeats, maxVotes };
-  }, [seats, normalizedVotes, activeSheriffSeat, normalizedExtraVotes, eligibleVoters.length]);
+  }, [
+    seats,
+    normalizedVotes,
+    activeSheriffSeat,
+    sheriffVoteWeight,
+    normalizedExtraVotes,
+    eligibleVoters.length,
+    exilePkCandidates,
+    isPkRound,
+  ]);
 
   const targetSeatObjects = useMemo(
     () => targetSeats.map((num) => seats.find((s) => s.seatNumber === num)).filter(Boolean) as typeof seats,
@@ -130,9 +157,13 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
 
   const handleConfirmBallot = () => {
     setConfirmBallotOpen(false);
-    const res = submitExileVotes(normalizedVotes, { extraVotes: normalizedExtraVotes });
+    const res = submitExileVotes(normalizedVotes, {
+      extraVotes: normalizedExtraVotes,
+      sheriffVoteWeight,
+    });
     setVotesDraft({});
     setExtraVotes({});
+    setPkSpeakerIdx(0);
     if (res.outcome === 'exile' && res.record.electedSeat !== null) {
       setLastTallyNotice(`放逐結果：${formatSeatNum(res.record.electedSeat)} 號出局`);
     } else if (res.outcome === 'tie') {
@@ -144,12 +175,16 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     }
   };
 
+  const pkSet = useMemo(() => new Set(exilePkCandidates), [exilePkCandidates]);
   const ineligibleAliveSeats = useMemo(
     () =>
       aliveSeats.filter(
-        (s) => (s.roleId === 'idiot' && s.idiotRevealed) || Boolean(s.petrified),
+        (s) =>
+          (s.roleId === 'idiot' && s.idiotRevealed) ||
+          Boolean(s.petrified) ||
+          (isPkRound && pkSet.has(s.seatNumber)),
       ),
-    [aliveSeats],
+    [aliveSeats, isPkRound, pkSet],
   );
   const abstainerCount = useMemo(
     () => eligibleVoters.filter((v) => normalizedVotes[v] === null).length,
@@ -161,6 +196,90 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     setSelectedCandidateTab(candidateSeat);
     setVotesDraft(assignAllVotesToCandidate(eligibleVoters, candidateSeat));
   };
+
+  const handleClearVotesForCandidate = (candidateSeat: number) => {
+    if (disabled) return;
+    setVotesDraft((prev) => clearVotesForCandidate(prev, candidateSeat));
+  };
+
+  // 平票 PK 發言階段（依當天白天發言逆序發言 → 完成後進入非 PK 重投）
+  if (isPkRound && exilePkStage === 'pk_speaking') {
+    const pkOrder =
+      exilePkSpeakingOrder.length > 0
+        ? exilePkSpeakingOrder
+        : getExilePkSpeakingOrder(
+            speakingMeta?.queue && speakingMeta.queue.length > 0
+              ? speakingMeta.queue
+              : speakingQueue,
+            exilePkCandidates,
+          );
+    const clampedIdx = Math.min(pkSpeakerIdx, pkOrder.length);
+    const currentPkSeat = clampedIdx < pkOrder.length ? pkOrder[clampedIdx] : null;
+
+    return (
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[14px] font-semibold text-sheriff">放逐平票 · PK 逆序發言</span>
+          <span className="text-[12px] text-secondary">依白天發言順序逆序</span>
+        </div>
+
+        <div className="space-y-2 rounded-lg border border-sheriff-border bg-surface p-3">
+          <div className="text-[12px] text-secondary">
+            平票候選人 PK 發言順序（發言結束後由非 PK 玩家重新投票）：
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {pkOrder.map((seatNum, idx) => {
+              const isCurrent = idx === clampedIdx;
+              const isDone = idx < clampedIdx;
+              return (
+                <span
+                  key={seatNum}
+                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-[14px] font-semibold tabular-nums ${
+                    isCurrent
+                      ? 'bg-sheriff text-inverse'
+                      : isDone
+                        ? 'border border-subtle bg-canvas text-muted opacity-55'
+                        : 'border border-sheriff-border bg-sheriff-tint text-sheriff'
+                  }`}
+                >
+                  <span className="text-[12px] opacity-80">{idx + 1}.</span>
+                  {formatSeatNum(seatNum)} 號
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        <InlineCountdownTimer
+          title="放逐 PK 發言倒數"
+          initialSeconds={60}
+          presets={[30, 60, 90]}
+          currentSpeakerLabel={
+            currentPkSeat !== null
+              ? `${formatSeatNum(currentPkSeat)} 號（第 ${clampedIdx + 1} / ${pkOrder.length} 位）`
+              : '全體 PK 候選人發言完畢'
+          }
+          canPrev={clampedIdx > 0}
+          canNext={clampedIdx < pkOrder.length}
+          onPrev={() => setPkSpeakerIdx((prev) => Math.max(0, prev - 1))}
+          onNext={() => setPkSpeakerIdx((prev) => Math.min(pkOrder.length, prev + 1))}
+        />
+
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            setVotesDraft({});
+            setPkSpeakerIdx(0);
+            advanceExilePkToVoting();
+          }}
+          className="min-h-12 w-full rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-elevated disabled:text-muted"
+        >
+          PK 發言完畢 → 進入 PK 重新投票
+        </button>
+      </section>
+    );
+  }
 
   const renderTargetRow = (seat: (typeof seats)[number]) => {
     const isActive = activeCandidateForTally === seat.seatNumber;
@@ -204,16 +323,6 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
             </span>
           </div>
         </button>
-        {voteInputMode === 'by_candidate' && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => handleAllVotesForCandidate(seat.seatNumber)}
-            className="min-h-8 shrink-0 rounded border border-subtle bg-canvas px-1.5 text-[12px] font-semibold text-secondary hover:border-sheriff-border hover:text-sheriff disabled:opacity-40"
-          >
-            全票
-          </button>
-        )}
       </div>
     );
   };
@@ -284,10 +393,15 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         <div className="text-[12px] text-muted tabular-nums">
           無投票權（已排除）：
           {ineligibleAliveSeats
-            .map(
-              (s) =>
-                `${formatSeatNum(s.seatNumber)}號(${s.petrified ? '石化' : '白痴已翻牌'})`,
-            )
+            .map((s) => {
+              const tag =
+                isPkRound && pkSet.has(s.seatNumber)
+                  ? 'PK候選人'
+                  : s.petrified
+                    ? '石化'
+                    : '白痴已翻牌';
+              return `${formatSeatNum(s.seatNumber)}號(${tag})`;
+            })
             .join('、')}
         </div>
       )}
@@ -298,22 +412,37 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
         </span>
         {activeSheriffSeat !== null && (
           <span className="font-semibold text-sheriff">
-            警長 {formatSeatNum(activeSheriffSeat)} 號（1.5 票）
+            警長 {formatSeatNum(activeSheriffSeat)} 號（{sheriffVoteWeight} 票）
           </span>
         )}
       </div>
 
       {voteInputMode === 'by_candidate' && activeCandidateForTally !== null && (
         <div className="space-y-1.5 border-t border-subtle pt-2">
-          <div className="flex items-center justify-between text-[12px] text-secondary tabular-nums">
-            <span>
-              點選投給{' '}
+          <div className="flex items-center justify-between gap-2 text-[12px] text-secondary tabular-nums">
+            <span className="truncate">
+              投給{' '}
               <strong className="text-sheriff">{formatSeatNum(activeCandidateForTally)} 號</strong>{' '}
-              的座位
+              （{(votersByCandidate[activeCandidateForTally] ?? []).length} 人）
             </span>
-            <span>
-              {(votersByCandidate[activeCandidateForTally] ?? []).length} 人
-            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                disabled={disabled || eligibleVoters.length === 0}
+                onClick={() => handleAllVotesForCandidate(activeCandidateForTally)}
+                className="min-h-9 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff hover:opacity-90 disabled:opacity-40"
+              >
+                全票
+              </button>
+              <button
+                type="button"
+                disabled={disabled || (votersByCandidate[activeCandidateForTally] ?? []).length === 0}
+                onClick={() => handleClearVotesForCandidate(activeCandidateForTally)}
+                className="min-h-9 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-semibold text-secondary hover:border-wolf-border hover:text-wolf disabled:opacity-40"
+              >
+                全取消
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
             {eligibleVoters.map((voterSeat) => {
@@ -556,7 +685,9 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
           tallyPreview && tallyPreview.topSeats.length === 1 && tallyPreview.maxVotes > 0
             ? `最高票 ${formatSeatNum(tallyPreview.topSeats[0])} 號（${tallyPreview.maxVotes} 票）將放逐出局。`
             : tallyPreview && tallyPreview.topSeats.length > 1 && tallyPreview.maxVotes > 0
-              ? `平票 ${tallyPreview.topSeats.map(formatSeatNum).join('、')} 號（${tallyPreview.maxVotes} 票），將進入 PK 或平安日。`
+              ? isPkRound
+                ? `PK 投票再次平票（${tallyPreview.topSeats.map(formatSeatNum).join('、')} 號，${tallyPreview.maxVotes} 票），將判定平安日（無人出局）。`
+                : `平票 ${tallyPreview.topSeats.map(formatSeatNum).join('、')} 號（${tallyPreview.maxVotes} 票），將進入平票 PK 逆序發言。`
               : '無人得票，將判定平安日。'
         }
         confirmLabel="確認結算"

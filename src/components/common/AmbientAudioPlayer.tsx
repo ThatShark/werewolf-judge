@@ -16,10 +16,13 @@ const PRESET_OPTIONS: Array<{
 ];
 
 export function AmbientAudioPlayer() {
+  const hostMode = useGameStore((s) => s.hostMode);
   const ambientAudio = useGameStore((s) => s.ambientAudio);
   const updateAmbientAudio = useGameStore((s) => s.updateAmbientAudio);
   const onlineJudgeSettings = useGameStore((s) => s.onlineJudgeSettings);
   const updateOnlineJudgeSettings = useGameStore((s) => s.updateOnlineJudgeSettings);
+  const isAmbientEnabled = ambientAudio.presetId !== 'none';
+  const isOnlineJudge = hostMode.judgeMode === 'online_judge';
 
   const [isPlaying, setIsPlaying] = useState(() => ambientAudioEngine.isPlaying());
   const [isTtsPreviewing, setIsTtsPreviewing] = useState(false);
@@ -103,17 +106,19 @@ export function AmbientAudioPlayer() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[14px] font-semibold text-primary">夜間白噪音</span>
-        <button
-          type="button"
-          onClick={handleTogglePreview}
-          className={`min-h-11 rounded-md border px-3 text-[12px] font-semibold transition ${
-            isPlaying
-              ? 'border-good-border bg-good-tint text-good'
-              : 'border-subtle bg-canvas text-primary hover:border-strong'
-          }`}
-        >
-          {isPlaying ? '停止試聽' : '試聽（3 秒）'}
-        </button>
+        {isAmbientEnabled && (
+          <button
+            type="button"
+            onClick={handleTogglePreview}
+            className={`min-h-11 rounded-md border px-3 text-[12px] font-semibold transition ${
+              isPlaying
+                ? 'border-good-border bg-good-tint text-good'
+                : 'border-subtle bg-canvas text-primary hover:border-strong'
+            }`}
+          >
+            {isPlaying ? '停止試聽' : '試聽（3 秒）'}
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-1.5">
@@ -163,42 +168,45 @@ export function AmbientAudioPlayer() {
         </div>
       )}
 
-      <div className="space-y-3 border-t border-subtle pt-3">
-        <div>
-          <div className="flex items-center justify-between text-[12px] font-medium text-secondary">
-            <label htmlFor="ambient-volume-slider">音量</label>
-            <span className="tabular-nums text-primary">{volumePercent}%</span>
+      {isAmbientEnabled && (
+        <div className="space-y-3 border-t border-subtle pt-3">
+          <div>
+            <div className="flex items-center justify-between text-[12px] font-medium text-secondary">
+              <label htmlFor="ambient-volume-slider">音量</label>
+              <span className="tabular-nums text-primary">{volumePercent}%</span>
+            </div>
+            <input
+              id="ambient-volume-slider"
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={volumePercent}
+              onChange={(e) => handleVolumeChange(Number(e.target.value) / 100)}
+              className="mt-2 h-1.5 w-full cursor-pointer accent-sheriff"
+            />
           </div>
-          <input
-            id="ambient-volume-slider"
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={volumePercent}
-            onChange={(e) => handleVolumeChange(Number(e.target.value) / 100)}
-            className="mt-2 h-1.5 w-full cursor-pointer accent-sheriff"
-          />
-        </div>
 
-        <button
-          type="button"
-          onClick={() => updateAmbientAudio({ autoPlayAtNight: !ambientAudio.autoPlayAtNight })}
-          className="flex min-h-12 w-full items-center justify-between rounded-md border border-subtle bg-canvas px-3 text-left transition hover:border-strong"
-        >
-          <span className="text-[14px] font-medium text-primary">夜晚自動播放</span>
-          <span
-            className={`text-[12px] font-semibold ${
-              ambientAudio.autoPlayAtNight ? 'text-good' : 'text-muted'
-            }`}
+          <button
+            type="button"
+            onClick={() => updateAmbientAudio({ autoPlayAtNight: !ambientAudio.autoPlayAtNight })}
+            className="flex min-h-12 w-full items-center justify-between rounded-md border border-subtle bg-canvas px-3 text-left transition hover:border-strong"
           >
-            {ambientAudio.autoPlayAtNight ? '開啟' : '關閉'}
-          </span>
-        </button>
-      </div>
+            <span className="text-[14px] font-medium text-primary">夜晚自動播放</span>
+            <span
+              className={`text-[12px] font-semibold ${
+                ambientAudio.autoPlayAtNight ? 'text-good' : 'text-muted'
+              }`}
+            >
+              {ambientAudio.autoPlayAtNight ? '開啟' : '關閉'}
+            </span>
+          </button>
+        </div>
+      )}
 
-      {/* 語音播報 TTS 試聽區 */}
-      <div className="space-y-2.5 border-t border-subtle pt-3">
+      {/* 語音播報 TTS 設定（限定線上法官模式） */}
+      {isOnlineJudge && (
+        <div className="space-y-2.5 border-t border-subtle pt-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[14px] font-semibold text-primary">語音播報（TTS）</span>
           <button
@@ -305,6 +313,7 @@ export function AmbientAudioPlayer() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

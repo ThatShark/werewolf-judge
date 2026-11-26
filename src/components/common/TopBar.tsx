@@ -1,3 +1,4 @@
+import { formatChineseDay, formatChineseNight } from '../../logic';
 import type { BoardDefinition, GamePhase } from '../../logic/types';
 import type { AppView } from '../../store/gameStore';
 import { PHASE_LABELS } from './displayHelpers';
@@ -40,20 +41,24 @@ export function TopBar({
   onOpenRestart,
 }: TopBarProps) {
   const isGame = activeView === 'game';
-  const showQA = isGame && Boolean(board);
-  const showHistory =
+  const isActiveMatch =
     isGame &&
     (phase === 'pass_and_reveal' ||
       phase === 'night' ||
       phase === 'day_announcement' ||
       phase === 'day_vote' ||
       phase === 'game_over');
+  const showQA = isGame && Boolean(board);
+  const showHistory = isActiveMatch;
+  const showRestart = isActiveMatch;
   const viewTitle =
     activeView !== 'game' && activeView !== 'home' ? VIEW_TITLES[activeView] : null;
 
   const roundCode =
     isGame && (phase === 'night' || phase === 'day_announcement' || phase === 'day_vote')
-      ? `${phase === 'night' ? 'N' : 'D'}${round}`
+      ? phase === 'night'
+        ? formatChineseNight(round)
+        : formatChineseDay(round)
       : null;
 
   return (
@@ -128,13 +133,15 @@ export function TopBar({
                 規則
               </button>
             )}
-            <button
-              type="button"
-              onClick={onOpenRestart}
-              className="min-h-11 rounded-md px-2 text-[12px] font-medium text-wolf transition hover:bg-wolf-tint"
-            >
-              重開
-            </button>
+            {showRestart && (
+              <button
+                type="button"
+                onClick={onOpenRestart}
+                className="min-h-11 rounded-md px-2 text-[12px] font-medium text-wolf transition hover:bg-wolf-tint"
+              >
+                重開
+              </button>
+            )}
           </div>
         )}
       </div>

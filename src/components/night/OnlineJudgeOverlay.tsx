@@ -1,5 +1,6 @@
 import type { MouseEvent } from 'react';
 import { ttsEngine } from '../../audio/ttsEngine';
+import { formatChineseNight } from '../../logic';
 
 export type OnlineJudgeOverlayMode = 'blackout' | 'buffer' | 'dawn';
 
@@ -68,7 +69,7 @@ export function OnlineJudgeOverlay({
       {/* 頂部語音控制列 */}
       <div className="mx-auto flex w-full max-w-lg items-center justify-between gap-2">
         <span className="text-[12px] font-semibold tabular-nums text-muted">
-          N{round} · 防窺模式
+          {formatChineseNight(round)} · 防窺模式
         </span>
 
         <div className="flex items-center gap-1.5">
@@ -136,8 +137,8 @@ export function OnlineJudgeOverlay({
 
         {mode === 'dawn' && (
           <>
-            <p className="text-[12px] font-semibold uppercase tracking-widest text-good">
-              N{round} COMPLETE
+            <p className="text-[12px] font-semibold tracking-widest text-good">
+              {formatChineseNight(round)}結束
             </p>
             <h2 className="mt-2 text-[24px] font-bold text-primary">天亮了，全員睜眼</h2>
             <button

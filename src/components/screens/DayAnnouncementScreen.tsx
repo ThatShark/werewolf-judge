@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
-import { checkCanShoot, isSheriffElectionActive, shouldNightDeathHaveLastWords } from '../../logic';
+import {
+  checkCanShoot,
+  formatChineseNight,
+  getExitResolutionStage,
+  isSheriffElectionActive,
+  shouldNightDeathHaveLastWords,
+} from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import { InlineCountdownTimer } from '../common/InlineCountdownTimer';
 import { PendingShooterCard } from '../common/PendingShooterCard';
@@ -75,7 +81,10 @@ export function DayAnnouncementScreen() {
     [nightHistory, round],
   );
 
-  const deaths = latestNight?.deaths ?? [];
+  const deaths = useMemo(
+    () => [...(latestNight?.deaths ?? [])].sort((a, b) => a.seat - b.seat),
+    [latestNight],
+  );
   const nightDeadSeats = useMemo(
     () => Array.from(new Set(deaths.map((d) => d.seat))).sort((a, b) => a - b),
     [deaths],
@@ -171,7 +180,7 @@ export function DayAnnouncementScreen() {
       />
 
       {/* 2. 白天四階段嚴格進度條 */}
-      <DayStageStepper currentStage={dayStage} showSheriffStage={showSheriffStage} />
+      <DayStageStepper currentStage={dayStage} showSheriffStage={showSheriffStage} round={round} />
 
       {/* 3. 單行狀態膠囊列（報死訊後顯示） */}
       {dayStage !== 'sheriff_election' && (
@@ -196,183 +205,197 @@ export function DayAnnouncementScreen() {
           <SheriffElectionPanel disabled={hasPendingShooters || hasPendingBadgeTransfer} />
         )}
 
-        {/* 階段二：公布昨晚死訊 ＋ 首夜遺言與死亡技能 */}
-        {dayStage === 'death_announcement' && (
-          <>
-            {/* 防法官唸錯鐵律：主公告大字只顯示「昨晚死亡：X 號、Y 號」或「昨晚平安夜」，預設隱藏死因 */}
-            <section className="rounded-lg border border-subtle bg-surface p-3.5">
-              {deaths.length === 0 ? (
-                <div className="border-l-2 border-good pl-3">
-                  <div className="text-[12px] font-semibold text-good">D{round} 昨晚死訊</div>
-                  <h1 className="mt-0.5 text-[18px] font-semibold leading-6 text-primary">
-                    昨晚平安夜
-                  </h1>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  <div className="border-l-2 border-wolf pl-3">
-                    <div className="text-[12px] font-semibold text-wolf">D{round} 昨晚死訊</div>
-                    <h1 className="mt-0.5 text-[18px] font-semibold leading-6 tabular-nums text-primary">
-                      昨晚死亡：{deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')}
+        {/* 階段二：公布昨晚死訊 ＋ 出局技能／警徽移交 ＋ 首夜遺言 */}
+        {dayStage === 'death_announcement' && (() => {
+          const exitStage = getExitResolutionStage({
+            pendingShootersCount: pendingShooters.length,
+            hasPendingBadgeTransfer,
+            hasLastWords: deaths.length > 0 && shouldNightDeathHaveLastWords(round),
+          });
+          return (
+            <>
+              {/* 防法官唸錯鐵律：主公告大字只顯示「昨晚死亡：X 號、Y 號」或「昨晚平安夜」，預設隱藏死因 */}
+              <section className="rounded-lg border border-subtle bg-surface p-3.5">
+                {deaths.length === 0 ? (
+                  <div className="border-l-2 border-good pl-3">
+                    <div className="text-[12px] font-semibold text-good">昨晚死訊</div>
+                    <h1 className="mt-0.5 text-[18px] font-semibold leading-6 text-primary">
+                      昨晚平安夜
                     </h1>
                   </div>
-
-                  {shouldNightDeathHaveLastWords(round) ? (
-                    <div className="space-y-2">
-                      <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">
-                        首夜遺言：請 {deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')} 發表遺言
-                      </div>
-                      <InlineCountdownTimer title="首夜死者遺言倒數" />
+                ) : (
+                  <div className="space-y-2.5">
+                    <div className="border-l-2 border-wolf pl-3">
+                      <div className="text-[12px] font-semibold text-wolf">昨晚死訊</div>
+                      <h1 className="mt-0.5 text-[18px] font-semibold leading-6 tabular-nums text-primary">
+                        昨晚死亡：{deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')}
+                      </h1>
                     </div>
-                  ) : (
-                    <div className="border-l-2 border-subtle bg-canvas px-3 py-1.5 text-[12px] font-medium text-secondary">
-                      第 {round} 晚夜死無遺言（處理完警徽／死亡技能後直接進入白天發言）
-                    </div>
-                  )}
 
-                  {!isOnlineJudge && (
-                    <div className="divide-y divide-subtle border-t border-subtle pt-1">
-                      {deaths.map((death) => {
-                        const key = `${death.seat}-${death.reason}`;
-                        const seat = seats.find((s) => s.seatNumber === death.seat);
-                        const role = getRoleById(seat?.roleId ?? null);
-                        const isRevealed = Boolean(revealedDeathKeys[key]);
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => toggleRevealDeath(key)}
-                            className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left"
-                          >
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="w-6 shrink-0 text-[14px] font-semibold tabular-nums text-wolf">
-                                {formatSeatNum(death.seat)}
-                              </span>
-                              <span className="truncate text-[14px] text-primary">
-                                {seat?.nickname.trim() || `${death.seat}號`}
-                              </span>
-                              {isRevealed && role && (
-                                <span
-                                  className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[12px] font-medium ${getRoleBadgeClasses(role.id)}`}
-                                >
-                                  {role.name}
+                    {!isOnlineJudge && (
+                      <div className="divide-y divide-subtle border-t border-subtle pt-1">
+                        {deaths.map((death) => {
+                          const key = `${death.seat}-${death.reason}`;
+                          const seat = seats.find((s) => s.seatNumber === death.seat);
+                          const role = getRoleById(seat?.roleId ?? null);
+                          const isRevealed = Boolean(revealedDeathKeys[key]);
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => toggleRevealDeath(key)}
+                              className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left"
+                            >
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="w-6 shrink-0 text-[14px] font-semibold tabular-nums text-wolf">
+                                  {formatSeatNum(death.seat)}
                                 </span>
-                              )}
-                            </div>
-                            <div className="shrink-0 text-[12px] text-muted">
-                              {isRevealed ? (
-                                <span className="text-wolf">{formatDeathReason(death.reason)}</span>
-                              ) : (
-                                <span title="點擊檢視法官視角死因">ⓘ 死因</span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                                <span className="truncate text-[14px] text-primary">
+                                  {seat?.nickname.trim() || `${death.seat}號`}
+                                </span>
+                                {isRevealed && role && (
+                                  <span
+                                    className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[12px] font-medium ${getRoleBadgeClasses(role.id)}`}
+                                  >
+                                    {role.name}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="shrink-0 text-[12px] text-muted">
+                                {isRevealed ? (
+                                  <span className="text-wolf">{formatDeathReason(death.reason)}</span>
+                                ) : (
+                                  <span title="點擊檢視法官視角死因">ⓘ 死因</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {/* 公共宣告資訊（熊咆哮／月靈狼／高級平民／猩紅／河豚） */}
+              {bearRoar && (
+                <div
+                  className={`border-l-2 bg-surface px-3 py-2 text-[14px] font-semibold ${
+                    bearRoar.roared ? 'border-sheriff text-sheriff' : 'border-good text-good'
+                  }`}
+                >
+                  {bearRoar.roared ? '昨晚熊咆哮了' : '昨晚熊沒有咆哮'}
                 </div>
               )}
-            </section>
 
-            {/* 公共宣告資訊（熊咆哮／月靈狼／高級平民／猩紅／河豚） */}
-            {bearRoar && (
-              <div
-                className={`border-l-2 bg-surface px-3 py-2 text-[14px] font-semibold ${
-                  bearRoar.roared ? 'border-sheriff text-sheriff' : 'border-good text-good'
-                }`}
-              >
-                {bearRoar.roared ? '昨晚熊咆哮了' : '昨晚熊沒有咆哮'}
-              </div>
-            )}
+              {lastMoonSpiritHowl && lastMoonSpiritHowl.moonSpiritSeat !== null && (
+                <div className="border-l-2 border-third bg-surface px-3 py-2 text-[14px] font-semibold text-third">
+                  {lastMoonSpiritHowl.howled ? '昨夜月靈狼嗥叫了' : '昨夜月靈狼沒有嗥叫'}
+                </div>
+              )}
 
-            {lastMoonSpiritHowl && lastMoonSpiritHowl.moonSpiritSeat !== null && (
-              <div className="border-l-2 border-third bg-surface px-3 py-2 text-[14px] font-semibold text-third">
-                {lastMoonSpiritHowl.howled ? '昨夜月靈狼嗥叫了' : '昨夜月靈狼沒有嗥叫'}
-              </div>
-            )}
+              {lastSeniorVillagerReveal && lastSeniorVillagerReveal.seatNumber !== null && round === 1 && (
+                <div className="border-l-2 border-good bg-surface px-3 py-2 text-[14px] font-semibold text-primary tabular-nums">
+                  {lastSeniorVillagerReveal.revealed
+                    ? `公開宣布：${formatSeatNum(lastSeniorVillagerReveal.seatNumber)} 號為高級平民`
+                    : '本日不公布高級平民'}
+                </div>
+              )}
 
-            {lastSeniorVillagerReveal && lastSeniorVillagerReveal.seatNumber !== null && round === 1 && (
-              <div className="border-l-2 border-good bg-surface px-3 py-2 text-[14px] font-semibold text-primary tabular-nums">
-                {lastSeniorVillagerReveal.revealed
-                  ? `公開宣布：${formatSeatNum(lastSeniorVillagerReveal.seatNumber)} 號為高級平民`
-                  : '本日不公布高級平民'}
-              </div>
-            )}
+              {combatState && combatState.scarletAttachedSeats.length > 0 && (
+                <div className="border-l-2 border-wolf bg-surface px-3 py-2 text-[12px] text-wolf tabular-nums">
+                  猩紅附著：{combatState.scarletAttachedSeats.map(formatSeatNum).join('、')} 號
+                </div>
+              )}
 
-            {combatState && combatState.scarletAttachedSeats.length > 0 && (
-              <div className="border-l-2 border-wolf bg-surface px-3 py-2 text-[12px] text-wolf tabular-nums">
-                猩紅附著：{combatState.scarletAttachedSeats.map(formatSeatNum).join('、')} 號
-              </div>
-            )}
+              {combatState?.pufferfishWolfKilledToday && (
+                <div className="border-l-2 border-sheriff bg-surface px-3 py-2 text-[12px] text-sheriff">
+                  河豚翻牌：今日狼美人魅惑失效
+                </div>
+              )}
 
-            {combatState?.pufferfishWolfKilledToday && (
-              <div className="border-l-2 border-sheriff bg-surface px-3 py-2 text-[12px] text-sheriff">
-                河豚翻牌：今日狼美人魅惑失效
-              </div>
-            )}
+              {/* 延遲技能整合入口 */}
+              {delayedSkillCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDelayedSkillsDrawerOpen(true)}
+                  className="flex min-h-12 w-full items-center justify-between rounded-md border border-sheriff-border bg-sheriff-tint px-3.5 text-[14px] font-semibold text-sheriff"
+                >
+                  <span>⚡ 延遲死亡技能（{delayedSkillCount} 項可用）</span>
+                  <span className="text-[12px]">展開 →</span>
+                </button>
+              )}
 
-            {/* 延遲技能整合入口 */}
-            {delayedSkillCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setDelayedSkillsDrawerOpen(true)}
-                className="flex min-h-12 w-full items-center justify-between rounded-md border border-sheriff-border bg-sheriff-tint px-3.5 text-[14px] font-semibold text-sheriff"
-              >
-                <span>⚡ 延遲死亡技能（{delayedSkillCount} 項可用）</span>
-                <span className="text-[12px]">展開 →</span>
-              </button>
-            )}
+              {/* 結算順序 1：先處理警徽交接／撕毀與出局技能（開槍／連鎖開槍） */}
+              {sheriffState.pendingBadgeTransferFrom !== null && (
+                <SheriffBadgeTransferCard
+                  fromSeat={sheriffState.pendingBadgeTransferFrom}
+                  seats={seats}
+                  onTransfer={transferSheriffBadge}
+                  onDestroy={destroySheriffBadge}
+                />
+              )}
 
-            {/* 警長昨夜出局之警徽交接／撕毀 */}
-            {sheriffState.pendingBadgeTransferFrom !== null && (
-              <SheriffBadgeTransferCard
-                fromSeat={sheriffState.pendingBadgeTransferFrom}
-                seats={seats}
-                onTransfer={transferSheriffBadge}
-                onDestroy={destroySheriffBadge}
-              />
-            )}
+              {/* 禁開槍提示（法官視角） */}
+              {disabledShootInfos.length > 0 && (
+                <div className="space-y-1.5">
+                  {disabledShootInfos.map((info) => {
+                    const roleLabel =
+                      info.roleId === 'wolf_king'
+                        ? '狼王'
+                        : info.roleId === 'awakened_hunter'
+                          ? '覺醒獵人'
+                          : info.roleId === 'lucky_gun'
+                            ? '幸運兒（槍）'
+                            : '獵人';
+                    return (
+                      <div
+                        key={info.seatNumber}
+                        className="border-l-2 border-wolf bg-surface px-3 py-2 text-[12px] text-secondary tabular-nums"
+                      >
+                        <span className="font-semibold text-wolf">
+                          {formatSeatNum(info.seatNumber)} 號（{roleLabel}）不可開槍
+                        </span>
+                        <span> · {info.reason}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-            {/* 禁開槍提示（法官視角） */}
-            {disabledShootInfos.length > 0 && (
-              <div className="space-y-1.5">
-                {disabledShootInfos.map((info) => {
-                  const roleLabel =
-                    info.roleId === 'wolf_king'
-                      ? '狼王'
-                      : info.roleId === 'awakened_hunter'
-                        ? '覺醒獵人'
-                        : info.roleId === 'lucky_gun'
-                          ? '幸運兒（槍）'
-                          : '獵人';
-                  return (
-                    <div
-                      key={info.seatNumber}
-                      className="border-l-2 border-wolf bg-surface px-3 py-2 text-[12px] text-secondary tabular-nums"
-                    >
-                      <span className="font-semibold text-wolf">
-                        {formatSeatNum(info.seatNumber)} 號（{roleLabel}）不可開槍
-                      </span>
-                      <span> · {info.reason}</span>
+              {/* 可開槍結算（支援連鎖開槍） */}
+              {pendingShooters.map((shooter) => (
+                <PendingShooterCard
+                  key={shooter.seatNumber}
+                  shooter={shooter}
+                  seats={seats}
+                  onShoot={triggerShoot}
+                  onSkip={skipShoot}
+                />
+              ))}
+
+              {/* 結算順序 2：技能與警徽全數結算完畢後，才進入發表遺言（首夜死者有遺言；第二晚起無遺言） */}
+              {deaths.length > 0 && (
+                exitStage === 'skills_and_badge' ? (
+                  <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-2 text-[12px] font-semibold text-sheriff">
+                    請先完成上方出局技能與警徽移交／撕毀，結算完畢後再進入發表遺言。
+                  </div>
+                ) : exitStage === 'last_words' ? (
+                  <div className="space-y-2">
+                    <div className="border-l-2 border-sheriff bg-sheriff-tint px-3 py-1.5 text-[12px] font-semibold text-sheriff tabular-nums">
+                      首夜遺言：請 {deaths.map((d) => `${formatSeatNum(d.seat)} 號`).join('、')} 發表遺言
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 可開槍結算（支援連鎖開槍） */}
-            {pendingShooters.map((shooter) => (
-              <PendingShooterCard
-                key={shooter.seatNumber}
-                shooter={shooter}
-                seats={seats}
-                onShoot={triggerShoot}
-                onSkip={skipShoot}
-              />
-            ))}
-          </>
-        )}
+                    <InlineCountdownTimer title="首夜死者遺言倒數" />
+                  </div>
+                ) : (
+                  <div className="border-l-2 border-subtle bg-canvas px-3 py-1.5 text-[12px] font-medium text-secondary">
+                    {formatChineseNight(round)}夜死無遺言（可直接進入白天發言）
+                  </div>
+                )
+              )}
+            </>
+          );
+        })()}
 
         {/* 階段三：白天發言階段 */}
         {dayStage === 'speaking' && <SpeakingTimerPanel />}

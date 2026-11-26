@@ -3,19 +3,23 @@ import type { DayStage } from '../../logic/types';
 interface DayStageStepperProps {
   currentStage: DayStage;
   showSheriffStage: boolean;
+  round?: number;
 }
 
-const ALL_STAGES: Array<{ id: DayStage; label: string }> = [
-  { id: 'sheriff_election', label: '警長競選' },
-  { id: 'death_announcement', label: '死訊遺言' },
-  { id: 'speaking', label: '白天發言' },
-  { id: 'exile_vote', label: '放逐投票' },
-];
-
-export function DayStageStepper({ currentStage, showSheriffStage }: DayStageStepperProps) {
+export function DayStageStepper({
+  currentStage,
+  showSheriffStage,
+  round = 1,
+}: DayStageStepperProps) {
+  const allStages: Array<{ id: DayStage; label: string }> = [
+    { id: 'sheriff_election', label: '警長競選' },
+    { id: 'death_announcement', label: round <= 1 ? '死訊遺言' : '公布昨晚結果' },
+    { id: 'speaking', label: '白天發言' },
+    { id: 'exile_vote', label: '放逐投票' },
+  ];
   const visibleStages = showSheriffStage
-    ? ALL_STAGES
-    : ALL_STAGES.filter((s) => s.id !== 'sheriff_election');
+    ? allStages
+    : allStages.filter((s) => s.id !== 'sheriff_election');
   const currentIdx = visibleStages.findIndex((s) => s.id === currentStage);
 
   return (

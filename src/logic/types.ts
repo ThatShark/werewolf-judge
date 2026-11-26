@@ -182,6 +182,8 @@ export interface RoleSlot {
 export type WitchSelfSaveRule = 'first_night_only' | 'never' | 'always';
 /** [V2.0 擴充] 吞警徽規則：單爆吞警徽 / 雙爆吞警徽 */
 export type BadgeSwallowRule = 'single_explode' | 'double_explode';
+/** 警長投票加權：多0.5票（總計 1.5 票） / 多1票（總計 2 票） */
+export type SheriffVoteWeight = 1.5 | 2;
 
 /** 幸運兒首夜可用技能細部設定 */
 export interface LuckyFirstNightSkillsConfig {
@@ -209,6 +211,8 @@ export interface RuleOverrides {
   enableSheriff: boolean;
   /** 3. 吞警徽規則：雙爆吞警徽（預設） / 單爆吞警徽 */
   badgeSwallowRule: BadgeSwallowRule;
+  /** 3b. 警長投票加權：1.5（多0.5票，預設） / 2（多1票） */
+  sheriffVoteWeight?: SheriffVoteWeight;
   /** 4. 勝利條件：屠邊（預設）或屠城 */
   victoryMode: 'slaughter_side' | 'slaughter_all';
   /** 5. 機械狼第一晚是否強制學習一名玩家（預設 true） */
@@ -1208,6 +1212,10 @@ export interface GameState {
   /** 警長競選、警徽與白天放逐投票狀態 */
   sheriffState: SheriffState;
   exilePkCandidates: number[];
+  /** 放逐投票平票 PK 子階段：none（無 PK）/ pk_speaking（逆序 PK 發言）/ pk_voting（非 PK 重投） */
+  exilePkStage?: 'none' | 'pk_speaking' | 'pk_voting';
+  /** 放逐投票平票 PK 發言順序（依當天白天發言順序逆序） */
+  exilePkSpeakingOrder?: number[];
   /** 首夜有警長競選時，暫存昨晚結算結果，待「公布死訊」階段才正式套用死亡與觸發警徽交接 */
   pendingNightAnnouncement?: PendingNightAnnouncement | null;
   /** 本日白天放逐結果是否已結算（放逐或平安日後鎖定禁止二輪放逐，僅定序王子重投可解除） */

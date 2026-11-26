@@ -161,9 +161,9 @@ export function QADrawer({
               <span className="font-semibold text-sheriff">
                 {!ruleOverrides.enableSheriff
                   ? '沒有'
-                  : isDoubleExplode
-                    ? '雙爆吞徽'
-                    : '單爆吞徽'}
+                  : `${isDoubleExplode ? '雙爆吞徽' : '單爆吞徽'} · ${
+                      (ruleOverrides.sheriffVoteWeight ?? 1.5) === 2 ? '2票' : '1.5票'
+                    }`}
               </span>
             </span>
             {hasWitch && (
@@ -249,28 +249,24 @@ export function QADrawer({
               </section>
             )}
 
-            {/* 5. 常見 Q&A（移至角色規則下方） */}
-            {(otherQAs.length > 0 || prioritizedQAs.length === 0) && (
+            {/* 5. 常見 Q&A（若無任何 Q&A 資料則自動隱藏） */}
+            {board.qaList.length > 0 && otherQAs.length > 0 && (
               <section className="space-y-2 border-t border-subtle pt-3">
                 <h3 className="text-[12px] font-semibold uppercase tracking-wider text-secondary">
                   常見 Q&amp;A
                 </h3>
-                {otherQAs.length === 0 ? (
-                  <p className="text-[12px] text-muted">此板子無額外 Q&amp;A。</p>
-                ) : (
-                  <div className="divide-y divide-subtle">
-                    {otherQAs.map((qa) => (
-                      <div key={qa.id} className="py-2.5">
-                        <h4 className="whitespace-pre-line text-[14px] font-semibold text-primary">
-                          Q：{qa.question}
-                        </h4>
-                        <p className="mt-1 whitespace-pre-line text-[12px] leading-5 text-secondary">
-                          A：{qa.answer}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="divide-y divide-subtle">
+                  {otherQAs.map((qa) => (
+                    <div key={qa.id} className="py-2.5">
+                      <h4 className="whitespace-pre-line text-[14px] font-semibold text-primary">
+                        Q：{qa.question}
+                      </h4>
+                      <p className="mt-1 whitespace-pre-line text-[12px] leading-5 text-secondary">
+                        A：{qa.answer}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
           </>

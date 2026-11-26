@@ -380,28 +380,61 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
               </div>
 
               {/* 永遠顯示 2：吞警徽規則 */}
-              <div className="space-y-1.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">吞警徽規則</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {BADGE_SWALLOW_OPTIONS.map((opt) => {
-                    const active = ruleOverrides.badgeSwallowRule === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => updateRuleOverrides({ badgeSwallowRule: opt.value })}
-                        className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
-                          active
-                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
+              {ruleOverrides.enableSheriff && (
+                <div className="space-y-1.5 py-2.5">
+                  <div className="text-[14px] font-medium text-primary">吞警徽規則</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {BADGE_SWALLOW_OPTIONS.map((opt) => {
+                      const active = ruleOverrides.badgeSwallowRule === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => updateRuleOverrides({ badgeSwallowRule: opt.value })}
+                          className={`min-h-11 rounded-md px-3 text-[12px] font-semibold transition ${
+                            active
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* 警長投票加權（多0.5票 / 多1票） */}
+              {ruleOverrides.enableSheriff && (
+                <div className="space-y-1.5 py-2.5">
+                  <div className="text-[14px] font-medium text-primary">警長投票加權</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(
+                      [
+                        { value: 1.5, label: '多0.5票（1.5票）' },
+                        { value: 2, label: '多1票（2票）' },
+                      ] as const
+                    ).map((opt) => {
+                      const active = (ruleOverrides.sheriffVoteWeight ?? 1.5) === opt.value;
+                      return (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() => updateRuleOverrides({ sheriffVoteWeight: opt.value })}
+                          className={`min-h-11 rounded-md px-2 text-[12px] font-semibold tabular-nums transition ${
+                            active
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* 永遠顯示 3：勝利條件 */}
               <div className="space-y-1.5 py-2.5">
@@ -433,35 +466,37 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
               </div>
 
               {/* 永遠顯示 4：警長安排發言規則 */}
-              <div className="space-y-1.5 py-2.5">
-                <div className="text-[14px] font-medium text-primary">警長安排發言規則</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(
-                    [
-                      { value: false, label: '警左／警右' },
-                      { value: true, label: '單死時死左／死右' },
-                    ] as const
-                  ).map((opt) => {
-                    const active = Boolean(ruleOverrides.sheriffUseDeadSideOnDeath) === opt.value;
-                    return (
-                      <button
-                        key={String(opt.value)}
-                        type="button"
-                        onClick={() =>
-                          updateRuleOverrides({ sheriffUseDeadSideOnDeath: opt.value })
-                        }
-                        className={`min-h-11 rounded-md px-2 text-[12px] font-semibold transition ${
-                          active
-                            ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                            : 'border border-subtle bg-canvas text-secondary hover:border-strong'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
+              {ruleOverrides.enableSheriff && (
+                <div className="space-y-1.5 py-2.5">
+                  <div className="text-[14px] font-medium text-primary">警長安排發言規則</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(
+                      [
+                        { value: false, label: '無論如何警左／警右' },
+                        { value: true, label: '有死訊時死左／死右' },
+                      ] as const
+                    ).map((opt) => {
+                      const active = Boolean(ruleOverrides.sheriffUseDeadSideOnDeath) === opt.value;
+                      return (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() =>
+                            updateRuleOverrides({ sheriffUseDeadSideOnDeath: opt.value })
+                          }
+                          className={`min-h-11 rounded-md px-2 text-[12px] font-semibold transition ${
+                            active
+                              ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                              : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 條件顯示：僅含女巫／覺醒女巫時顯示 */}
               {hasWitchRole && (

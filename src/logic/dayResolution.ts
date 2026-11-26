@@ -1223,3 +1223,22 @@ export function resolveOldRascalDelayedDeath(
     victory: checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions),
   };
 }
+
+export type ExitResolutionStage = 'skills_and_badge' | 'last_words' | 'done';
+
+/**
+ * 出局結算鐵律：「先結算技能／移交警徽，再發表遺言」：
+ * - 若仍有待開槍／連鎖開槍技能或警徽移交／撕毀尚未完成，必須鎖定在 'skills_and_badge' 階段。
+ * - 所有出局技能與警徽結算完畢後，若有遺言資格（首夜死者或白天放逐者），才進入 'last_words' 階段。
+ * - 第二晚起夜死玩家無遺言，技能結算完畢即為 'done'。
+ */
+export function getExitResolutionStage(input: {
+  pendingShootersCount: number;
+  hasPendingBadgeTransfer: boolean;
+  hasLastWords: boolean;
+}): ExitResolutionStage {
+  if (input.pendingShootersCount > 0 || input.hasPendingBadgeTransfer) {
+    return 'skills_and_badge';
+  }
+  return input.hasLastWords ? 'last_words' : 'done';
+}

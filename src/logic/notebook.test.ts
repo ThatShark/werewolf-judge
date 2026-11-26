@@ -21,8 +21,8 @@ describe('玩家雙模式筆記本純邏輯（notebook.ts）', () => {
     expect(withSheriff.map((s) => s.key)).toEqual(['pre_game', 'sheriff', 'day_1', 'day_2']);
     expect(withSheriff[0].label).toBe('抿牌階段');
     expect(withSheriff[1].label).toBe('警上發言');
-    expect(withSheriff[2].label).toBe('第 1 天白天');
-    expect(withSheriff[3].label).toBe('第 2 天白天');
+    expect(withSheriff[2].label).toBe('第一天白天');
+    expect(withSheriff[3].label).toBe('第二天白天');
 
     const withoutSheriff = buildNotebookStages({ round: 1, enableSheriff: false });
     expect(withoutSheriff.map((s) => s.key)).toEqual(['pre_game', 'day_1']);
@@ -91,7 +91,7 @@ describe('玩家雙模式筆記本純邏輯（notebook.ts）', () => {
     expect(exported).toContain('- 1 號（阿明）：抿牌像狼');
     expect(exported).toContain('[警上發言]');
     expect(exported).toContain('- 2 號：起跳發 3 號金水');
-    expect(exported).toContain('[第 1 天白天]');
+    expect(exported).toContain('[第一天白天]');
     expect(exported).toContain('- 3 號（小美）：認女巫救 2 號');
   });
 });

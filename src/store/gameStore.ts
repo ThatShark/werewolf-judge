@@ -7,6 +7,7 @@ import {
   DEFAULT_ONLINE_JUDGE_SETTINGS,
   DEFAULT_RULE_OVERRIDES,
   DEFAULT_SPEAK_DURATION_SEC,
+  SHERIFF_SPEAK_DURATION_SEC,
   advanceSheriffPkToVoting as advanceSheriffPkToVotingLogic,
   advanceSheriffToVoting as advanceSheriffToVotingLogic,
   applyPandoraGift,
@@ -40,6 +41,7 @@ import {
   finalizePhysicalDealVillagers,
   generateSpeakingOrder as generateSpeakingOrderLogic,
   getDefaultRuleOverridesForBoard,
+  getExilePkSpeakingOrder,
   getNightSteps,
   getSheriffPkSpeakingOrder,
   handleSheriffElectionExplode,
@@ -172,6 +174,8 @@ export type UndoSnapshotData = Pick<
   | 'remainingSeconds'
   | 'sheriffState'
   | 'exilePkCandidates'
+  | 'exilePkStage'
+  | 'exilePkSpeakingOrder'
   | 'pendingNightAnnouncement'
   | 'exileResolvedToday'
   | 'nightHistory'
@@ -236,6 +240,7 @@ export interface GameStore extends GameState {
   setDefaultSpeakDuration: (seconds: number) => void;
   generateSpeakingOrder: (options: SpeakingOrderOptions) => SpeakingOrderResult;
   nextSpeaker: () => void;
+  prevSpeaker: () => void;
   adjustSpeakerTime: (deltaSeconds: number) => void;
   tickSpeakerTimer: () => void;
   resetSpeakingOrder: () => void;
@@ -258,6 +263,7 @@ export interface GameStore extends GameState {
 
   /** 白天放逐投票明細與突發技能 */
   setVoteInputMode: (mode: VoteInputMode) => void;
+  advanceExilePkToVoting: () => void;
   submitExileVotes: (
     votes: Record<number, number | null>,
     options?: SubmitExileVotesOptions,
@@ -439,6 +445,8 @@ function createInitialGameState(): GameState & {
     remainingSeconds: DEFAULT_SPEAK_DURATION_SEC,
     sheriffState: createInitialSheriffState(),
     exilePkCandidates: [],
+    exilePkStage: 'none',
+    exilePkSpeakingOrder: [],
     pendingNightAnnouncement: null,
     exileResolvedToday: null,
     voteInputMode: 'by_voter',
@@ -499,6 +507,8 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     remainingSeconds: state.remainingSeconds,
     sheriffState: state.sheriffState,
     exilePkCandidates: state.exilePkCandidates,
+    exilePkStage: state.exilePkStage ?? 'none',
+    exilePkSpeakingOrder: state.exilePkSpeakingOrder ?? [],
     pendingNightAnnouncement: state.pendingNightAnnouncement ?? null,
     exileResolvedToday: state.exileResolvedToday ?? null,
     nightHistory: state.nightHistory,
@@ -875,6 +885,8 @@ export const useGameStore = create<GameStore>()(
           remainingSeconds: defaultSpeakDurationSec,
           sheriffState: createInitialSheriffState(),
           exilePkCandidates: [],
+          exilePkStage: 'none' as const,
+          exilePkSpeakingOrder: [],
           pendingNightAnnouncement: null,
           exileResolvedToday: null,
           nightHistory: [],
@@ -1171,6 +1183,8 @@ export const useGameStore = create<GameStore>()(
           speakingMeta: null,
           remainingSeconds: state.defaultSpeakDurationSec,
           exilePkCandidates: [],
+          exilePkStage: 'none',
+          exilePkSpeakingOrder: [],
           exileResolvedToday: null,
           pendingNightAnnouncement: deferNightDeaths
             ? {
@@ -1232,11 +1246,20 @@ export const useGameStore = create<GameStore>()(
           .map((s) => `${s} 號`)
           .join(' → ')}`;
 
+        const firstSpeakerSeat = result.queue[0] ?? null;
+        const isFirstSpeakerSheriff =
+          firstSpeakerSeat !== null &&
+          state.sheriffState.badgeStatus === 'active' &&
+          state.sheriffState.sheriffSeat === firstSpeakerSeat;
+        const firstDuration = isFirstSpeakerSheriff
+          ? SHERIFF_SPEAK_DURATION_SEC
+          : state.defaultSpeakDurationSec;
+
         set({
           speakingQueue: result.queue,
           currentSpeakerIndex: 0,
           speakingMeta: result,
-          remainingSeconds: state.defaultSpeakDurationSec,
+          remainingSeconds: firstDuration,
           dayHistory:
             result.queue.length > 0
               ? appendDayEvent(state.dayHistory, state.round, summary)
@@ -1250,9 +1273,34 @@ export const useGameStore = create<GameStore>()(
         set((state) => {
           if (state.speakingQueue.length === 0) return state;
           const nextIndex = Math.min(state.currentSpeakerIndex + 1, state.speakingQueue.length);
+          const nextSeat = nextIndex < state.speakingQueue.length ? state.speakingQueue[nextIndex] : null;
+          const isNextSheriff =
+            nextSeat !== null &&
+            state.sheriffState.badgeStatus === 'active' &&
+            state.sheriffState.sheriffSeat === nextSeat;
           return {
             currentSpeakerIndex: nextIndex,
-            remainingSeconds: state.defaultSpeakDurationSec,
+            remainingSeconds: isNextSheriff
+              ? SHERIFF_SPEAK_DURATION_SEC
+              : state.defaultSpeakDurationSec,
+          };
+        });
+      },
+
+      prevSpeaker: () => {
+        set((state) => {
+          if (state.speakingQueue.length === 0) return state;
+          const prevIndex = Math.max(0, state.currentSpeakerIndex - 1);
+          const prevSeat = prevIndex < state.speakingQueue.length ? state.speakingQueue[prevIndex] : null;
+          const isPrevSheriff =
+            prevSeat !== null &&
+            state.sheriffState.badgeStatus === 'active' &&
+            state.sheriffState.sheriffSeat === prevSeat;
+          return {
+            currentSpeakerIndex: prevIndex,
+            remainingSeconds: isPrevSheriff
+              ? SHERIFF_SPEAK_DURATION_SEC
+              : state.defaultSpeakDurationSec,
           };
         });
       },
@@ -1671,6 +1719,16 @@ export const useGameStore = create<GameStore>()(
         set({ voteInputMode: mode });
       },
 
+      advanceExilePkToVoting: () => {
+        set((state) => {
+          if (state.exilePkStage !== 'pk_speaking') return state;
+          return {
+            exilePkStage: 'pk_voting' as const,
+            undoStack: pushUndo(state, '進入放逐 PK 重新投票'),
+          };
+        });
+      },
+
       submitExileVotes: (votes, options = {}) => {
         const state = get();
         const isPkRound = state.exilePkCandidates.length > 0;
@@ -1681,7 +1739,8 @@ export const useGameStore = create<GameStore>()(
           seats: state.seats,
           votes,
           sheriffSeat: activeSheriffSeat,
-          sheriffVoteWeight: options.sheriffVoteWeight ?? 1.5,
+          sheriffVoteWeight:
+            options.sheriffVoteWeight ?? state.ruleOverrides.sheriffVoteWeight ?? 1.5,
           extraVotes: options.extraVotes,
           pkCandidates: state.exilePkCandidates,
           roundIndex: isPkRound ? 2 : 1,
@@ -1689,9 +1748,16 @@ export const useGameStore = create<GameStore>()(
         });
 
         if (tally.outcome === 'tie') {
-          const summary = `放逐投票平票：${tally.record.tiedSeats.join('、')} 號進入 PK`;
+          const dayOrder =
+            state.speakingMeta?.queue && state.speakingMeta.queue.length > 0
+              ? state.speakingMeta.queue
+              : state.speakingQueue;
+          const pkOrder = getExilePkSpeakingOrder(dayOrder, tally.record.tiedSeats);
+          const summary = `放逐投票平票：${tally.record.tiedSeats.join('、')} 號進入 PK（逆序發言：${pkOrder.join(' → ')}）`;
           set({
             exilePkCandidates: tally.record.tiedSeats,
+            exilePkStage: 'pk_speaking',
+            exilePkSpeakingOrder: pkOrder,
             dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
               type: 'exile_pk',
               summary,
@@ -1708,6 +1774,8 @@ export const useGameStore = create<GameStore>()(
             : '放逐投票無人得票，本日無人出局（平安日）';
           set({
             exilePkCandidates: [],
+            exilePkStage: 'none',
+            exilePkSpeakingOrder: [],
             exileResolvedToday: {
               outcome: 'no_exile',
               seat: null,
@@ -1779,6 +1847,8 @@ export const useGameStore = create<GameStore>()(
             exileResult.charmedDeathSeat !== null ? null : state.activeCharmedSeat,
           sheriffState: nextSheriffState,
           exilePkCandidates: [],
+          exilePkStage: 'none',
+          exilePkSpeakingOrder: [],
           exileResolvedToday: {
             outcome: exileResult.idiotRevealed
               ? 'idiot_revealed'
@@ -1893,6 +1963,8 @@ export const useGameStore = create<GameStore>()(
             result.charmedDeathSeat !== null ? null : state.activeCharmedSeat,
           sheriffState: finalSheriffState,
           exilePkCandidates: [],
+          exilePkStage: 'none',
+          exilePkSpeakingOrder: [],
           exileResolvedToday: {
             outcome: result.idiotRevealed
               ? 'idiot_revealed'
@@ -2336,6 +2408,8 @@ export const useGameStore = create<GameStore>()(
         set({
           finalBatchState: res.state,
           exilePkCandidates: [],
+          exilePkStage: 'none',
+          exilePkSpeakingOrder: [],
           exileResolvedToday: null,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'manual_judge',
@@ -3041,6 +3115,8 @@ export const useGameStore = create<GameStore>()(
           speakingMeta: null,
           remainingSeconds: state.defaultSpeakDurationSec,
           exilePkCandidates: [],
+          exilePkStage: 'none',
+          exilePkSpeakingOrder: [],
           exileResolvedToday: null,
           pendingNightAnnouncement: null,
           pendingShooters: [],

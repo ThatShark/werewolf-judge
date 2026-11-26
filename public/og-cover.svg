@@ -63,12 +63,12 @@
   <g transform="translate(88, 404)">
     <rect x="0" y="0" width="184" height="54" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
     <text x="92" y="35" text-anchor="middle" font-family="'Noto Sans TC', 'Microsoft JhengHei', sans-serif" font-size="22" font-weight="700" fill="#fde68a">
-      142 種板子
+      143 種板子
     </text>
 
     <rect x="204" y="0" width="184" height="54" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1.5" />
     <text x="296" y="35" text-anchor="middle" font-family="'Noto Sans TC', 'Microsoft JhengHei', sans-serif" font-size="22" font-weight="700" fill="#a7f3d0">
-      128 位角色
+      130 位角色
     </text>
 
     <rect x="408" y="0" width="214" height="54" rx="16" fill="#0f172a" stroke="#334155" stroke-width="1.5" />

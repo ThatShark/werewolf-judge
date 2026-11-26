@@ -1,3 +1,5 @@
+import { ALL_BOARDS } from '../../data/boards';
+import { ROLE_LIST } from '../../data/roles';
 import type { GamePhase } from '../../logic/types';
 import { PHASE_LABELS } from '../common/displayHelpers';
 
@@ -75,7 +77,7 @@ export function HomeScreen({
       </nav>
 
       <footer className="shrink-0 text-[12px] tabular-nums text-muted">
-        142 板子 · 128 角色 · 本機自動保存
+        {ALL_BOARDS.length} 板子 · {ROLE_LIST.length} 角色 · 本機自動保存
       </footer>
     </div>
   );

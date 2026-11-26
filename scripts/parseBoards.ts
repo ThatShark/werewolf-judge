@@ -1,5 +1,5 @@
 /**
- * 一次性離線解析腳本：讀取 docs/boards-raw.md，解析全部 142 個板子與 128 個不重複角色，
+ * 一次性離線解析腳本：讀取 docs/boards-raw.md，解析全部 143 個板子與 130 個不重複角色，
  * 生成完整且保留 MVP 3 板子精密設定的 src/data/roles.ts 與 src/data/boards.ts。
  *
  * 執行方式（Node 24+）：node scripts/parseBoards.ts
@@ -24,7 +24,7 @@ const RAW_PATH = path.join(ROOT_DIR, 'docs', 'boards-raw.md');
 const ROLES_OUT_PATH = path.join(ROOT_DIR, 'src', 'data', 'roles.ts');
 const BOARDS_OUT_PATH = path.join(ROOT_DIR, 'src', 'data', 'boards.ts');
 
-/** 128 個角色的穩定英文識別碼對照表（保留 MVP 10 個核心 ID） */
+/** 130 個角色的穩定英文識別碼對照表（保留 MVP 10 個核心 ID） */
 const ROLE_ID_MAP: Record<string, string> = {
   // MVP 10 核心角色
   小狼: 'wolf',
@@ -2114,7 +2114,7 @@ function main() {
     throw new Error('未從 docs/boards-raw.md 解析到任何板子');
   }
 
-  // 第一輪：掃描全部 128 個角色名稱、別名、陣營與職業介紹
+  // 第一輪：掃描全部 130 個角色名稱、別名、陣營與職業介紹
   const roleAliasMap = new Map<string, Set<string>>();
   const roleFactionVotes = new Map<string, Faction[]>();
   const roleDescriptions = new Map<string, string[]>();
@@ -2275,7 +2275,7 @@ function main() {
     }
   }
 
-  // 第二輪：解析全部 142 個板子
+  // 第二輪：解析全部 143 個板子
   const usedBoardIds = new Set<string>(
     Object.values(MVP_BOARD_DEFINITIONS).map((b) => b.id),
   );

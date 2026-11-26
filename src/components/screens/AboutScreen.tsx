@@ -1,3 +1,6 @@
+import { ALL_BOARDS } from '../../data/boards';
+import { ROLE_LIST } from '../../data/roles';
+
 interface AboutScreenProps {
   onBackHome: () => void;
 }
@@ -12,7 +15,7 @@ export function AboutScreen({ onBackHome }: AboutScreenProps) {
             專為線下聚會設計的暗黑單屏法官工具，協助零失誤完成發牌、夜間主持、警長競選、發言計時與復盤。
           </p>
           <ul className="space-y-1 text-[12px] tabular-nums text-secondary">
-            <li>• 142 種板子 · 128 個角色</li>
+            <li>• {ALL_BOARDS.length} 種板子 · {ROLE_LIST.length} 個角色</li>
             <li>• Zustand + localStorage 自動存檔</li>
           </ul>
         </section>

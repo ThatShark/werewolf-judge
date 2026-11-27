@@ -122,36 +122,63 @@ export function HostPreSetupScreen() {
           </div>
         </section>
 
-        {/* 3. 操作模式 */}
+        {/* 3. 操作模式（Milestone A 鎖定為單機中央操作） */}
         <section className="space-y-1.5 rounded-lg border border-subtle bg-surface p-3">
           <div className="text-[12px] font-semibold text-secondary">操作裝置</div>
           <div className="grid grid-cols-2 gap-2">
             {(
               [
-                { value: 'central_control' as ControlMode, label: '單機中央操作', sub: '單一裝置集中主持' },
-                { value: 'multi_device' as ControlMode, label: '多機連線', sub: '各自手機操作（規劃中）' },
+                {
+                  value: 'central_control' as ControlMode,
+                  label: '單機中央操作',
+                  sub: '單一裝置集中主持',
+                  disabled: false,
+                },
+                {
+                  value: 'multi_device' as ControlMode,
+                  label: '多機各自操作',
+                  sub: '各自手機連線操作',
+                  disabled: true,
+                },
               ] as const
             ).map((opt) => {
-              const active = hostMode.controlMode === opt.value;
+              const active = opt.value === 'central_control';
               return (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => updateHostMode({ controlMode: opt.value })}
+                  disabled={opt.disabled}
+                  onClick={() => {
+                    if (!opt.disabled) {
+                      updateHostMode({ controlMode: opt.value });
+                    }
+                  }}
                   className={`relative flex min-h-14 flex-col items-start justify-center rounded-md px-3 py-2 text-left transition ${
-                    active
-                      ? 'border-selected-sheriff bg-sheriff-tint text-primary'
-                      : 'border border-subtle bg-canvas text-secondary hover:border-strong'
+                    opt.disabled
+                      ? 'cursor-not-allowed border border-subtle bg-canvas/60 text-muted opacity-55'
+                      : active
+                        ? 'border-selected-sheriff bg-sheriff-tint text-primary'
+                        : 'border border-subtle bg-canvas text-secondary hover:border-strong'
                   }`}
                 >
                   <div className="flex w-full items-center justify-between gap-1">
-                    <span className={`text-[14px] font-semibold ${active ? 'text-sheriff' : 'text-primary'}`}>
+                    <span
+                      className={`text-[14px] font-semibold ${
+                        opt.disabled ? 'text-muted' : active ? 'text-sheriff' : 'text-primary'
+                      }`}
+                    >
                       {opt.label}
                     </span>
-                    {active && (
-                      <span className="shrink-0 rounded bg-sheriff px-1.5 py-0.5 text-[11px] font-semibold text-inverse">
-                        已選
+                    {opt.disabled ? (
+                      <span className="shrink-0 rounded border border-subtle bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                        即將推出
                       </span>
+                    ) : (
+                      active && (
+                        <span className="shrink-0 rounded bg-sheriff px-1.5 py-0.5 text-[11px] font-semibold text-inverse">
+                          已選
+                        </span>
+                      )
                     )}
                   </div>
                   <span className="text-[12px] text-muted">{opt.sub}</span>

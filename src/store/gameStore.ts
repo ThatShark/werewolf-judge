@@ -687,7 +687,7 @@ export const useGameStore = create<GameStore>()(
           activeView,
           selectedBoardId: board.id,
           phase: 'seat_setup',
-          hostMode: { ...hostMode },
+          hostMode: { ...hostMode, controlMode: 'central_control' },
           onlineJudgeSettings: { ...onlineJudgeSettings },
           ambientAudio: { ...ambientAudio },
           ruleOverrides: {
@@ -722,6 +722,8 @@ export const useGameStore = create<GameStore>()(
           hostMode: {
             ...state.hostMode,
             ...partial,
+            // Milestone A 鎖定為單機中央操作
+            controlMode: 'central_control',
           },
         }));
       },
@@ -926,17 +928,18 @@ export const useGameStore = create<GameStore>()(
 
       startGame: () => {
         const state = get();
-        const { selectedBoardId, seats, hostMode, defaultSpeakDurationSec } = state;
+        const { selectedBoardId, seats, defaultSpeakDurationSec } = state;
+        const hostMode: HostModeConfig = {
+          ...state.hostMode,
+          controlMode: 'central_control',
+        };
         const board = getBoardById(selectedBoardId);
         if (!board) {
           return { ok: false, errors: ['尚未選擇板子'] };
         }
 
-        if (hostMode.controlMode === 'multi_device') {
-          return {
-            ok: false,
-            errors: ['多點連線大廳將於 Milestone B 開放，請切換為「中央操作」以開始單機對局。'],
-          };
+        if (state.hostMode.controlMode !== 'central_control') {
+          set({ hostMode });
         }
 
         const baseRuntimeReset = {
@@ -3841,7 +3844,7 @@ export const useGameStore = create<GameStore>()(
             ...createInitialGameState(),
             activeView: state.activeView,
             selectedBoardId: board ? board.id : null,
-            hostMode: { ...state.hostMode },
+            hostMode: { ...state.hostMode, controlMode: 'central_control' },
             onlineJudgeSettings: { ...state.onlineJudgeSettings },
             ambientAudio: { ...state.ambientAudio },
             ruleOverrides: { ...state.ruleOverrides },
@@ -3886,6 +3889,7 @@ export const useGameStore = create<GameStore>()(
           hostMode: {
             ...DEFAULT_HOST_MODE,
             ...(persisted.hostMode ?? {}),
+            controlMode: 'central_control',
           },
           onlineJudgeSettings: clampOnlineJudgeSettings(
             DEFAULT_ONLINE_JUDGE_SETTINGS,

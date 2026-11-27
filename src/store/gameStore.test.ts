@@ -392,7 +392,7 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(useGameStore.getState().round).toBe(1);
   });
 
-  it('多點操作模式攔截提示、清空暱稱與白噪音／新房規持久化', () => {
+  it('操作裝置鎖定單機中央操作（含舊 localStorage 自動校正）、清空暱稱與白噪音／新房規持久化', async () => {
     const store = useGameStore.getState();
     store.selectBoard('12p-classic');
     store.setSeatNickname(1, '阿明');
@@ -405,23 +405,27 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
       sheriffUseDeadSideOnDeath: true,
     });
 
-    // 多點操作模式在單機版會回傳友善提示
-    const blocked = useGameStore.getState().startGame();
-    expect(blocked.ok).toBe(false);
-    expect(blocked.errors[0]).toContain('Milestone B');
+    // Milestone A 鎖定為單機中央操作：嘗試切換至 multi_device 會自動維持 central_control
+    expect(useGameStore.getState().hostMode.controlMode).toBe('central_control');
 
     // 清空暱稱
     useGameStore.getState().clearSavedNicknames();
     expect(useGameStore.getState().savedNicknames).toEqual({});
     expect(useGameStore.getState().seats[0].nickname).toBe('');
 
-    // 驗證新設定已寫入 localStorage
+    // 驗證新設定已寫入 localStorage，且 controlMode 維持 central_control
     const raw = localStorage.getItem(GAME_STORAGE_KEY);
     const parsed = JSON.parse(raw!);
-    expect(parsed.state.hostMode.controlMode).toBe('multi_device');
+    expect(parsed.state.hostMode.controlMode).toBe('central_control');
     expect(parsed.state.ambientAudio.presetId).toBe('rain');
     expect(parsed.state.ruleOverrides.badgeSwallowRule).toBe('double_explode');
     expect(parsed.state.ruleOverrides.noSheriffDeadDirection).toBe('counterclockwise');
+
+    // 模擬舊版 localStorage 存有 controlMode: 'multi_device'，rehydrate 後會自動校正回 central_control
+    parsed.state.hostMode.controlMode = 'multi_device';
+    localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(parsed));
+    await useGameStore.persist.rehydrate();
+    expect(useGameStore.getState().hostMode.controlMode).toBe('central_control');
   });
 
   it('線上法官設定持久化與實體發牌首夜動態認領＋未認領自動補平民完整打通（模式 5）', async () => {

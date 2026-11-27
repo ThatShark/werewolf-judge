@@ -134,6 +134,12 @@ export interface VictoryCheckOptions {
   thirdPartySpecialState?: ThirdPartySpecialRuntimeState;
   wolfGirlState?: WolfGirlRuntimeState;
   boardId?: string;
+  /** 是否啟用白天「綁票」自動判狼勝檢查（僅於白天死訊／放逐與技能／警徽移交結算完畢後傳入 true） */
+  checkDayVoteTieLock?: boolean;
+  /** 當前警長狀態（用於檢查好人陣營是否持有有效警徽） */
+  sheriffState?: SheriffState;
+  /** 戰鬥／特殊擊殺運行時狀態（用於檢查蜂之狂獵是否已失能） */
+  combatState?: CombatRuntimeState;
 }
 
 export interface GameState {

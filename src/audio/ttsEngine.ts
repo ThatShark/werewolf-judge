@@ -322,34 +322,41 @@ class TtsEngine {
   }
 
   /**
-   * 試聽一小段語音播報（預設最長 3 秒後自動停止），供開局前測試音量與語速。
+   * 試聽一小段語音播報（預設最長 3 秒後強制停止），供開局前測試音量與語速。
    */
   previewShort(
     options: Omit<SpeakOptions, 'enabled'> & { enabled?: boolean; sampleText?: string },
     durationMs = 3000,
   ): void {
-    if (this.previewTimerId !== null) {
-      clearTimeout(this.previewTimerId);
-      this.previewTimerId = null;
-    }
+    this.cancel();
+    this.unlockAudio();
+
+    let finished = false;
+    const finishOnce = () => {
+      if (finished) return;
+      finished = true;
+      if (this.previewTimerId !== null) {
+        clearTimeout(this.previewTimerId);
+        this.previewTimerId = null;
+      }
+      options.onEnd?.();
+    };
+
     const text = options.sampleText ?? '天黑請閉眼，狼人請睜眼。';
-    this.speakFromGesture(text, {
+    this.speak(text, {
       enabled: options.enabled ?? true,
       rate: options.rate,
       onStart: options.onStart,
-      onEnd: () => {
-        if (this.previewTimerId !== null) {
-          clearTimeout(this.previewTimerId);
-          this.previewTimerId = null;
-        }
-        options.onEnd?.();
-      },
+      onEnd: finishOnce,
     });
-    this.previewTimerId = setTimeout(() => {
-      this.previewTimerId = null;
-      this.cancel();
-      options.onEnd?.();
-    }, durationMs);
+
+    if (!finished) {
+      this.previewTimerId = setTimeout(() => {
+        this.previewTimerId = null;
+        this.cancel();
+        finishOnce();
+      }, durationMs);
+    }
   }
 
   cancel(): void {

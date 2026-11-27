@@ -190,7 +190,8 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
   const sectionBarH = 26;
   const rowH = 32;
   const roleRowH = hasSubNotes ? 48 : 36;
-  const daySkillsRowH = 46;
+  const dayExileRowH = 34;
+  const daySkillsRowH = 44;
   const dayElimRowH = 36;
   const footerH = 24;
 
@@ -210,9 +211,9 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
   if (matrix.nightMatrix.rounds.length > 0) {
     totalH += SECTION_GAP + sectionBarH + rowH + matrix.nightMatrix.rows.length * rowH;
   }
-  // 區塊 E：白天結果與出局總覽
+  // 區塊 E：白天結果與出局總覽（白天放逐 / 技能與連帶 / 出局總覽）
   if (matrix.daySummaryColumns.length > 0) {
-    totalH += SECTION_GAP + sectionBarH + rowH + daySkillsRowH + dayElimRowH;
+    totalH += SECTION_GAP + sectionBarH + rowH + dayExileRowH + daySkillsRowH + dayElimRowH;
   }
   totalH += 10 + footerH + PADDING;
 
@@ -611,7 +612,7 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
     const dayStartY = y;
     const dayColCount = matrix.daySummaryColumns.length;
     const dayColW = (tableW - LABEL_COL_W) / dayColCount;
-    const dayH = sectionBarH + rowH + daySkillsRowH + dayElimRowH;
+    const dayH = sectionBarH + rowH + dayExileRowH + daySkillsRowH + dayElimRowH;
 
     drawRoundedRect(ctx, x0, dayStartY, tableW, dayH, 10);
     ctx.fillStyle = COLORS.cardBg;
@@ -662,9 +663,26 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
     });
     y += rowH;
 
-    // 放逐 / 日間技能列（支援雙行換行）
-    drawDayGrid(y, daySkillsRowH);
-    drawCellText(ctx, '放逐 / 技能', x0, y, LABEL_COL_W, daySkillsRowH, {
+    // 白天放逐列（僅顯示放逐出局座號，平安日／無人放逐顯示 X）
+    drawDayGrid(y, dayExileRowH);
+    drawCellText(ctx, '白天放逐', x0, y, LABEL_COL_W, dayExileRowH, {
+      font: `600 12px ${FONT_SANS}`,
+      color: COLORS.sheriff,
+    });
+    matrix.daySummaryColumns.forEach((col, idx) => {
+      const cx = x0 + LABEL_COL_W + idx * dayColW;
+      const isNone = col.exileText === 'X';
+      drawCellText(ctx, col.exileText, cx, y, dayColW, dayExileRowH, {
+        font: `${isNone ? '500' : '700'} 12px ${FONT_MONO}`,
+        color: isNone ? COLORS.textDim : COLORS.sheriff,
+        padX: 4,
+      });
+    });
+    y += dayExileRowH;
+
+    // 技能 / 連帶列（支援雙行換行，單獨記錄開槍、自爆、決鬥、殉情等事件）
+    drawDayGrid(y, daySkillsRowH, COLORS.altRowBg);
+    drawCellText(ctx, '技能 / 連帶', x0, y, LABEL_COL_W, daySkillsRowH, {
       font: `600 12px ${FONT_SANS}`,
       color: COLORS.textSecondary,
     });
@@ -686,7 +704,7 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
     y += daySkillsRowH;
 
     // 出局總覽列
-    drawDayGrid(y, dayElimRowH, COLORS.altRowBg);
+    drawDayGrid(y, dayElimRowH);
     drawCellText(ctx, '出局總覽', x0, y, LABEL_COL_W, dayElimRowH, {
       font: `700 12px ${FONT_SANS}`,
       color: COLORS.wolf,

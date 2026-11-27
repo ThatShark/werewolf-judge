@@ -4180,26 +4180,6 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
               </div>
             )}
 
-            {currentStep.actionType === 'hunter_gesture' && (
-              <div
-                className={`rounded-md border px-3 py-2 text-center text-sm font-extrabold ${
-                  !hunterSeat || !hunterSeat.isAlive
-                    ? 'border-subtle bg-canvas text-secondary'
-                    : isHunterPoisonedTonight
-                      ? 'border-wolf-border bg-wolf-tint text-wolf'
-                      : 'border-good-border bg-good-tint text-good'
-                }`}
-              >
-                {!hunterSeat || !hunterSeat.isAlive
-                  ? isOnlineJudge
-                    ? '請確認開槍狀態後點擊確認閉眼'
-                    : '獵人已出局，無須比手勢'
-                  : isHunterPoisonedTonight
-                    ? '👎 今晚不可開槍（已中毒）'
-                    : '👍 今晚可正常開槍'}
-              </div>
-            )}
-
             {currentStep.actionType === 'mech_wolf_learn' && (
               <div className="flex items-center justify-between gap-2 text-xs text-secondary">
                 <span>
@@ -4218,17 +4198,6 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
                     改為跳過
                   </button>
                 )}
-              </div>
-            )}
-
-            {currentStep.actionType === 'mech_wolf_reveal_skill' && (
-              <div className="rounded-md border border-sheriff-border bg-sheriff-tint px-3 py-2 text-center text-xs font-bold text-sheriff">
-                {mechLearnedTargetSeat && mechLearnedTargetSeat.roleId
-                  ? `已學習 ${mechLearnedTargetSeat.seatNumber} 號 ➜ 習得【${
-                      getRoleById(mechLearnedTargetSeat.roleId)?.name ??
-                      mechLearnedTargetSeat.roleId
-                    }】`
-                  : '首夜未選擇學習對象'}
               </div>
             )}
 
@@ -4257,13 +4226,6 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
                     </button>
                   )}
                 </div>
-                {mechWolfPsychicOutcome && (
-                  <div className="rounded-md border border-third-border bg-third-tint px-3 py-1.5 text-center text-sm font-extrabold text-third">
-                    機械狼查驗：{mechWolfPsychicOutcome.targetSeat} 號 ➜{' '}
-                    {getRoleById(mechWolfPsychicOutcome.perceivedRoleId)?.name ??
-                      mechWolfPsychicOutcome.perceivedRoleId}
-                  </div>
-                )}
               </div>
             )}
 

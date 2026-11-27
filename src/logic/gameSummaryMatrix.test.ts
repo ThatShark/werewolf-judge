@@ -215,19 +215,103 @@ describe('buildGameSummaryMatrix', () => {
     expect(matrix.dayVoteRows[2].label).toBe('Day 2 投票');
     expect(matrix.dayVoteRows[2].cells).toEqual(['-', '-', '-', '-', '自爆', '-', '-', '-']);
 
-    // 區塊 E：白天技能與出局總覽
+    // 區塊 E：白天放逐、技能／連帶與出局總覽分離
     expect(matrix.daySummaryColumns).toHaveLength(2);
     expect(matrix.daySummaryColumns[0]).toEqual({
       round: 1,
       label: 'D1',
-      daySkillsText: '放逐6',
+      exileText: '6',
+      daySkillsText: '無',
       eliminatedText: '2、6',
     });
     expect(matrix.daySummaryColumns[1]).toEqual({
       round: 2,
       label: 'D2',
+      exileText: 'X',
       daySkillsText: '5爆帶3 / 3帶8',
       eliminatedText: '3、5、8',
+    });
+  });
+
+  it('夜死連環開槍與白天放逐分離顯示於不同列，平安日白天放逐顯示 X', () => {
+    const seats: PlayerSeat[] = [
+      makeSeat(1, 'hunter', { isAlive: false, deathRound: 1, deathReason: 'hunter_shoot' }),
+      makeSeat(2, 'seer', { isAlive: true }),
+      makeSeat(3, 'villager', { isAlive: true }),
+      makeSeat(4, 'villager', { isAlive: false, deathRound: 1, deathReason: 'exiled' }),
+      makeSeat(5, 'wolf_king', { isAlive: false, deathRound: 1, deathReason: 'wolf_kill' }),
+      makeSeat(7, 'wolf', { isAlive: false, deathRound: 1, deathReason: 'hunter_shoot' }),
+    ];
+
+    const matrix = buildGameSummaryMatrix({
+      round: 2,
+      seats,
+      winner: 'good',
+      sheriffState: createInitialSheriffState(),
+      ruleOverrides: { ...DEFAULT_RULE_OVERRIDES, enableSheriff: false },
+      nightHistory: [
+        {
+          round: 1,
+          draft: { ...createEmptyNightDraft(1), wolfTarget: 5 },
+          deaths: [{ seat: 5, reason: 'wolf_kill' }],
+        },
+        {
+          round: 2,
+          draft: { ...createEmptyNightDraft(2), wolfTarget: null },
+          deaths: [],
+        },
+      ],
+      dayHistory: [
+        {
+          round: 1,
+          events: ['5 號開槍帶走 1 號', '1 號開槍帶走 7 號', '放逐 4 號'],
+          structuredEvents: [
+            {
+              type: 'wolf_king_shoot',
+              summary: '5 號開槍帶走 1 號',
+              actorSeat: 5,
+              targetSeat: 1,
+              eliminatedSeats: [1],
+              outcomeTag: 'shoot_kill',
+            },
+            {
+              type: 'hunter_shoot',
+              summary: '1 號開槍帶走 7 號',
+              actorSeat: 1,
+              targetSeat: 7,
+              eliminatedSeats: [7],
+              outcomeTag: 'shoot_kill',
+            },
+            {
+              type: 'exile_result',
+              summary: '4 號於白天放逐出局',
+              targetSeat: 4,
+              eliminatedSeats: [4],
+              outcomeTag: 'exile',
+            },
+          ],
+        },
+        {
+          round: 2,
+          events: ['平安日'],
+          structuredEvents: [],
+        },
+      ],
+    });
+
+    expect(matrix.daySummaryColumns[0]).toEqual({
+      round: 1,
+      label: 'D1',
+      exileText: '4',
+      daySkillsText: '5帶1 / 1帶7',
+      eliminatedText: '1、4、5、7',
+    });
+    expect(matrix.daySummaryColumns[1]).toEqual({
+      round: 2,
+      label: 'D2',
+      exileText: 'X',
+      daySkillsText: '無',
+      eliminatedText: '平安',
     });
   });
 

@@ -66,7 +66,11 @@ export interface SummaryNightMatrix {
 export interface SummaryDayColumn {
   round: number;
   label: string;
+  /** 僅記錄當日白天放逐投票出局的座號（平安日或無人被放逐顯示 'X'） */
+  exileText: string;
+  /** 單獨記錄該輪的開槍帶人、狼人自爆、騎士決鬥、殉情／連帶出局等技能事件（無則顯示 '無'） */
   daySkillsText: string;
+  /** 彙整該輪所有出局座號（無人出局顯示 '平安'） */
   eliminatedText: string;
 }
 
@@ -810,6 +814,25 @@ function buildNightMatrix(
   };
 }
 
+function formatDayExileText(dayEntry: DayHistoryEntry | undefined): string {
+  if (!dayEntry?.structuredEvents) return 'X';
+  const exiledSeats: number[] = [];
+
+  for (const evt of dayEntry.structuredEvents) {
+    if (evt.type === 'exile_result' && evt.outcomeTag !== 'exile_survived') {
+      if (evt.eliminatedSeats && evt.eliminatedSeats.length > 0) {
+        for (const s of evt.eliminatedSeats) {
+          if (!exiledSeats.includes(s)) exiledSeats.push(s);
+        }
+      } else if (evt.targetSeat != null && !exiledSeats.includes(evt.targetSeat)) {
+        exiledSeats.push(evt.targetSeat);
+      }
+    }
+  }
+
+  return exiledSeats.length > 0 ? exiledSeats.join('、') : 'X';
+}
+
 function formatDaySkillTags(dayEntry: DayHistoryEntry | undefined): string[] {
   if (!dayEntry?.structuredEvents) return [];
   const tags: string[] = [];
@@ -817,23 +840,12 @@ function formatDaySkillTags(dayEntry: DayHistoryEntry | undefined): string[] {
   for (const evt of dayEntry.structuredEvents) {
     switch (evt.type) {
       case 'exile_result':
-        if (evt.targetSeat != null) {
-          tags.push(evt.outcomeTag === 'exile_survived' ? `${evt.targetSeat}免死` : `放逐${evt.targetSeat}`);
+        if (evt.targetSeat != null && evt.outcomeTag === 'exile_survived') {
+          tags.push(`${evt.targetSeat}免死`);
         }
         break;
       case 'idiot_reveal':
         if (evt.targetSeat != null) tags.push(`${evt.targetSeat}翻牌`);
-        break;
-      case 'exile_vote':
-        if (evt.voteRecord && evt.voteRecord.electedSeat === null && evt.voteRecord.tiedSeats.length === 0) {
-          tags.push('平安日');
-        } else if (
-          evt.voteRecord &&
-          evt.voteRecord.electedSeat === null &&
-          evt.voteRecord.roundIndex >= 2
-        ) {
-          tags.push('平票平安');
-        }
         break;
       case 'self_explode':
         if (evt.actorSeat != null) {
@@ -962,12 +974,14 @@ function buildDaySummaryColumns(state: GameSummaryInput): SummaryDayColumn[] {
   for (let r = 1; r <= maxRound; r += 1) {
     const nightEntry = state.nightHistory.find((n) => n.round === r);
     const dayEntry = state.dayHistory.find((d) => d.round === r);
+    const exileText = formatDayExileText(dayEntry);
     const skillTags = formatDaySkillTags(dayEntry);
     const eliminated = collectRoundEliminatedSeats(r, nightEntry, dayEntry, state.seats);
 
     columns.push({
       round: r,
       label: `D${r}`,
+      exileText,
       daySkillsText: skillTags.length > 0 ? skillTags.join(' / ') : '無',
       eliminatedText: eliminated.length > 0 ? eliminated.join('、') : '平安',
     });

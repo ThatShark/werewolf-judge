@@ -50,6 +50,7 @@ import {
   handleSheriffElectionExplode,
   isFirstNightNoWolfKillBoard,
   isSeatEffectiveWolf,
+  isSheriffElectionActive,
   isValidPlayerCountForBoard,
   mergeRuleOverrides,
   normalizePlayerSeats,
@@ -116,9 +117,11 @@ import type {
   NotebookMode,
   OnlineJudgeSettings,
   RuleOverrides,
+  SheriffState,
   ShootEligibility,
   SpeakingOrderOptions,
   SpeakingOrderResult,
+  VictoryResult,
   VoteInputMode,
   WhiteWolfKingExplodeResult,
 } from '../logic/types';
@@ -430,6 +433,38 @@ function finalizeDayDeathSync(
     linkedDeaths: convSync.linkedDeaths,
     victory,
   };
+}
+
+/**
+ * 白天「綁票」自動判狼勝檢查輔助：
+ * 僅在白天且無未決開槍者、無未決警徽移交、且非警長競選進行中時觸發檢查。
+ */
+function evaluateDayTieLockVictory(params: {
+  baseVictory: VictoryResult;
+  seats: GameState['seats'];
+  ruleOverrides: RuleOverrides;
+  treasureMasterState?: GameState['treasureMasterState'];
+  conversionState?: GameState['conversionState'];
+  thirdPartySpecialState?: GameState['thirdPartySpecialState'];
+  wolfGirlState?: GameState['wolfGirlState'];
+  combatState?: GameState['combatState'];
+  sheriffState: SheriffState;
+  pendingShootersCount: number;
+  selectedBoardId?: string | null;
+}): VictoryResult {
+  if (params.baseVictory.winner !== null) return params.baseVictory;
+  if (params.pendingShootersCount > 0) return params.baseVictory;
+  if (params.sheriffState.pendingBadgeTransferFrom !== null) return params.baseVictory;
+  if (isSheriffElectionActive(params.sheriffState)) return params.baseVictory;
+  return checkVictory(params.seats, params.ruleOverrides, params.treasureMasterState, {
+    conversionState: params.conversionState,
+    thirdPartySpecialState: params.thirdPartySpecialState,
+    wolfGirlState: params.wolfGirlState,
+    boardId: params.selectedBoardId ?? undefined,
+    checkDayVoteTieLock: true,
+    sheriffState: params.sheriffState,
+    combatState: params.combatState,
+  });
 }
 
 function createInitialGameState(): GameState & {
@@ -1197,11 +1232,6 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        const triggerGameOver = shouldTriggerAutoVictory(
-          result.victory,
-          state.forceContinueAfterVictory,
-        );
-
         const needsSheriffStage =
           (state.round === 1 &&
             state.ruleOverrides.enableSheriff &&
@@ -1213,11 +1243,34 @@ export const useGameStore = create<GameStore>()(
 
         // 首夜若進入警長競選且尚未分出勝負：首夜死者於競選期間仍視為在場，待「公布昨晚死訊」時才正式宣告死亡並觸發警徽交接
         const deferNightDeaths =
-          !triggerGameOver &&
+          !shouldTriggerAutoVictory(result.victory, state.forceContinueAfterVictory) &&
           state.round === 1 &&
           initialDayStage === 'sheriff_election' &&
           state.ruleOverrides.enableSheriff &&
           nextSheriffState.status === 'not_started';
+
+        // 早晨死訊正式公布且無待開槍／待移交警徽／待選警長時，檢查白天綁票狼勝
+        const finalVictory =
+          !deferNightDeaths && !needsSheriffStage
+            ? evaluateDayTieLockVictory({
+                baseVictory: result.victory,
+                seats: result.seats,
+                ruleOverrides: state.ruleOverrides,
+                treasureMasterState: result.treasureMasterState,
+                conversionState: result.conversionState,
+                thirdPartySpecialState: result.thirdPartySpecialState,
+                wolfGirlState: result.wolfGirlState,
+                combatState: result.combatState,
+                sheriffState: nextSheriffState,
+                pendingShootersCount: pendingShooters.length,
+                selectedBoardId: state.selectedBoardId,
+              })
+            : result.victory;
+
+        const triggerGameOver = shouldTriggerAutoVictory(
+          finalVictory,
+          state.forceContinueAfterVictory,
+        );
 
         const nextNightEntry = {
           round: state.round,
@@ -1316,8 +1369,8 @@ export const useGameStore = create<GameStore>()(
           nightHistory: nextNightHistory,
           dayHistory: nextDayHistory,
           pendingShooters: deferNightDeaths ? [] : pendingShooters,
-          winner: !deferNightDeaths && triggerGameOver ? result.victory.winner : null,
-          winReason: !deferNightDeaths && triggerGameOver ? result.victory.winReason : null,
+          winner: !deferNightDeaths && triggerGameOver ? finalVictory.winner : null,
+          winReason: !deferNightDeaths && triggerGameOver ? finalVictory.winReason : null,
           preGameOverPhase:
             !deferNightDeaths && triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
           phase: !deferNightDeaths && triggerGameOver ? 'game_over' : 'day_announcement',
@@ -1614,6 +1667,23 @@ export const useGameStore = create<GameStore>()(
           targetSeat,
         );
         const summary = `${fromSeat} 號移交警徽給 ${targetSeat} 號`;
+        const tieVictory = evaluateDayTieLockVictory({
+          baseVictory: { winner: null, winReason: null },
+          seats: state.seats,
+          ruleOverrides: state.ruleOverrides,
+          treasureMasterState: state.treasureMasterState,
+          conversionState: state.conversionState,
+          thirdPartySpecialState: state.thirdPartySpecialState,
+          wolfGirlState: state.wolfGirlState,
+          combatState: state.combatState,
+          sheriffState: nextSheriffState,
+          pendingShootersCount: state.pendingShooters.length,
+          selectedBoardId: state.selectedBoardId,
+        });
+        const triggerGameOver = shouldTriggerAutoVictory(
+          tieVictory,
+          state.forceContinueAfterVictory,
+        );
 
         set({
           sheriffState: nextSheriffState,
@@ -1623,6 +1693,13 @@ export const useGameStore = create<GameStore>()(
             actorSeat: fromSeat,
             targetSeat,
           }),
+          winner: triggerGameOver ? tieVictory.winner : state.winner,
+          winReason: triggerGameOver ? tieVictory.winReason : state.winReason,
+          preGameOverPhase:
+            triggerGameOver && (state.phase === 'day_announcement' || state.phase === 'day_vote')
+              ? state.phase
+              : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
           undoStack: pushUndo(state, `移交警徽給 ${targetSeat} 號`),
         });
       },
@@ -1632,6 +1709,23 @@ export const useGameStore = create<GameStore>()(
         const fromSeat = state.sheriffState.pendingBadgeTransferFrom ?? state.sheriffState.sheriffSeat;
         const nextSheriffState = destroySheriffBadgeLogic(state.sheriffState);
         const summary = `${fromSeat} 號撕毀警徽，本局後續無警長`;
+        const tieVictory = evaluateDayTieLockVictory({
+          baseVictory: { winner: null, winReason: null },
+          seats: state.seats,
+          ruleOverrides: state.ruleOverrides,
+          treasureMasterState: state.treasureMasterState,
+          conversionState: state.conversionState,
+          thirdPartySpecialState: state.thirdPartySpecialState,
+          wolfGirlState: state.wolfGirlState,
+          combatState: state.combatState,
+          sheriffState: nextSheriffState,
+          pendingShootersCount: state.pendingShooters.length,
+          selectedBoardId: state.selectedBoardId,
+        });
+        const triggerGameOver = shouldTriggerAutoVictory(
+          tieVictory,
+          state.forceContinueAfterVictory,
+        );
 
         set({
           sheriffState: nextSheriffState,
@@ -1640,6 +1734,13 @@ export const useGameStore = create<GameStore>()(
             summary,
             actorSeat: fromSeat,
           }),
+          winner: triggerGameOver ? tieVictory.winner : state.winner,
+          winReason: triggerGameOver ? tieVictory.winReason : state.winReason,
+          preGameOverPhase:
+            triggerGameOver && (state.phase === 'day_announcement' || state.phase === 'day_vote')
+              ? state.phase
+              : state.preGameOverPhase,
+          phase: triggerGameOver ? 'game_over' : state.phase,
           undoStack: pushUndo(state, '撕毀警徽'),
         });
       },
@@ -1741,8 +1842,21 @@ export const useGameStore = create<GameStore>()(
           wolfKillPriorityOverride: result.charmedDeathSeat !== null,
         });
         const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats);
+        const finalVictory = evaluateDayTieLockVictory({
+          baseVictory: synced.victory,
+          seats: synced.seats,
+          ruleOverrides: state.ruleOverrides,
+          treasureMasterState: state.treasureMasterState,
+          conversionState: synced.conversionState,
+          thirdPartySpecialState: synced.thirdPartySpecialState,
+          wolfGirlState: state.wolfGirlState,
+          combatState: state.combatState,
+          sheriffState: nextSheriffState,
+          pendingShootersCount: remainingShooters.length,
+          selectedBoardId: state.selectedBoardId,
+        });
         const triggerGameOver = shouldTriggerAutoVictory(
-          synced.victory,
+          finalVictory,
           state.forceContinueAfterVictory,
         );
         const shouldEnterNightNow =
@@ -1766,8 +1880,8 @@ export const useGameStore = create<GameStore>()(
           enterNightAfterPendingShooters:
             triggerGameOver || shouldEnterNightNow ? false : state.enterNightAfterPendingShooters,
           dayHistory: nextDayHistory,
-          winner: triggerGameOver ? synced.victory.winner : state.winner,
-          winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
+          winner: triggerGameOver ? finalVictory.winner : state.winner,
+          winReason: triggerGameOver ? finalVictory.winReason : state.winReason,
           preGameOverPhase:
             triggerGameOver && (state.phase === 'day_announcement' || state.phase === 'day_vote')
               ? state.phase
@@ -1794,22 +1908,48 @@ export const useGameStore = create<GameStore>()(
           const remainingShooters = state.pendingShooters.filter(
             (s) => s.seatNumber !== shooterSeat,
           );
+          const tieVictory = evaluateDayTieLockVictory({
+            baseVictory: { winner: null, winReason: null },
+            seats: state.seats,
+            ruleOverrides: state.ruleOverrides,
+            treasureMasterState: state.treasureMasterState,
+            conversionState: state.conversionState,
+            thirdPartySpecialState: state.thirdPartySpecialState,
+            wolfGirlState: state.wolfGirlState,
+            combatState: state.combatState,
+            sheriffState: state.sheriffState,
+            pendingShootersCount: remainingShooters.length,
+            selectedBoardId: state.selectedBoardId,
+          });
+          const triggerGameOver = shouldTriggerAutoVictory(
+            tieVictory,
+            state.forceContinueAfterVictory,
+          );
           const shouldEnterNightNow =
-            state.enterNightAfterPendingShooters && remainingShooters.length === 0;
+            !triggerGameOver &&
+            state.enterNightAfterPendingShooters &&
+            remainingShooters.length === 0;
           const nextRound = shouldEnterNightNow ? state.round + 1 : state.round;
           return {
             pendingShooters: remainingShooters,
-            enterNightAfterPendingShooters: shouldEnterNightNow
-              ? false
-              : state.enterNightAfterPendingShooters,
+            enterNightAfterPendingShooters:
+              triggerGameOver || shouldEnterNightNow
+                ? false
+                : state.enterNightAfterPendingShooters,
             dayHistory: appendDayEvent(
               state.dayHistory,
               state.round,
               `${shooterSeat} 號選擇壓槍不開`,
             ),
+            winner: triggerGameOver ? tieVictory.winner : state.winner,
+            winReason: triggerGameOver ? tieVictory.winReason : state.winReason,
+            preGameOverPhase:
+              triggerGameOver && (state.phase === 'day_announcement' || state.phase === 'day_vote')
+                ? state.phase
+                : state.preGameOverPhase,
+            phase: triggerGameOver ? 'game_over' : shouldEnterNightNow ? 'night' : state.phase,
             ...(shouldEnterNightNow
               ? {
-                  phase: 'night' as const,
                   round: nextRound,
                   currentStepIndex: 0,
                   currentNightDraft: createEmptyNightDraft(nextRound),
@@ -1841,8 +1981,21 @@ export const useGameStore = create<GameStore>()(
 
           const appliedSeats = pending.seats;
           const syncedSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, appliedSeats);
+          const finalVictory = evaluateDayTieLockVictory({
+            baseVictory: pending.victory,
+            seats: appliedSeats,
+            ruleOverrides: state.ruleOverrides,
+            treasureMasterState: state.treasureMasterState,
+            conversionState: state.conversionState,
+            thirdPartySpecialState: state.thirdPartySpecialState,
+            wolfGirlState: state.wolfGirlState,
+            combatState: state.combatState,
+            sheriffState: syncedSheriffState,
+            pendingShootersCount: pending.pendingShooters.length,
+            selectedBoardId: state.selectedBoardId,
+          });
           const triggerGameOver = shouldTriggerAutoVictory(
-            pending.victory,
+            finalVictory,
             state.forceContinueAfterVictory,
           );
 
@@ -1856,8 +2009,8 @@ export const useGameStore = create<GameStore>()(
             currentSpeakerIndex: 0,
             speakingMeta: null,
             remainingSeconds: state.defaultSpeakDurationSec,
-            winner: triggerGameOver ? pending.victory.winner : state.winner,
-            winReason: triggerGameOver ? pending.victory.winReason : state.winReason,
+            winner: triggerGameOver ? finalVictory.winner : state.winner,
+            winReason: triggerGameOver ? finalVictory.winReason : state.winReason,
             preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
             phase: triggerGameOver ? 'game_over' : state.phase,
             undoStack: pushUndo(state, '進入死訊公告'),
@@ -2056,14 +2209,31 @@ export const useGameStore = create<GameStore>()(
           wolfKillPriorityOverride: exileResult.charmedDeathSeat !== null,
         });
         const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats);
-        const triggerGameOver = shouldTriggerAutoVictory(
+        const baseTriggerGameOver = shouldTriggerAutoVictory(
           synced.victory,
           state.forceContinueAfterVictory,
         );
         const pendingShooters: PendingShooter[] =
-          exileResult.shootEligibility?.canShoot && !triggerGameOver
+          exileResult.shootEligibility?.canShoot && !baseTriggerGameOver
             ? [{ ...exileResult.shootEligibility, deathReason: 'exiled' }]
             : [];
+        const finalVictory = evaluateDayTieLockVictory({
+          baseVictory: synced.victory,
+          seats: synced.seats,
+          ruleOverrides: state.ruleOverrides,
+          treasureMasterState: state.treasureMasterState,
+          conversionState: synced.conversionState,
+          thirdPartySpecialState: synced.thirdPartySpecialState,
+          wolfGirlState: state.wolfGirlState,
+          combatState: state.combatState,
+          sheriffState: nextSheriffState,
+          pendingShootersCount: pendingShooters.length,
+          selectedBoardId: state.selectedBoardId,
+        });
+        const triggerGameOver = shouldTriggerAutoVictory(
+          finalVictory,
+          state.forceContinueAfterVictory,
+        );
 
         set({
           seats: synced.seats,
@@ -2092,8 +2262,8 @@ export const useGameStore = create<GameStore>()(
           },
           dayHistory: nextDayHistory,
           pendingShooters,
-          winner: triggerGameOver ? synced.victory.winner : state.winner,
-          winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
+          winner: triggerGameOver ? finalVictory.winner : state.winner,
+          winReason: triggerGameOver ? finalVictory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
           undoStack: pushUndo(state, `放逐投票計票（${targetSeat} 號）`),
@@ -2182,14 +2352,31 @@ export const useGameStore = create<GameStore>()(
           wolfKillPriorityOverride: result.charmedDeathSeat !== null,
         });
         const finalSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats);
-        const finalTriggerGameOver = shouldTriggerAutoVictory(
+        const baseFinalTriggerGameOver = shouldTriggerAutoVictory(
           synced.victory,
           state.forceContinueAfterVictory,
         );
         const pendingShooters: PendingShooter[] =
-          result.shootEligibility?.canShoot && !finalTriggerGameOver
+          result.shootEligibility?.canShoot && !baseFinalTriggerGameOver
             ? [{ ...result.shootEligibility, deathReason: 'exiled' }]
             : [];
+        const finalVictory = evaluateDayTieLockVictory({
+          baseVictory: synced.victory,
+          seats: synced.seats,
+          ruleOverrides: state.ruleOverrides,
+          treasureMasterState: state.treasureMasterState,
+          conversionState: synced.conversionState,
+          thirdPartySpecialState: synced.thirdPartySpecialState,
+          wolfGirlState: state.wolfGirlState,
+          combatState: state.combatState,
+          sheriffState: finalSheriffState,
+          pendingShootersCount: pendingShooters.length,
+          selectedBoardId: state.selectedBoardId,
+        });
+        const finalTriggerGameOver = shouldTriggerAutoVictory(
+          finalVictory,
+          state.forceContinueAfterVictory,
+        );
 
         set({
           seats: synced.seats,
@@ -2218,8 +2405,8 @@ export const useGameStore = create<GameStore>()(
           },
           dayHistory: nextDayHistory,
           pendingShooters,
-          winner: finalTriggerGameOver ? synced.victory.winner : state.winner,
-          winReason: finalTriggerGameOver ? synced.victory.winReason : state.winReason,
+          winner: finalTriggerGameOver ? finalVictory.winner : state.winner,
+          winReason: finalTriggerGameOver ? finalVictory.winReason : state.winReason,
           preGameOverPhase: finalTriggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: finalTriggerGameOver ? 'game_over' : state.phase,
           undoStack: pushUndo(state, `放逐 ${targetSeat} 號`),

@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#020617" />
+    <meta name="theme-color" content="#0C0E12" />
     <meta
       name="description"
       content="Mobile-First 暗黑模式狼人殺法官輔助網頁工具：內建 143 種板子與 130 位角色圖鑑，支援實體法官面殺、線上語音法官全員下場、夜間流程提詞機、雙模式投票紀錄器、警長競選與一鍵復盤戰報匯出。"
@@ -62,22 +62,18 @@
         }
       })();
     </script>
+    <style>
+      html,
+      body,
+      #root {
+        background-color: #0C0E12;
+        color: #F3F4F6;
+        margin: 0;
+      }
+    </style>
   </head>
-  <body class="bg-zinc-950 text-zinc-100 antialiased">
-    <div id="root">
-      <!-- 供搜尋引擎索引與無 JS 環境閱讀的靜態摘要（React 掛載後自動取代） -->
-      <main style="max-width:640px;margin:0 auto;padding:32px 20px;color:#e2e8f0;font-family:sans-serif;">
-        <h1>狼人殺法官輔助工具</h1>
-        <p>
-          專為線下桌遊面殺與聚會設計的 Mobile-First 暗黑模式狼人殺法官輔助網頁，免安裝、免登入、重整不遺失進度。
-        </p>
-        <ul>
-          <li>完整收錄 143 種狼人殺板子與 130 位角色圖鑑（預女獵白、狼王守衛、機械狼通靈師、狼美人騎士、攝夢人等）。</li>
-          <li>支援「實體法官面殺（預設）」與「線上語音法官（全員下場、全黑防窺）」兩大快速開局模式，以及完整 2×2×2 八種主持矩陣。</li>
-          <li>內建夜間流程提詞機、自動規則防呆（同守同救奶穿、連環開槍、單／雙爆吞警徽）、白天雙模式投票紀錄器、發言計時與一鍵復盤戰報匯出。</li>
-        </ul>
-      </main>
-    </div>
+  <body class="bg-[#0C0E12] text-[#F3F4F6] antialiased">
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

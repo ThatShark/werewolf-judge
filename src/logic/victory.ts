@@ -225,8 +225,76 @@ export function checkVictory(
 
   const goodWon = !hasAliveIndependentThirdParty && hasAnyWolf && wolves === 0;
 
+  // 白天「綁票」自動判狼勝：
+  // 1. 存活狼人陣營人數 >= 存活好人陣營人數（依實際存活人頭數，避免白澤雙陣營重複計數）
+  // 2. 好人陣營未持有有效警徽（無警長、警徽流失／撕毀、警長出局，或警徽在狼人／第三方手中）
+  // 3. 存活好人中無「單晚／單日一次擊殺 >= 2 名狼人」之多殺反制神職（僅排除未失能且未受感染／轉化的蜂之狂獵 bee_wild_hunt）
+  const wolfTieLockWon = (() => {
+    if (wolfWon || goodWon || !options.checkDayVoteTieLock || hasAliveIndependentThirdParty) {
+      return false;
+    }
+    if (!hasAnyWolf || wolves <= 0) return false;
+
+    let aliveGoodHeadcount = 0;
+    let hasActiveMultiKillGod = false;
+    for (const seat of seats) {
+      if (!seat.isAlive) continue;
+      const side = getEffectiveSide(
+        seat,
+        ruleOverrides,
+        treasureMasterState,
+        options.conversionState,
+        options.thirdPartySpecialState,
+      );
+      if (side === 'villager' || side === 'god') {
+        aliveGoodHeadcount += 1;
+        if (
+          seat.roleId === 'bee_wild_hunt' &&
+          !seat.statuses.infectedBySeedWolf &&
+          !seat.statuses.convertedByAwakenedGargoyle &&
+          !options.combatState?.beeWildHuntLostAbility
+        ) {
+          hasActiveMultiKillGod = true;
+        }
+      }
+    }
+
+    if (aliveGoodHeadcount <= 0 || wolves < aliveGoodHeadcount) {
+      return false;
+    }
+
+    // 條件 2：檢查好人陣營是否持有有效警徽
+    const sheriffState = options.sheriffState;
+    let goodHoldsValidBadge = false;
+    if (sheriffState?.badgeStatus === 'active' && sheriffState.sheriffSeat !== null) {
+      const sheriffSeatObj = seats.find((s) => s.seatNumber === sheriffState.sheriffSeat);
+      if (sheriffSeatObj?.isAlive) {
+        const sheriffSide = getEffectiveSide(
+          sheriffSeatObj,
+          ruleOverrides,
+          treasureMasterState,
+          options.conversionState,
+          options.thirdPartySpecialState,
+        );
+        if (sheriffSide === 'villager' || sheriffSide === 'god') {
+          goodHoldsValidBadge = true;
+        }
+      }
+    }
+    if (goodHoldsValidBadge) {
+      return false;
+    }
+
+    // 條件 3：存活好人中不得有未失能且未受感染的蜂之狂獵
+    if (hasActiveMultiKillGod) {
+      return false;
+    }
+
+    return true;
+  })();
+
   // 咒狐／睡美人勝利覆蓋：當好人或狼人任一方達成勝利條件時
-  if (wolfWon || goodWon) {
+  if (wolfWon || wolfTieLockWon || goodWon) {
     const cursedFox = seats.find((s) => s.roleId === 'cursed_fox');
     if (cursedFox && (cursedFox.isAlive || options.cursedFoxDiedThisResolution)) {
       return {
@@ -260,6 +328,13 @@ export function checkVictory(
       return { winner: 'wolf', winReason: '狼人陣營屠民勝利（所有平民已出局）' };
     }
     return { winner: 'wolf', winReason: '狼人陣營屠神勝利（所有神職已出局）' };
+  }
+
+  if (wolfTieLockWon) {
+    return {
+      winner: 'wolf',
+      winReason: '狼人陣營綁票勝利（白天狼人存活人數不少於好人，且好人無警徽與多殺反制）',
+    };
   }
 
   if (goodWon) {

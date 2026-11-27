@@ -292,9 +292,11 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
               : '全體 PK 候選人發言完畢'
           }
           canPrev={clampedIdx > 0}
-          canNext={clampedIdx < pkOrder.length}
+          canNext={clampedIdx < pkOrder.length - 1}
           onPrev={() => setPkSpeakerIdx((prev) => Math.max(0, prev - 1))}
-          onNext={() => setPkSpeakerIdx((prev) => Math.min(pkOrder.length, prev + 1))}
+          onNext={() =>
+            setPkSpeakerIdx((prev) => Math.min(Math.max(0, pkOrder.length - 1), prev + 1))
+          }
         />
 
         <button

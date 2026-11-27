@@ -30,7 +30,13 @@ export function AmbientAudioPlayer() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    return ambientAudioEngine.subscribe(setIsPlaying);
+    const unsubscribe = ambientAudioEngine.subscribe(setIsPlaying);
+    return () => {
+      unsubscribe();
+      // 關閉抽屜或切換分頁時強制停止試聽並清理計時器
+      ambientAudioEngine.stop();
+      ttsEngine.cancel();
+    };
   }, []);
 
   const handleToggleTtsPreview = () => {
@@ -63,7 +69,7 @@ export function AmbientAudioPlayer() {
         setNotice('請先選擇本機音訊檔案再試聽。');
         return;
       }
-      ambientAudioEngine.play(presetId, ambientAudio.volume);
+      ambientAudioEngine.previewShort(presetId, ambientAudio.volume, 3000);
     }
   };
 
@@ -96,7 +102,7 @@ export function AmbientAudioPlayer() {
     updateAmbientAudio({ presetId: 'custom', customFileName: fileName });
     setNotice(`已載入：${fileName}`);
     if (isPlaying) {
-      ambientAudioEngine.play('custom', ambientAudio.volume);
+      ambientAudioEngine.previewShort('custom', ambientAudio.volume, 3000);
     }
   };
 

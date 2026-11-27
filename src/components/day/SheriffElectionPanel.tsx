@@ -272,9 +272,11 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
               : '全體上警者發言完畢'
           }
           canPrev={clampedIdx > 0}
-          canNext={clampedIdx < order.length}
+          canNext={clampedIdx < order.length - 1}
           onPrev={() => setSpeakingIdx((prev) => Math.max(0, prev - 1))}
-          onNext={() => setSpeakingIdx((prev) => Math.min(order.length, prev + 1))}
+          onNext={() =>
+            setSpeakingIdx((prev) => Math.min(Math.max(0, order.length - 1), prev + 1))
+          }
         />
 
         <button
@@ -359,9 +361,11 @@ export function SheriffElectionPanel({ disabled = false }: SheriffElectionPanelP
               : '全體 PK 候選人發言完畢'
           }
           canPrev={clampedPkIdx > 0}
-          canNext={clampedPkIdx < pkOrder.length}
+          canNext={clampedPkIdx < pkOrder.length - 1}
           onPrev={() => setPkSpeakingIdx((prev) => Math.max(0, prev - 1))}
-          onNext={() => setPkSpeakingIdx((prev) => Math.min(pkOrder.length, prev + 1))}
+          onNext={() =>
+            setPkSpeakingIdx((prev) => Math.min(Math.max(0, pkOrder.length - 1), prev + 1))
+          }
         />
 
         <button

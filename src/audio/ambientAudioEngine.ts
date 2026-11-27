@@ -16,6 +16,7 @@ class AmbientAudioEngine {
   private currentVolume = 0.4;
   private listeners = new Set<PlaybackListener>();
   private previewTimerId: ReturnType<typeof setTimeout> | null = null;
+  private previewFadeTimerId: ReturnType<typeof setTimeout> | null = null;
 
   subscribe(listener: PlaybackListener): () => void {
     this.listeners.add(listener);
@@ -64,10 +65,25 @@ class AmbientAudioEngine {
   }
 
   stop() {
+    if (this.previewFadeTimerId !== null) {
+      clearTimeout(this.previewFadeTimerId);
+      this.previewFadeTimerId = null;
+    }
     if (this.previewTimerId !== null) {
       clearTimeout(this.previewTimerId);
       this.previewTimerId = null;
     }
+
+    if (this.masterGain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setValueAtTime(0, now);
+      } catch {
+        // ignore gain reset errors
+      }
+    }
+    this.masterGain = null;
 
     for (const src of this.activeSources) {
       try {
@@ -170,7 +186,7 @@ class AmbientAudioEngine {
   }
 
   /**
-   * 試聽一小段白噪音，於指定毫秒（預設 3 秒）後自動停止。
+   * 試聽一小段白噪音，於指定毫秒（預設 3 秒）內淡出並強制停止所有節點。
    */
   previewShort(
     presetId: AmbientPresetId,
@@ -179,6 +195,27 @@ class AmbientAudioEngine {
   ): boolean {
     const started = this.play(presetId, volume);
     if (!started) return false;
+
+    const fadeLeadMs = 120;
+    if (durationMs > fadeLeadMs) {
+      this.previewFadeTimerId = setTimeout(() => {
+        this.previewFadeTimerId = null;
+        if (this.masterGain && this.ctx) {
+          try {
+            const now = this.ctx.currentTime;
+            this.masterGain.gain.cancelScheduledValues(now);
+            this.masterGain.gain.setValueAtTime(
+              Math.max(0.0001, this.masterGain.gain.value),
+              now,
+            );
+            this.masterGain.gain.linearRampToValueAtTime(0.0001, now + fadeLeadMs / 1000);
+          } catch {
+            // ignore fade errors
+          }
+        }
+      }, durationMs - fadeLeadMs);
+    }
+
     this.previewTimerId = setTimeout(() => {
       this.previewTimerId = null;
       this.stop();

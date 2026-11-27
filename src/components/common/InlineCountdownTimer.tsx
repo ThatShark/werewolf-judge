@@ -173,7 +173,7 @@ export function InlineCountdownTimer({
             resetTimer();
             onPrev();
           }}
-          className="min-h-11 rounded-md border border-subtle bg-canvas px-3 text-[12px] font-semibold text-secondary hover:border-strong hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-11 rounded-md border border-sheriff-border bg-elevated px-3 text-[12px] font-semibold text-primary transition hover:border-sheriff disabled:cursor-not-allowed disabled:border-subtle disabled:bg-canvas disabled:text-muted disabled:opacity-40"
         >
           ← 上一位
         </button>
@@ -185,7 +185,7 @@ export function InlineCountdownTimer({
             resetTimer();
             onNext();
           }}
-          className="min-h-11 rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-11 rounded-md border border-strong bg-elevated px-3 text-[12px] font-semibold text-primary transition hover:opacity-90 disabled:cursor-not-allowed disabled:border-subtle disabled:bg-canvas disabled:text-muted disabled:opacity-40"
         >
           下一位 →
         </button>

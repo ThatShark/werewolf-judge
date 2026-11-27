@@ -1,11 +1,19 @@
 import { useMemo, useState } from 'react';
+import { getBoardById } from '../../data/boards';
 import { formatChineseDay, formatChineseNight } from '../../logic';
 import type {
   DayHistoryEntry,
   NightActionDraft,
   NightHistoryEntry,
 } from '../../logic/types';
+import { useGameStore } from '../../store/gameStore';
+import {
+  generateGameSummaryImage,
+  triggerPngDownload,
+  type GeneratedSummaryImage,
+} from '../../utils/exportGameSummaryImage';
 import { SlideDrawer } from './SlideDrawer';
+import { SummaryImageModal } from './SummaryImageModal';
 import {
   DEATH_REASON_LABELS,
   formatNightActionLogs,
@@ -32,6 +40,56 @@ export function HistoryDrawer({
   inProgressNight,
 }: HistoryDrawerProps) {
   const [selectedRound, setSelectedRound] = useState<'all' | number>('all');
+  const [exportingImage, setExportingImage] = useState(false);
+  const [summaryImage, setSummaryImage] = useState<GeneratedSummaryImage | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const selectedBoardId = useGameStore((s) => s.selectedBoardId);
+  const seats = useGameStore((s) => s.seats);
+  const round = useGameStore((s) => s.round);
+  const winner = useGameStore((s) => s.winner);
+  const sheriffState = useGameStore((s) => s.sheriffState);
+  const ruleOverrides = useGameStore((s) => s.ruleOverrides);
+  const mechWolfState = useGameStore((s) => s.mechWolfState);
+  const hybridState = useGameStore((s) => s.hybridState);
+  const conversionState = useGameStore((s) => s.conversionState);
+  const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
+
+  const board = getBoardById(selectedBoardId);
+  const canExportImage = seats.length > 0 && (nightHistory.length > 0 || dayHistory.length > 0);
+
+  const handleExportSummaryImage = async () => {
+    if (exportingImage || !canExportImage) return;
+    setExportingImage(true);
+    try {
+      const generated = await generateGameSummaryImage(
+        {
+          round,
+          seats,
+          winner,
+          sheriffState,
+          ruleOverrides,
+          nightHistory,
+          dayHistory,
+          mechWolfState,
+          hybridState,
+          conversionState,
+          thirdPartySpecialState,
+        },
+        board,
+      );
+      setSummaryImage(generated);
+      setPreviewOpen(true);
+      const isTouchDevice =
+        typeof navigator !== 'undefined' &&
+        (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1);
+      if (!isTouchDevice) {
+        triggerPngDownload(generated.blob, generated.filename);
+      }
+    } finally {
+      setExportingImage(false);
+    }
+  };
 
   const maxRound = Math.max(
     0,
@@ -58,9 +116,21 @@ export function HistoryDrawer({
     : [];
 
   return (
-    <SlideDrawer open={open} onClose={onClose} title="歷史紀錄" placement="bottom">
-      <div className="space-y-3">
-        {/* 按晚數／回合快速查閱切換列 */}
+    <>
+      <SlideDrawer open={open} onClose={onClose} title="歷史紀錄" placement="bottom">
+        <div className="space-y-3">
+          {canExportImage && (
+            <button
+              type="button"
+              onClick={handleExportSummaryImage}
+              disabled={exportingImage}
+              className="min-h-12 w-full rounded-md border border-sheriff-border bg-sheriff-tint px-4 text-[14px] font-semibold text-sheriff transition hover:opacity-90 disabled:opacity-60"
+            >
+              {exportingImage ? '正在產生復盤圖片…' : '匯出復盤表格圖（PNG）'}
+            </button>
+          )}
+
+          {/* 按晚數／回合快速查閱切換列 */}
         {rounds.length > 1 && (
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             <button
@@ -168,5 +238,12 @@ export function HistoryDrawer({
         </div>
       </div>
     </SlideDrawer>
+
+    <SummaryImageModal
+      open={previewOpen}
+      image={summaryImage}
+      onClose={() => setPreviewOpen(false)}
+    />
+    </>
   );
 }

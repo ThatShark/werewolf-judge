@@ -3,11 +3,16 @@ import { getBoardById } from '../../data/boards';
 import { getRoleById } from '../../data/roles';
 import { isSeatEffectiveWolf } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
+import {
+  generateGameSummaryImage,
+  triggerPngDownload,
+  type GeneratedSummaryImage,
+} from '../../utils/exportGameSummaryImage';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { SlideDrawer } from '../common/SlideDrawer';
+import { SummaryImageModal } from '../common/SummaryImageModal';
 import {
   buildGameReplayText,
-  buildReplayDownloadFilename,
   formatDeathReason,
   formatFactionLabel,
   formatSeatNum,
@@ -25,6 +30,7 @@ export function GameOverScreen() {
   const winReason = useGameStore((s) => s.winReason);
   const sheriffState = useGameStore((s) => s.sheriffState);
   const mechWolfState = useGameStore((s) => s.mechWolfState);
+  const hybridState = useGameStore((s) => s.hybridState);
   const conversionState = useGameStore((s) => s.conversionState);
   const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
@@ -38,7 +44,9 @@ export function GameOverScreen() {
   const [replayOpen, setReplayOpen] = useState(false);
   const [replayTab, setReplayTab] = useState<ReplayDrawerTab>('identities');
   const [copied, setCopied] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
+  const [exportingImage, setExportingImage] = useState(false);
+  const [summaryImage, setSummaryImage] = useState<GeneratedSummaryImage | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmContinueOpen, setConfirmContinueOpen] = useState(false);
   const [confirmRestartOpen, setConfirmRestartOpen] = useState(false);
   const [confirmDissolveOpen, setConfirmDissolveOpen] = useState(false);
@@ -156,18 +164,38 @@ export function GameOverScreen() {
     window.setTimeout(() => setCopied(false), 2400);
   };
 
-  const handleDownloadReplay = () => {
-    const blob = new Blob([replayText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = buildReplayDownloadFilename(board?.name);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setDownloaded(true);
-    window.setTimeout(() => setDownloaded(false), 2400);
+  const handleExportSummaryImage = async () => {
+    if (exportingImage) return;
+    setExportingImage(true);
+    try {
+      const generated = await generateGameSummaryImage(
+        {
+          round,
+          seats,
+          winner,
+          sheriffState,
+          ruleOverrides,
+          nightHistory,
+          dayHistory,
+          mechWolfState,
+          hybridState,
+          conversionState,
+          thirdPartySpecialState,
+        },
+        board,
+      );
+      setSummaryImage(generated);
+      setPreviewOpen(true);
+      // 桌機環境同步觸發自動下載；行動裝置則可於預覽彈窗分享或長按存圖
+      const isTouchDevice =
+        typeof navigator !== 'undefined' &&
+        (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1);
+      if (!isTouchDevice) {
+        triggerPngDownload(generated.blob, generated.filename);
+      }
+    } finally {
+      setExportingImage(false);
+    }
   };
 
   const isWolfWin = winner === 'wolf';
@@ -259,29 +287,39 @@ export function GameOverScreen() {
         </div>
       </section>
 
-      {/* 3. 底部核心操作列：復盤紀錄 ＋ 結束 ＋ 再來一局（Single Primary CTA） */}
-      <footer className="flex shrink-0 items-center gap-2 border-t border-subtle pt-2">
+      {/* 3. 底部核心操作列：匯出復盤表格圖 ＋ 復盤紀錄 ＋ 結束 ＋ 再來一局 */}
+      <footer className="flex shrink-0 flex-col gap-2 border-t border-subtle pt-2">
         <button
           type="button"
-          onClick={() => setReplayOpen(true)}
-          className="min-h-12 shrink-0 rounded-md border border-subtle bg-surface px-4 text-[14px] font-semibold text-primary hover:border-strong"
+          onClick={handleExportSummaryImage}
+          disabled={exportingImage}
+          className="min-h-12 w-full rounded-md border border-sheriff-border bg-sheriff-tint px-4 text-[14px] font-semibold text-sheriff transition hover:opacity-90 disabled:opacity-60"
         >
-          復盤紀錄
+          {exportingImage ? '正在產生復盤圖片…' : '匯出復盤表格圖（PNG）'}
         </button>
-        <button
-          type="button"
-          onClick={() => setConfirmDissolveOpen(true)}
-          className="min-h-12 shrink-0 rounded-md border border-subtle bg-canvas px-3 text-[12px] font-medium text-secondary hover:border-wolf-border hover:text-wolf"
-        >
-          結束
-        </button>
-        <button
-          type="button"
-          onClick={() => setConfirmRestartOpen(true)}
-          className="min-h-12 flex-1 rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90"
-        >
-          再來一局
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setReplayOpen(true)}
+            className="min-h-12 shrink-0 rounded-md border border-subtle bg-surface px-4 text-[14px] font-semibold text-primary hover:border-strong"
+          >
+            復盤紀錄
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDissolveOpen(true)}
+            className="min-h-12 shrink-0 rounded-md border border-subtle bg-canvas px-3 text-[12px] font-medium text-secondary hover:border-wolf-border hover:text-wolf"
+          >
+            結束
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmRestartOpen(true)}
+            className="min-h-12 flex-1 rounded-md bg-sheriff px-4 text-[14px] font-semibold text-inverse transition hover:opacity-90"
+          >
+            再來一局
+          </button>
+        </div>
       </footer>
 
       {/* 復盤紀錄抽屜（全場身分／時間軸／筆記／匯出） */}
@@ -325,10 +363,11 @@ export function GameOverScreen() {
               </button>
               <button
                 type="button"
-                onClick={handleDownloadReplay}
-                className="min-h-10 rounded-md border border-subtle bg-canvas px-2.5 text-[12px] font-medium text-secondary hover:text-primary"
+                onClick={handleExportSummaryImage}
+                disabled={exportingImage}
+                className="min-h-10 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff hover:opacity-90 disabled:opacity-60"
               >
-                {downloaded ? '已下載' : '匯出'}
+                {exportingImage ? '產生中…' : '匯出表格圖'}
               </button>
             </div>
           </div>
@@ -416,6 +455,12 @@ export function GameOverScreen() {
           )}
         </div>
       </SlideDrawer>
+
+      <SummaryImageModal
+        open={previewOpen}
+        image={summaryImage}
+        onClose={() => setPreviewOpen(false)}
+      />
 
       <ConfirmModal
         open={confirmContinueOpen}

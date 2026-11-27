@@ -58,6 +58,8 @@ export type BadgeStatus = 'none' | 'active' | 'destroyed' | 'swallowed';
 export interface VoteRoundRecord {
   roundIndex: number;
   votes: Record<number, number | null>;
+  /** 當輪具投票權之座位清單（供區分棄票 X 與無投票權 -） */
+  eligibleVoters?: number[];
   totals: Record<number, number>;
   votersByTarget: Record<number, number[]>;
   abstainers: number[];
@@ -71,6 +73,10 @@ export interface SheriffState {
   sheriffSeat: number | null;
   badgeStatus: BadgeStatus;
   candidates: number[];
+  /** 最初上警報名名單（不受後續退水或雙爆移除已死候選人影響） */
+  initialCandidates?: number[];
+  /** 警長競選最初當選座號（不受後續移交或撕毀警徽影響） */
+  initialElectedSeat?: number | null;
   withdrawnSeats: number[];
   pkCandidates: number[];
   /** 上警競選發言的原始順序（供平票 PK 依逆序發言使用） */
@@ -124,6 +130,10 @@ export interface DayStructuredEvent {
   summary: string;
   actorSeat?: number | null;
   targetSeat?: number | null;
+  /** 本事件造成出局的座號清單（含連鎖殉情等） */
+  eliminatedSeats?: number[];
+  /** 結構化結果標記（如 knight_hit / knight_miss / idiot_reveal 等） */
+  outcomeTag?: string;
   voteRecord?: VoteRoundRecord;
 }
 

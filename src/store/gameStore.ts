@@ -1249,6 +1249,12 @@ export const useGameStore = create<GameStore>()(
           policeDogResult: result.policeDogResult ?? null,
           littleGirlResult: result.littleGirlResult ?? null,
           mediumResult: result.mediumResult ?? null,
+          mechWolfLearnedRoleId:
+            state.currentNightDraft.mechWolfLearnTarget !== null
+              ? result.mechWolfState.learnedRoleId
+              : null,
+          maskedWolfCheckResult: result.maskedWolfCheckResult ?? null,
+          mediumSeerResult: result.mediumSeerResult ?? null,
         };
         const nextNightHistory = [
           ...state.nightHistory.filter((entry) => entry.round !== state.round),
@@ -1712,6 +1718,8 @@ export const useGameStore = create<GameStore>()(
           summary: shootSummary,
           actorSeat: shooterSeat,
           targetSeat,
+          eliminatedSeats: result.targetSurvived ? [] : [targetSeat],
+          outcomeTag: result.targetSurvived ? 'shoot_survived' : 'shoot_kill',
         });
 
         if (result.charmedDeathSeat !== null) {
@@ -1721,6 +1729,7 @@ export const useGameStore = create<GameStore>()(
             summary: charmSummary,
             actorSeat: targetSeat,
             targetSeat: result.charmedDeathSeat,
+            eliminatedSeats: [result.charmedDeathSeat],
           });
         }
 
@@ -1991,6 +2000,11 @@ export const useGameStore = create<GameStore>()(
           voteRecord: tally.record,
         });
 
+        const targetDiedInExile =
+          !exileResult.idiotRevealed &&
+          !exileResult.treasureMasterMaskedSurvived &&
+          exileResult.seats.find((s) => s.seatNumber === targetSeat)?.isAlive === false;
+
         const outcomeText = exileResult.idiotRevealed
           ? `${targetSeat} 號（白痴）被放逐投票投出，翻牌免死並失去投票權`
           : `${targetSeat} 號於白天放逐出局`;
@@ -1998,6 +2012,12 @@ export const useGameStore = create<GameStore>()(
           type: exileResult.idiotRevealed ? 'idiot_reveal' : 'exile_result',
           summary: outcomeText,
           targetSeat,
+          eliminatedSeats: targetDiedInExile ? [targetSeat] : [],
+          outcomeTag: exileResult.idiotRevealed
+            ? 'idiot_reveal'
+            : targetDiedInExile
+              ? 'exile'
+              : 'exile_survived',
         });
 
         if (exileResult.charmedDeathSeat !== null) {
@@ -2007,14 +2027,11 @@ export const useGameStore = create<GameStore>()(
             summary: charmSummary,
             actorSeat: targetSeat,
             targetSeat: exileResult.charmedDeathSeat,
+            eliminatedSeats: [exileResult.charmedDeathSeat],
           });
         }
 
         const exiledSeatObj = state.seats.find((s) => s.seatNumber === targetSeat);
-        const targetDiedInExile =
-          !exileResult.idiotRevealed &&
-          !exileResult.treasureMasterMaskedSurvived &&
-          exileResult.seats.find((s) => s.seatNumber === targetSeat)?.isAlive === false;
         const nextExiledHistory =
           targetDiedInExile && exiledSeatObj
             ? [
@@ -2109,6 +2126,11 @@ export const useGameStore = create<GameStore>()(
           },
         );
 
+        const targetDiedInExile =
+          !result.idiotRevealed &&
+          !result.treasureMasterMaskedSurvived &&
+          result.seats.find((s) => s.seatNumber === targetSeat)?.isAlive === false;
+
         const eventText = result.idiotRevealed
           ? `${targetSeat} 號（白痴）被放逐投票投出，翻牌免死並失去投票權`
           : `${targetSeat} 號於白天放逐出局`;
@@ -2117,6 +2139,12 @@ export const useGameStore = create<GameStore>()(
           type: result.idiotRevealed ? 'idiot_reveal' : 'exile_result',
           summary: eventText,
           targetSeat,
+          eliminatedSeats: targetDiedInExile ? [targetSeat] : [],
+          outcomeTag: result.idiotRevealed
+            ? 'idiot_reveal'
+            : targetDiedInExile
+              ? 'exile'
+              : 'exile_survived',
         });
 
         if (result.charmedDeathSeat !== null) {
@@ -2126,14 +2154,11 @@ export const useGameStore = create<GameStore>()(
             summary: charmSummary,
             actorSeat: targetSeat,
             targetSeat: result.charmedDeathSeat,
+            eliminatedSeats: [result.charmedDeathSeat],
           });
         }
 
         const exiledSeatObj = state.seats.find((s) => s.seatNumber === targetSeat);
-        const targetDiedInExile =
-          !result.idiotRevealed &&
-          !result.treasureMasterMaskedSurvived &&
-          result.seats.find((s) => s.seatNumber === targetSeat)?.isAlive === false;
         const nextExiledHistory =
           targetDiedInExile && exiledSeatObj
             ? [
@@ -2238,6 +2263,7 @@ export const useGameStore = create<GameStore>()(
           type: 'good_self_explode',
           summary,
           actorSeat,
+          eliminatedSeats: [actorSeat],
         });
 
         set({
@@ -2340,6 +2366,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary,
             targetSeat: res.eliminatedSeat,
+            eliminatedSeats: [res.eliminatedSeat],
+            outcomeTag: 'white_cat_delayed_death',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2378,6 +2406,8 @@ export const useGameStore = create<GameStore>()(
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'manual_judge',
             summary,
+            eliminatedSeats: res.killedSeats,
+            outcomeTag: 'pufferfish_explode',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2440,6 +2470,8 @@ export const useGameStore = create<GameStore>()(
             summary,
             actorSeat: hunterSeat,
             targetSeat: res.killedSeat,
+            eliminatedSeats: res.killedSeat !== null ? [res.killedSeat] : [],
+            outcomeTag: 'awakened_hunter_shoot',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2490,6 +2522,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary,
             targetSeat: res.eliminatedSeat,
+            eliminatedSeats: [res.eliminatedSeat],
+            outcomeTag: 'old_rascal_delayed_death',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2535,6 +2569,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary,
             targetSeat,
+            eliminatedSeats: res.killedSeat !== null ? [res.killedSeat] : [],
+            outcomeTag: 'avenger_assassinate',
           }),
           winner: triggerGameOver ? finalVictory.winner : state.winner,
           winReason: triggerGameOver ? finalVictory.winReason : state.winReason,
@@ -2578,6 +2614,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary,
             targetSeat,
+            eliminatedSeats: res.poisonedSeat != null ? [res.poisonedSeat] : [],
+            outcomeTag: 'pandora_day_gift',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2652,6 +2690,8 @@ export const useGameStore = create<GameStore>()(
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'manual_judge',
             summary,
+            eliminatedSeats: res.eliminatedSeats,
+            outcomeTag: 'nine_tails_hunt',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2729,6 +2769,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary,
             targetSeat: res.eliminatedSeat,
+            eliminatedSeats: [res.eliminatedSeat],
+            outcomeTag: 'bai_ze_delayed_death',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2789,6 +2831,7 @@ export const useGameStore = create<GameStore>()(
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'manual_judge',
             summary,
+            outcomeTag: 'sequence_prince_revote',
           }),
           undoStack: pushUndo(state, '定序王子翻牌重新投票'),
         });
@@ -2880,6 +2923,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary,
             targetSeat,
+            eliminatedSeats: res.targetSurvivedInvincible ? [] : [targetSeat],
+            outcomeTag: 'detective_execute',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -2989,6 +3034,7 @@ export const useGameStore = create<GameStore>()(
           type: 'self_explode',
           summary: explodeSummary,
           actorSeat: wolfSeat,
+          eliminatedSeats: [wolfSeat],
         });
 
         if (swallowedBadge) {
@@ -3115,6 +3161,11 @@ export const useGameStore = create<GameStore>()(
           summary,
           actorSeat: wolfSeat,
           targetSeat,
+          eliminatedSeats: [
+            wolfSeat,
+            ...(targetSeat !== null ? [targetSeat] : []),
+            ...(result.charmedDeathSeat !== null ? [result.charmedDeathSeat] : []),
+          ],
         });
 
         if (swallowedBadge) {
@@ -3256,6 +3307,8 @@ export const useGameStore = create<GameStore>()(
           summary,
           actorSeat: knightSeat,
           targetSeat,
+          eliminatedSeats: result.eliminatedSeat !== null ? [result.eliminatedSeat] : [],
+          outcomeTag: result.targetWasWolf ? 'knight_hit' : 'knight_miss',
         });
 
         const synced = finalizeDayDeathSync(state, result.seats);
@@ -3431,6 +3484,8 @@ export const useGameStore = create<GameStore>()(
             summary,
             actorSeat,
             targetSeat,
+            eliminatedSeats: [targetSeat],
+            outcomeTag: 'pandora_day_gun',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -3480,6 +3535,11 @@ export const useGameStore = create<GameStore>()(
             summary,
             actorSeat: wolfGirlSeat,
             targetSeat: res.breakupDeathSeat,
+            eliminatedSeats: [
+              wolfGirlSeat,
+              ...(res.breakupDeathSeat !== null ? [res.breakupDeathSeat] : []),
+            ],
+            outcomeTag: 'wolf_girl_explode',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -3536,6 +3596,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary,
             targetSeat: seatNumber,
+            eliminatedSeats: [seatNumber],
+            outcomeTag: 'masked_delayed_death',
           }),
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
@@ -3619,6 +3681,8 @@ export const useGameStore = create<GameStore>()(
             type: 'manual_judge',
             summary: eventText,
             targetSeat: seatNumber,
+            eliminatedSeats: result.becameAlive ? [] : [seatNumber],
+            outcomeTag: result.becameAlive ? 'manual_revive' : 'manual_eliminate',
           }),
           undoStack: pushUndo(state, `手動調整 ${seatNumber} 號存活狀態`),
           ...(result.becameAlive && state.winner ? { winner: null, winReason: null } : {}),

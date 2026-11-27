@@ -209,6 +209,7 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
   const record: VoteRoundRecord = {
     roundIndex,
     votes: { ...votes },
+    eligibleVoters: Array.from(eligibleVoters).sort((a, b) => a - b),
     totals,
     votersByTarget,
     abstainers,

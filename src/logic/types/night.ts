@@ -235,6 +235,12 @@ export interface NightHistoryEntry {
   policeDogResult?: { targetSeat: number; faction: 'wolf' | 'good' } | null;
   littleGirlResult?: { targetSeat: number; caught: boolean } | null;
   mediumResult?: { deadSeat: number; heirSeat: number; skill: string | null } | null;
+  /** 機械狼當晚學習到的實際角色 ID（供復盤矩陣顯示簡碼） */
+  mechWolfLearnedRoleId?: string | null;
+  /** 假面狼人當晚探查舞池結果 */
+  maskedWolfCheckResult?: { targetSeat: number; inDanceFloor: boolean } | null;
+  /** 通靈者繼承預言家查驗結果 */
+  mediumSeerResult?: { actorSeat: number; targetSeat: number; faction: 'wolf' | 'good' } | null;
 }
 
 export interface PendingNightAnnouncement {

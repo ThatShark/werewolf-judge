@@ -39,6 +39,8 @@ export function startSheriffElection(
       ...base,
       status: 'no_sheriff',
       badgeStatus: 'none',
+      initialCandidates: [],
+      initialElectedSeat: null,
     };
   }
 
@@ -49,6 +51,8 @@ export function startSheriffElection(
       sheriffSeat: uniqueCandidates[0],
       badgeStatus: 'active',
       candidates: uniqueCandidates,
+      initialCandidates: uniqueCandidates,
+      initialElectedSeat: uniqueCandidates[0],
     };
   }
 
@@ -56,6 +60,8 @@ export function startSheriffElection(
     ...base,
     status: 'speaking',
     candidates: uniqueCandidates,
+    initialCandidates: uniqueCandidates,
+    initialElectedSeat: null,
   };
 }
 
@@ -98,6 +104,7 @@ export function withdrawSheriffCandidate(
       ...state,
       status: 'elected',
       sheriffSeat: remainingCandidates[0],
+      initialElectedSeat: remainingCandidates[0],
       badgeStatus: 'active',
       candidates: remainingCandidates,
       withdrawnSeats: nextWithdrawn,
@@ -200,6 +207,7 @@ export function resolveSheriffVoteRound(
   const record: VoteRoundRecord = {
     roundIndex,
     votes: { ...votes },
+    eligibleVoters: Array.from(eligibleVoters).sort((a, b) => a - b),
     totals,
     votersByTarget,
     abstainers,
@@ -232,6 +240,7 @@ export function resolveSheriffVoteRound(
         ...state,
         status: 'elected',
         sheriffSeat: topSeats[0],
+        initialElectedSeat: topSeats[0],
         badgeStatus: 'active',
         pkCandidates: [],
         voteRounds: nextVoteRounds,
@@ -384,6 +393,7 @@ export function resumeDeferredSheriffElection(
         ...state,
         status: 'elected',
         sheriffSeat: aliveCandidates[0],
+        initialElectedSeat: aliveCandidates[0],
         badgeStatus: 'active',
         candidates: aliveCandidates,
         pkCandidates: [],

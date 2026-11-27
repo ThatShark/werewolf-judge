@@ -23,3 +23,4 @@ export * from './nightValidation';
 export * from './manualControl';
 export * from './notebook';
 export * from './onlineJudgeFlow';
+export * from './gameSummaryMatrix';

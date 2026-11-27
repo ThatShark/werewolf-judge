@@ -174,7 +174,7 @@ export function getDrunkSeerCheckResult(
   } = {},
 ): SeerCheckOutcome | null {
   const target = seats.find((s) => s.seatNumber === targetSeat);
-  if (!target || !target.roleId) return null;
+  if (!target) return null;
   if (options.manualOverride === 'good' || options.manualOverride === 'wolf') {
     return { targetSeat, faction: options.manualOverride };
   }
@@ -294,8 +294,9 @@ export function getGargoyleCheckResult(
   mechWolfState: MechWolfRuntimeState,
   targetSeat: number,
   treasureMasterState?: TreasureMasterRuntimeState,
+  options?: { fallbackUnclaimedRoleId?: string | null },
 ): PsychicCheckOutcome | null {
-  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState);
+  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState, options);
 }
 
 export function shouldGargoyleJoinWolfTeam(
@@ -352,9 +353,10 @@ export function getPumpkinGhostCheckResult(
   mechWolfState: MechWolfRuntimeState,
   targetSeat: number,
   treasureMasterState?: TreasureMasterRuntimeState,
+  options?: { fallbackUnclaimedRoleId?: string | null },
 ): PsychicCheckOutcome | null {
   if (!pumpkinGhostState.hasInherited) return null;
-  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState);
+  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState, options);
 }
 
 // =========================
@@ -374,8 +376,9 @@ export function getWolfWitchCheckResult(
   mechWolfState: MechWolfRuntimeState,
   targetSeat: number,
   treasureMasterState?: TreasureMasterRuntimeState,
+  options?: { fallbackUnclaimedRoleId?: string | null },
 ): PsychicCheckOutcome | null {
-  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState);
+  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState, options);
 }
 
 /** 狼巫第二晚起查驗到純白之女，則隔天純白之女死亡 */
@@ -394,8 +397,9 @@ export function getPureWhiteCheckResult(
   mechWolfState: MechWolfRuntimeState,
   targetSeat: number,
   treasureMasterState?: TreasureMasterRuntimeState,
+  options?: { fallbackUnclaimedRoleId?: string | null },
 ): PsychicCheckOutcome | null {
-  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState);
+  return getPsychicCheckResult(seats, mechWolfState, targetSeat, treasureMasterState, options);
 }
 
 /**
@@ -480,7 +484,13 @@ export function getDemonWolfCheckResult(
   targetSeat: number,
 ): DemonWolfCheckOutcome | null {
   const target = seats.find((s) => s.seatNumber === targetSeat);
-  if (!target || !target.roleId || isSeatWolfFaction(target)) return null;
+  if (!target || isSeatWolfFaction(target)) return null;
+  if (!target.roleId) {
+    return {
+      targetSeat,
+      roleType: 'villager',
+    };
+  }
   const role = getRoleById(target.roleId);
   if (!role) return null;
   return {

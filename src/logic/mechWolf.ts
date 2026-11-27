@@ -69,9 +69,18 @@ export function getPsychicCheckResult(
   mechWolfState: MechWolfRuntimeState,
   targetSeat: number,
   treasureMasterState?: TreasureMasterRuntimeState,
+  options: {
+    fallbackUnclaimedRoleId?: string | null;
+  } = {},
 ): PsychicCheckOutcome | null {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
-  if (!target || !target.roleId) return null;
+  if (!target) return null;
+  if (!target.roleId) {
+    return {
+      targetSeat,
+      perceivedRoleId: options.fallbackUnclaimedRoleId ?? 'villager',
+    };
+  }
 
   if (target.roleId === 'mech_wolf' && mechWolfState.learnedRoleId) {
     return {
@@ -102,7 +111,7 @@ export function getSeerCheckResult(
   } = {},
 ): SeerCheckOutcome | null {
   const target = seats.find((seat) => seat.seatNumber === targetSeat);
-  if (!target || !target.roleId) return null;
+  if (!target) return null;
 
   // 被種狼感染轉化、被覺醒石像鬼轉化、被傀儡狼傀儡化者、轉狼的超級黑市／野孩子／覺醒孤獨少女／繼承狼影子，以及白蛇／許仙被預言家查驗皆為狼人（查殺）
   if (
@@ -126,6 +135,14 @@ export function getSeerCheckResult(
     return {
       targetSeat,
       faction: 'wolf',
+    };
+  }
+
+  // 實體發牌首夜：未認領座位（roleId === null）視同好人陣營（金水），避免回傳 null
+  if (!target.roleId) {
+    return {
+      targetSeat,
+      faction: 'good',
     };
   }
 

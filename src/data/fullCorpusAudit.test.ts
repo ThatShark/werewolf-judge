@@ -400,7 +400,7 @@ describe('全量板子原文對帳與無頭開局健康檢查（Full Corpus Audi
       expect(state.round).toBe(1);
 
       // 4) 第一晚逐步推進與合法互動填入
-      const night1Steps = getNightSteps(board, 1);
+      const night1Steps = getNightSteps(board, 1, 'online_deal');
       expect(night1Steps.length, `板子 ${board.id} 第一晚沒有任何步驟`).toBeGreaterThan(0);
 
       const mechSeat = state.seats.find((s) => s.roleId === 'mech_wolf');
@@ -474,7 +474,7 @@ describe('全量板子原文對帳與無頭開局健康檢查（Full Corpus Audi
         expect(state.round).toBe(2);
         expect(state.currentStepIndex).toBe(0);
 
-        const night2Steps = getNightSteps(board, 2);
+        const night2Steps = getNightSteps(board, 2, 'online_deal');
         expect(night2Steps.length, `板子 ${board.id} 第二晚沒有任何步驟`).toBeGreaterThan(0);
 
         for (let stepIdx = 0; stepIdx < night2Steps.length; stepIdx += 1) {

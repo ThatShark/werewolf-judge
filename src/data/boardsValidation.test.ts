@@ -27,7 +27,7 @@ vi.hoisted(() => {
 });
 
 import { ALL_BOARDS, BOARDS_BY_ID } from './boards';
-import { ROLES_BY_ID, ROLE_LIST } from './roles';
+import { ROLES_BY_ID, ROLE_LIST, getRoleById } from './roles';
 import { getNightSteps } from '../logic';
 import type { NightActionType, PlayerCountFilter } from '../logic/types';
 import { useGameStore } from '../store/gameStore';
@@ -406,7 +406,7 @@ describe('全板子 100% 自動化驗證與無頭模擬測試套件', () => {
       expect(state.round).toBe(1);
 
       // 第一晚：逐步推進所有步驟（若含機械狼則填入合法學習目標）
-      const night1Steps = getNightSteps(board, 1);
+      const night1Steps = getNightSteps(board, 1, 'online_deal');
       const mechSeat = state.seats.find((s) => s.roleId === 'mech_wolf');
       const nonMechSeat = state.seats.find((s) => s.roleId !== 'mech_wolf');
 
@@ -459,7 +459,7 @@ describe('全板子 100% 自動化驗證與無頭模擬測試套件', () => {
         expect(state.round).toBe(2);
         expect(state.currentStepIndex).toBe(0);
 
-        const night2Steps = getNightSteps(board, 2);
+        const night2Steps = getNightSteps(board, 2, 'online_deal');
         for (let stepIdx = 0; stepIdx < night2Steps.length; stepIdx += 1) {
           expect(useGameStore.getState().currentStepIndex).toBe(stepIdx);
           if (stepIdx < night2Steps.length - 1) {
@@ -473,5 +473,86 @@ describe('全板子 100% 自動化驗證與無頭模擬測試套件', () => {
         expect(['day_announcement', 'game_over']).toContain(state.phase);
       }
     }
+  });
+
+  it('全量 143 板首夜睜眼順序合規性守衛（陣營查驗前置鐵律 ＋ 身分／神民查驗前置鐵律）', () => {
+    const FACTION_CHECK_ACTIONS = new Set([
+      'seer_check',
+      'awakened_seer_check',
+      'fool_seer_check',
+      'lantern_seer_check',
+      'drunk_seer_check',
+    ]);
+    const EXACT_OR_CLASS_CHECK_ACTIONS = new Set([
+      'psychic_check',
+      'pure_white_check',
+      'gargoyle_check',
+      'wolf_witch_check',
+      'pumpkin_ghost_check',
+      'demon_wolf_check',
+    ]);
+    const SEER_GOOD_WOLVES_N1 = new Set([
+      'hidden_wolf',
+      'snow_wolf',
+      'pumpkin_ghost',
+      'wolf_younger_brother',
+    ]);
+    const SEER_WOLF_NON_WOLVES_N1 = new Set(['white_snake_seer', 'xu_xian_phantom']);
+
+    const rule1Violations: string[] = [];
+    const rule2Violations: string[] = [];
+
+    for (const board of ALL_BOARDS) {
+      const allRoleIds = [
+        ...board.composition.wolf.map((s) => s.roleId),
+        ...board.composition.good.map((s) => s.roleId),
+        ...(board.composition.thirdParty ?? []).map((s) => s.roleId),
+      ];
+      const boardHasVillager = board.composition.good.some((s) => s.roleId === 'villager');
+
+      const mustClaimBeforeFaction = allRoleIds.filter((roleId) => {
+        const role = getRoleById(roleId);
+        if (!role) return false;
+        if (SEER_WOLF_NON_WOLVES_N1.has(roleId)) return true;
+        return role.faction === 'wolf' && !SEER_GOOD_WOLVES_N1.has(roleId);
+      });
+
+      const mustClaimBeforeExact = allRoleIds.filter((roleId) => {
+        const role = getRoleById(roleId);
+        return Boolean(role && role.category !== 'villager');
+      });
+
+      const claimed = new Set<string>();
+      for (const step of board.nightSchedule.firstNight) {
+        const claimedWithSelf = new Set([...claimed, ...step.actorRoleIds]);
+
+        if (FACTION_CHECK_ACTIONS.has(step.actionType)) {
+          const missing = mustClaimBeforeFaction.filter((r) => !claimedWithSelf.has(r));
+          if (missing.length > 0) {
+            rule1Violations.push(
+              `${board.id} (${board.name}) @ ${step.actionType}: 未認領狼陣營 [${missing.join(', ')}]`,
+            );
+          }
+        }
+
+        if (EXACT_OR_CLASS_CHECK_ACTIONS.has(step.actionType)) {
+          const missing = mustClaimBeforeExact.filter((r) => !claimedWithSelf.has(r));
+          // 若板子不含平民且僅剩唯一未認領角色（例如雲端追蹤剩純白之女），剩餘空位可 100% 唯一推斷，視為合規
+          const isUnambiguousNoVillagerBoard = !boardHasVillager && missing.length === 1;
+          if (missing.length > 0 && !isUnambiguousNoVillagerBoard) {
+            rule2Violations.push(
+              `${board.id} (${board.name}) @ ${step.actionType}: 未認領非平民 [${missing.join(', ')}]`,
+            );
+          }
+        }
+
+        for (const r of step.actorRoleIds) {
+          claimed.add(r);
+        }
+      }
+    }
+
+    expect(rule1Violations).toEqual([]);
+    expect(rule2Violations).toEqual([]);
   });
 });

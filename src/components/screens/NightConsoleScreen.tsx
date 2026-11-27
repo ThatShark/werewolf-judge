@@ -98,6 +98,7 @@ import {
   isJackSecondIdentityBoard,
   isSeatWolfFaction,
   resolveActiveLuckyActorForNight,
+  resolveUnclaimedRoleFallback,
   type TouchConfirmEvent,
 } from '../../logic';
 import type { ActionCheckResult, MerchantGiftItem } from '../../logic/types';
@@ -192,7 +193,10 @@ export function NightConsoleScreen() {
   const ttsSupported = useMemo(() => ttsEngine.isSupported(), []);
 
   const board = getBoardById(selectedBoardId);
-  const steps = useMemo(() => (board ? getNightSteps(board, round) : []), [board, round]);
+  const steps = useMemo(
+    () => (board ? getNightSteps(board, round, hostMode.dealMode) : []),
+    [board, round, hostMode.dealMode],
+  );
   const currentStep = steps[currentStepIndex];
 
   // 防誤觸預選狀態（本地草稿，點擊「確認紀錄」才寫入 Store）
@@ -797,9 +801,20 @@ export function NightConsoleScreen() {
       ? getSeerCheckResult(seats, pendingTarget, { conversionState, thirdPartySpecialState })
       : null;
 
+  const unclaimedFallbackRoleId = useMemo(
+    () => resolveUnclaimedRoleFallback(board, seats),
+    [board, seats],
+  );
+
   const psychicOutcome =
     currentStep.actionType === 'psychic_check' && revealConfirmed && pendingTarget !== null
-      ? getPsychicCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
+      ? getPsychicCheckResult(
+          seats,
+          effectiveMechWolfForPreview,
+          pendingTarget,
+          treasureMasterState,
+          { fallbackUnclaimedRoleId: unclaimedFallbackRoleId },
+        )
       : null;
 
   const mechWolfPsychicOutcome =
@@ -807,7 +822,9 @@ export function NightConsoleScreen() {
     mechWolfState.learnedRoleId === 'psychic' &&
     revealConfirmed &&
     pendingTarget !== null
-      ? getPsychicCheckResult(seats, mechWolfState, pendingTarget, treasureMasterState)
+      ? getPsychicCheckResult(seats, mechWolfState, pendingTarget, treasureMasterState, {
+          fallbackUnclaimedRoleId: unclaimedFallbackRoleId,
+        })
       : null;
 
   // 第 1 批查驗與資訊感知即時結果
@@ -836,17 +853,35 @@ export function NightConsoleScreen() {
 
   const gargoyleOutcome =
     currentStep.actionType === 'gargoyle_check' && revealConfirmed && pendingTarget !== null
-      ? getGargoyleCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
+      ? getGargoyleCheckResult(
+          seats,
+          effectiveMechWolfForPreview,
+          pendingTarget,
+          treasureMasterState,
+          { fallbackUnclaimedRoleId: unclaimedFallbackRoleId },
+        )
       : null;
 
   const wolfWitchOutcome =
     currentStep.actionType === 'wolf_witch_check' && revealConfirmed && pendingTarget !== null
-      ? getWolfWitchCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
+      ? getWolfWitchCheckResult(
+          seats,
+          effectiveMechWolfForPreview,
+          pendingTarget,
+          treasureMasterState,
+          { fallbackUnclaimedRoleId: unclaimedFallbackRoleId },
+        )
       : null;
 
   const pureWhiteOutcome =
     currentStep.actionType === 'pure_white_check' && revealConfirmed && pendingTarget !== null
-      ? getPureWhiteCheckResult(seats, effectiveMechWolfForPreview, pendingTarget, treasureMasterState)
+      ? getPureWhiteCheckResult(
+          seats,
+          effectiveMechWolfForPreview,
+          pendingTarget,
+          treasureMasterState,
+          { fallbackUnclaimedRoleId: unclaimedFallbackRoleId },
+        )
       : null;
 
   const demonWolfOutcome =
@@ -865,6 +900,7 @@ export function NightConsoleScreen() {
           effectiveMechWolfForPreview,
           pendingTarget,
           treasureMasterState,
+          { fallbackUnclaimedRoleId: unclaimedFallbackRoleId },
         )
       : null;
 

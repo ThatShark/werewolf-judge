@@ -517,8 +517,61 @@ export function validateRoleAssignment(
   };
 }
 
-export function getNightSteps(board: BoardDefinition, round: number): NightStepScript[] {
-  return round <= 1 ? board.nightSchedule.firstNight : board.nightSchedule.subsequentNights;
+/**
+ * 判斷是否為「單純確認單一角色身分」的 confirm_only 步驟：
+ * 線上發牌（online_deal）模式下可安全跳過，但保留多人互認／被動得知關係步驟（情侶、狼兄狼弟、雙子、感染者、狼隊互認、被表白者、證婚人、隱狼得知隊友等）。
+ */
+export function isSoloIdentityConfirmStep(step: NightStepScript): boolean {
+  if (step.actionType !== 'confirm_only') return false;
+  const prompt = step.actionPrompt.trim();
+  if (!/^\(確認.+是誰\)$/.test(prompt)) return false;
+  if (step.actorRoleIds.length !== 1) return false;
+  const roleId = step.actorRoleIds[0];
+  if (roleId === 'wolf' || roleId === 'twins') return false;
+  if (/相認|彼此|隊友|感染者|狼人/.test(prompt)) return false;
+  return true;
+}
+
+/**
+ * 實體發牌首夜進行具體身分查驗時，推斷未認領座位（roleId === null）應回傳的預設身分：
+ * - 一般板子含平民時回傳 'villager'；
+ * - 無平民板子（如雲端追蹤）若場上僅剩唯一一種未認領角色，直接推斷為該角色（如 'pure_white_maiden'）。
+ */
+export function resolveUnclaimedRoleFallback(
+  board: BoardDefinition | undefined,
+  seats: PlayerSeat[],
+): string {
+  if (!board) return 'villager';
+  const expected = getBoardExpectedRoleCounts(board);
+  if ((expected.villager ?? 0) > 0) {
+    return 'villager';
+  }
+  const claimedCounts: Record<string, number> = {};
+  for (const seat of seats) {
+    if (seat.roleId) {
+      claimedCounts[seat.roleId] = (claimedCounts[seat.roleId] ?? 0) + 1;
+    }
+  }
+  const remainingRoleIds = Object.entries(expected)
+    .filter(([roleId, count]) => (claimedCounts[roleId] ?? 0) < count)
+    .map(([roleId]) => roleId);
+  if (remainingRoleIds.length === 1) {
+    return remainingRoleIds[0];
+  }
+  return 'villager';
+}
+
+export function getNightSteps(
+  board: BoardDefinition,
+  round: number,
+  dealMode?: HostModeConfig['dealMode'],
+): NightStepScript[] {
+  const rawSteps =
+    round <= 1 ? board.nightSchedule.firstNight : board.nightSchedule.subsequentNights;
+  if (dealMode === 'online_deal') {
+    return rawSteps.filter((step) => !isSoloIdentityConfirmStep(step));
+  }
+  return rawSteps;
 }
 
 /**

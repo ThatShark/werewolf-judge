@@ -75,9 +75,9 @@ function App() {
 
   const highlightRoleIds = useMemo(() => {
     if (!board || phase !== 'night') return [];
-    const steps = getNightSteps(board, round);
+    const steps = getNightSteps(board, round, hostMode.dealMode);
     return steps[currentStepIndex]?.actorRoleIds ?? [];
-  }, [board, phase, round, currentStepIndex]);
+  }, [board, phase, round, hostMode.dealMode, currentStepIndex]);
 
   const renderPhaseScreen = () => {
     switch (phase) {

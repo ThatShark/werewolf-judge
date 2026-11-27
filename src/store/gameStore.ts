@@ -1041,10 +1041,10 @@ export const useGameStore = create<GameStore>()(
 
       nextNightStep: () => {
         const state = get();
-        const { selectedBoardId, round, currentStepIndex } = state;
+        const { selectedBoardId, round, currentStepIndex, hostMode } = state;
         const board = getBoardById(selectedBoardId);
         if (!board) return;
-        const steps = getNightSteps(board, round);
+        const steps = getNightSteps(board, round, hostMode.dealMode);
         if (currentStepIndex < steps.length - 1) {
           set({
             currentStepIndex: currentStepIndex + 1,
@@ -1065,7 +1065,7 @@ export const useGameStore = create<GameStore>()(
         if (state.round === 1 && state.hostMode.dealMode === 'physical_deal') return false;
         const board = getBoardById(state.selectedBoardId);
         if (!board) return false;
-        const steps = getNightSteps(board, state.round);
+        const steps = getNightSteps(board, state.round, state.hostMode.dealMode);
         const remainingSteps = steps.slice(state.currentStepIndex + 1);
         const seerIdx = steps.findIndex((s) => s.actionType === 'seer_check');
         const witchIdx = steps.findIndex((s) => s.actionType === 'witch_action');
@@ -1125,7 +1125,9 @@ export const useGameStore = create<GameStore>()(
             : state.seats;
 
         const board = getBoardById(state.selectedBoardId);
-        const nightSteps = board ? getNightSteps(board, state.round) : [];
+        const nightSteps = board
+          ? getNightSteps(board, state.round, state.hostMode.dealMode)
+          : [];
         const seerIdx = nightSteps.findIndex((s) => s.actionType === 'seer_check');
         const witchIdx = nightSteps.findIndex((s) => s.actionType === 'witch_action');
         const seerActsBeforeWitch = seerIdx !== -1 && witchIdx !== -1 && seerIdx < witchIdx;

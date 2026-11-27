@@ -12074,6 +12074,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
+          "stepId": "step_1",
+          "actorLabel": "石像鬼",
+          "actorRoleIds": [
+            "gargoyle"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "石像鬼請睜眼",
+          "actionPrompt": "(確認石像鬼是誰)",
+          "closePrompt": "石像鬼請閉眼"
+        },
+        {
           "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
@@ -18783,6 +18794,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "狼鴉之爪請閉眼"
         },
         {
+          "stepId": "step_3",
+          "actorLabel": "石像鬼",
+          "actorRoleIds": [
+            "gargoyle"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "石像鬼請睜眼",
+          "actionPrompt": "(確認石像鬼是誰)",
+          "closePrompt": "石像鬼請閉眼"
+        },
+        {
           "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
@@ -18793,6 +18815,20 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "openPrompt": "狼人請睜眼",
           "actionPrompt": "狼鴉之爪是...\n請選擇要擊殺的目標",
           "closePrompt": "狼人請閉眼"
+        },
+        {
+          "stepId": "step_5",
+          "actorLabel": "隱狼",
+          "actorRoleIds": [
+            "hidden_wolf"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "隱狼請睜眼",
+          "actionPrompt": "你的狼隊友為...(小狼是...狼鴉之爪是...石像鬼是...)",
+          "closePrompt": "隱狼請閉眼",
+          "judgeTips": [
+            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
+          ]
         },
         {
           "stepId": "witch_action",
@@ -18806,7 +18842,7 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "女巫請閉眼"
         },
         {
-          "stepId": "step_5",
+          "stepId": "step_7",
           "actorLabel": "預言家",
           "actorRoleIds": [
             "seer"
@@ -18826,31 +18862,6 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "openPrompt": "獵人請睜眼",
           "actionPrompt": "今晚的開槍手勢是...",
           "closePrompt": "獵人請閉眼"
-        },
-        {
-          "stepId": "step_7",
-          "actorLabel": "石像鬼",
-          "actorRoleIds": [
-            "gargoyle"
-          ],
-          "actionType": "confirm_only",
-          "openPrompt": "石像鬼請睜眼",
-          "actionPrompt": "(確認石像鬼是誰)",
-          "closePrompt": "石像鬼請閉眼"
-        },
-        {
-          "stepId": "step_8",
-          "actorLabel": "隱狼",
-          "actorRoleIds": [
-            "hidden_wolf"
-          ],
-          "actionType": "confirm_only",
-          "openPrompt": "隱狼請睜眼",
-          "actionPrompt": "你的狼隊友為...(小狼是...狼鴉之爪是...石像鬼是...)",
-          "closePrompt": "隱狼請閉眼",
-          "judgeTips": [
-            "此步驟由法官口頭引導；若產生出局或狀態變化，可點「座位總覽／手動標記」即時同步。"
-          ]
         },
         {
           "stepId": "seer_check",
@@ -24714,6 +24725,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
     "nightSchedule": {
       "firstNight": [
         {
+          "stepId": "step_1",
+          "actorLabel": "石像鬼",
+          "actorRoleIds": [
+            "gargoyle"
+          ],
+          "actionType": "confirm_only",
+          "openPrompt": "石像鬼請睜眼",
+          "actionPrompt": "(確認石像鬼是誰)",
+          "closePrompt": "石像鬼請閉眼"
+        },
+        {
           "stepId": "wolf_kill",
           "actorLabel": "狼人",
           "actorRoleIds": [
@@ -30303,17 +30325,6 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "closePrompt": "盜寶大師請閉眼"
         },
         {
-          "stepId": "psychic_check",
-          "actorLabel": "通靈師",
-          "actorRoleIds": [
-            "psychic"
-          ],
-          "actionType": "psychic_check",
-          "openPrompt": "通靈師請睜眼",
-          "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
-          "closePrompt": "通靈師請閉眼"
-        },
-        {
           "stepId": "hunter_gesture",
           "actorLabel": "獵人",
           "actorRoleIds": [
@@ -30323,6 +30334,17 @@ export const ALL_BOARDS: BoardDefinition[] = [
           "openPrompt": "獵人請睜眼",
           "actionPrompt": "今晚的開槍手勢是...",
           "closePrompt": "獵人請閉眼"
+        },
+        {
+          "stepId": "psychic_check",
+          "actorLabel": "通靈師",
+          "actorRoleIds": [
+            "psychic"
+          ],
+          "actionType": "psychic_check",
+          "openPrompt": "通靈師請睜眼",
+          "actionPrompt": "請選擇要查驗的玩家，他的身分是...",
+          "closePrompt": "通靈師請閉眼"
         }
       ],
       "subsequentNights": [

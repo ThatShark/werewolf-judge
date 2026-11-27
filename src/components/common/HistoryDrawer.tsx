@@ -9,7 +9,6 @@ import type {
 import { useGameStore } from '../../store/gameStore';
 import {
   generateGameSummaryImage,
-  triggerPngDownload,
   type GeneratedSummaryImage,
 } from '../../utils/exportGameSummaryImage';
 import { SlideDrawer } from './SlideDrawer';
@@ -18,6 +17,7 @@ import {
   DEATH_REASON_LABELS,
   formatNightActionLogs,
   formatSeatNum,
+  formatVoteRecordLines,
 } from './displayHelpers';
 
 interface HistoryDrawerProps {
@@ -80,12 +80,6 @@ export function HistoryDrawer({
       );
       setSummaryImage(generated);
       setPreviewOpen(true);
-      const isTouchDevice =
-        typeof navigator !== 'undefined' &&
-        (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1);
-      if (!isTouchDevice) {
-        triggerPngDownload(generated.blob, generated.filename);
-      }
     } finally {
       setExportingImage(false);
     }
@@ -224,10 +218,58 @@ export function HistoryDrawer({
                       <div className="text-[12px] font-semibold text-secondary">
                         {formatChineseDay(round)} · 白天事件
                       </div>
-                      <ul className="space-y-1 text-[14px] text-secondary tabular-nums">
-                        {day.events.map((evt, i) => (
-                          <li key={i}>• {evt}</li>
-                        ))}
+                      <ul className="space-y-1.5 text-[14px] text-secondary tabular-nums">
+                        {(() => {
+                          const remainingVoteEvents = [...(day.structuredEvents ?? [])].filter(
+                            (s) => s.voteRecord,
+                          );
+                          return day.events.map((evt, i) => {
+                            const matchIdx = remainingVoteEvents.findIndex(
+                              (s) => s.summary === evt,
+                            );
+                            const matched =
+                              matchIdx !== -1 ? remainingVoteEvents.splice(matchIdx, 1)[0] : null;
+                            const voteRecord = matched?.voteRecord;
+                            const isPkVote = Boolean(
+                              voteRecord && (matched?.type === 'exile_pk' || voteRecord.roundIndex >= 2),
+                            );
+                            const isAllAbstain = Boolean(
+                              voteRecord && Object.keys(voteRecord.totals).length === 0,
+                            );
+                            return (
+                              <li key={i}>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span>• {evt}</span>
+                                  {isPkVote && (
+                                    <span className="rounded-md border border-sheriff-border bg-sheriff-tint px-1.5 py-0.5 text-[12px] font-semibold leading-4 text-sheriff">
+                                      平票 PK
+                                    </span>
+                                  )}
+                                </div>
+                                {voteRecord && (
+                                  <div className="mt-1 space-y-0.5 border-l-2 border-subtle pl-2.5 text-[12px] text-muted tabular-nums">
+                                    {isAllAbstain ? (
+                                      <div>
+                                        全員棄票（
+                                        {(voteRecord.abstainers.length > 0
+                                          ? voteRecord.abstainers
+                                          : voteRecord.eligibleVoters ?? []
+                                        )
+                                          .map((s) => `${formatSeatNum(s)} 號`)
+                                          .join('、') || '無'}
+                                        ）
+                                      </div>
+                                    ) : (
+                                      formatVoteRecordLines(voteRecord).map((line, lineIdx) => (
+                                        <div key={lineIdx}>{line}</div>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          });
+                        })()}
                       </ul>
                     </div>
                   )}

@@ -9,7 +9,7 @@ import type { BoardDefinition, RoleCategory } from '../logic/types';
 
 const SCALE = 2;
 const PADDING = 28;
-const LABEL_COL_W = 112;
+const LABEL_COL_W = 156;
 const SECTION_GAP = 14;
 
 const FONT_SANS =
@@ -190,8 +190,10 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
   const sectionBarH = 26;
   const rowH = 32;
   const roleRowH = hasSubNotes ? 48 : 36;
+  const dayDawnRowH = 34;
+  const dayChainRowH = 42;
+  const dayActiveRowH = 42;
   const dayExileRowH = 34;
-  const daySkillsRowH = 44;
   const dayElimRowH = 36;
   const footerH = 24;
 
@@ -211,9 +213,17 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
   if (matrix.nightMatrix.rounds.length > 0) {
     totalH += SECTION_GAP + sectionBarH + rowH + matrix.nightMatrix.rows.length * rowH;
   }
-  // 區塊 E：白天結果與出局總覽（白天放逐 / 技能與連帶 / 出局總覽）
+  // 區塊 E：每日結果與出局總覽（5 列：天亮死訊 / 出局連鎖技能 / 白天主動技能 / 白天放逐 / 本日出局總覽）
   if (matrix.daySummaryColumns.length > 0) {
-    totalH += SECTION_GAP + sectionBarH + rowH + dayExileRowH + daySkillsRowH + dayElimRowH;
+    totalH +=
+      SECTION_GAP +
+      sectionBarH +
+      rowH +
+      dayDawnRowH +
+      dayChainRowH +
+      dayActiveRowH +
+      dayExileRowH +
+      dayElimRowH;
   }
   totalH += 10 + footerH + PADDING;
 
@@ -557,7 +567,7 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
       ctx.stroke();
     };
 
-    // N1 / N2 / N3 表頭
+    // 第一晚 / 第二晚 / 第三晚 表頭
     drawNightGrid(y, rowH, COLORS.headerBg);
     drawCellText(ctx, '角色 \\ 晚數', x0, y, LABEL_COL_W, rowH, {
       font: `600 11px ${FONT_SANS}`,
@@ -566,7 +576,7 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
     matrix.nightMatrix.roundLabels.forEach((lbl, idx) => {
       const cx = x0 + LABEL_COL_W + idx * nightColW;
       drawCellText(ctx, lbl, cx, y, nightColW, rowH, {
-        font: `700 12px ${FONT_MONO}`,
+        font: `700 12px ${FONT_SANS}`,
         color: COLORS.textPrimary,
       });
     });
@@ -606,13 +616,20 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
     ctx.stroke();
   }
 
-  // === 區塊 E：白天結果與出局總覽 ===
+  // === 區塊 E：每日結果與出局總覽（5 列精確結構） ===
   if (matrix.daySummaryColumns.length > 0) {
     y += SECTION_GAP;
     const dayStartY = y;
     const dayColCount = matrix.daySummaryColumns.length;
     const dayColW = (tableW - LABEL_COL_W) / dayColCount;
-    const dayH = sectionBarH + rowH + dayExileRowH + daySkillsRowH + dayElimRowH;
+    const dayH =
+      sectionBarH +
+      rowH +
+      dayDawnRowH +
+      dayChainRowH +
+      dayActiveRowH +
+      dayExileRowH +
+      dayElimRowH;
 
     drawRoundedRect(ctx, x0, dayStartY, tableW, dayH, 10);
     ctx.fillStyle = COLORS.cardBg;
@@ -620,7 +637,7 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
 
     ctx.fillStyle = COLORS.sectionBarBg;
     ctx.fillRect(x0, y, tableW, sectionBarH);
-    drawCellText(ctx, '白天結果與出局總覽', x0, y, tableW, sectionBarH, {
+    drawCellText(ctx, '每日結果與出局總覽', x0, y, tableW, sectionBarH, {
       font: `700 12px ${FONT_SANS}`,
       color: COLORS.textSecondary,
       align: 'left',
@@ -648,7 +665,37 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
       ctx.stroke();
     };
 
-    // D1 / D2 / D3 表頭
+    const drawWrappedDaySkillRow = (
+      rowLabel: string,
+      rowHeight: number,
+      labelColor: string,
+      values: string[],
+      bg?: string,
+    ) => {
+      drawDayGrid(y, rowHeight, bg);
+      drawCellText(ctx, rowLabel, x0, y, LABEL_COL_W, rowHeight, {
+        font: `600 12px ${FONT_SANS}`,
+        color: labelColor,
+      });
+      values.forEach((val, idx) => {
+        const cx = x0 + LABEL_COL_W + idx * dayColW;
+        const isNone = val === 'X';
+        ctx.font = `${isNone ? '500' : '600'} 11px ${FONT_SANS}`;
+        ctx.fillStyle = isNone ? COLORS.textDim : COLORS.textPrimary;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lines = wrapTextLines(ctx, val, Math.max(24, dayColW - 10), 2);
+        if (lines.length === 1) {
+          ctx.fillText(lines[0], cx + dayColW / 2, y + rowHeight / 2);
+        } else {
+          ctx.fillText(lines[0], cx + dayColW / 2, y + rowHeight / 2 - 8);
+          ctx.fillText(lines[1], cx + dayColW / 2, y + rowHeight / 2 + 8);
+        }
+      });
+      y += rowHeight;
+    };
+
+    // 第一天 / 第二天 / 第三天 表頭
     drawDayGrid(y, rowH, COLORS.headerBg);
     drawCellText(ctx, '項目 \\ 天數', x0, y, LABEL_COL_W, rowH, {
       font: `600 11px ${FONT_SANS}`,
@@ -657,14 +704,49 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
     matrix.daySummaryColumns.forEach((col, idx) => {
       const cx = x0 + LABEL_COL_W + idx * dayColW;
       drawCellText(ctx, col.label, cx, y, dayColW, rowH, {
-        font: `700 12px ${FONT_MONO}`,
+        font: `700 12px ${FONT_SANS}`,
         color: COLORS.textPrimary,
       });
     });
     y += rowH;
 
-    // 白天放逐列（僅顯示放逐出局座號，平安日／無人放逐顯示 X）
-    drawDayGrid(y, dayExileRowH);
+    // 1. 天亮死訊
+    drawDayGrid(y, dayDawnRowH);
+    drawCellText(ctx, '天亮死訊', x0, y, LABEL_COL_W, dayDawnRowH, {
+      font: `600 12px ${FONT_SANS}`,
+      color: COLORS.wolf,
+    });
+    matrix.daySummaryColumns.forEach((col, idx) => {
+      const cx = x0 + LABEL_COL_W + idx * dayColW;
+      const isNone = col.dawnDeathsText === 'X';
+      const isPeace = col.dawnDeathsText === '平安夜';
+      drawCellText(ctx, col.dawnDeathsText, cx, y, dayColW, dayDawnRowH, {
+        font: isPeace ? `600 11px ${FONT_SANS}` : `${isNone ? '500' : '700'} 12px ${FONT_MONO}`,
+        color: isNone ? COLORS.textDim : isPeace ? COLORS.god : COLORS.wolf,
+        padX: 4,
+      });
+    });
+    y += dayDawnRowH;
+
+    // 2. 出局連鎖技能
+    drawWrappedDaySkillRow(
+      '出局連鎖技能',
+      dayChainRowH,
+      COLORS.third,
+      matrix.daySummaryColumns.map((c) => c.chainSkillsText),
+      COLORS.altRowBg,
+    );
+
+    // 3. 白天主動技能
+    drawWrappedDaySkillRow(
+      '白天主動技能',
+      dayActiveRowH,
+      COLORS.textSecondary,
+      matrix.daySummaryColumns.map((c) => c.dayActiveSkillsText),
+    );
+
+    // 4. 白天放逐
+    drawDayGrid(y, dayExileRowH, COLORS.altRowBg);
     drawCellText(ctx, '白天放逐', x0, y, LABEL_COL_W, dayExileRowH, {
       font: `600 12px ${FONT_SANS}`,
       color: COLORS.sheriff,
@@ -680,41 +762,18 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
     });
     y += dayExileRowH;
 
-    // 技能 / 連帶列（支援雙行換行，單獨記錄開槍、自爆、決鬥、殉情等事件）
-    drawDayGrid(y, daySkillsRowH, COLORS.altRowBg);
-    drawCellText(ctx, '技能 / 連帶', x0, y, LABEL_COL_W, daySkillsRowH, {
-      font: `600 12px ${FONT_SANS}`,
-      color: COLORS.textSecondary,
-    });
-    matrix.daySummaryColumns.forEach((col, idx) => {
-      const cx = x0 + LABEL_COL_W + idx * dayColW;
-      const isNone = col.daySkillsText === '無';
-      ctx.font = `${isNone ? '500' : '600'} 11px ${FONT_SANS}`;
-      ctx.fillStyle = isNone ? COLORS.textDim : COLORS.textPrimary;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const lines = wrapTextLines(ctx, col.daySkillsText, Math.max(24, dayColW - 10), 2);
-      if (lines.length === 1) {
-        ctx.fillText(lines[0], cx + dayColW / 2, y + daySkillsRowH / 2);
-      } else {
-        ctx.fillText(lines[0], cx + dayColW / 2, y + daySkillsRowH / 2 - 8);
-        ctx.fillText(lines[1], cx + dayColW / 2, y + daySkillsRowH / 2 + 8);
-      }
-    });
-    y += daySkillsRowH;
-
-    // 出局總覽列
+    // 5. 本日出局總覽
     drawDayGrid(y, dayElimRowH);
-    drawCellText(ctx, '出局總覽', x0, y, LABEL_COL_W, dayElimRowH, {
+    drawCellText(ctx, '本日出局總覽', x0, y, LABEL_COL_W, dayElimRowH, {
       font: `700 12px ${FONT_SANS}`,
       color: COLORS.wolf,
     });
     matrix.daySummaryColumns.forEach((col, idx) => {
       const cx = x0 + LABEL_COL_W + idx * dayColW;
-      const isPeace = col.eliminatedText === '平安';
+      const isNone = col.eliminatedText === 'X';
       drawCellText(ctx, col.eliminatedText, cx, y, dayColW, dayElimRowH, {
-        font: `700 12px ${FONT_MONO}`,
-        color: isPeace ? COLORS.god : COLORS.wolf,
+        font: `${isNone ? '500' : '700'} 12px ${FONT_MONO}`,
+        color: isNone ? COLORS.textDim : COLORS.wolf,
         padX: 4,
       });
     });

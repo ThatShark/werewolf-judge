@@ -8,9 +8,6 @@ interface TopBarProps {
   phase: GamePhase;
   round: number;
   board?: BoardDefinition;
-  canUndo?: boolean;
-  undoLabel?: string;
-  onUndo?: () => void;
   onGoHome: () => void;
   onOpenQA: () => void;
   onOpenHistory: () => void;
@@ -28,9 +25,6 @@ export function TopBar({
   phase,
   round,
   board,
-  canUndo = false,
-  undoLabel,
-  onUndo,
   onGoHome,
   onOpenQA,
   onOpenHistory,
@@ -91,17 +85,6 @@ export function TopBar({
 
         {isGame && (
           <div className="flex shrink-0 items-center gap-0.5">
-            {canUndo && onUndo && (
-              <button
-                type="button"
-                onClick={onUndo}
-                title={undoLabel ? `撤銷：${undoLabel}` : '撤銷上一步'}
-                aria-label="撤銷上一步"
-                className="min-h-11 rounded-md border border-sheriff-border bg-sheriff-tint px-2.5 text-[12px] font-semibold text-sheriff transition hover:bg-elevated"
-              >
-                撤銷
-              </button>
-            )}
             {showHistory && (
               <button
                 type="button"

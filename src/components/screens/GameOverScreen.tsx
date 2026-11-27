@@ -5,7 +5,6 @@ import { isSeatEffectiveWolf } from '../../logic';
 import { useGameStore } from '../../store/gameStore';
 import {
   generateGameSummaryImage,
-  triggerPngDownload,
   type GeneratedSummaryImage,
 } from '../../utils/exportGameSummaryImage';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -34,7 +33,6 @@ export function GameOverScreen() {
   const conversionState = useGameStore((s) => s.conversionState);
   const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
-  const notebook = useGameStore((s) => s.notebook);
   const nightHistory = useGameStore((s) => s.nightHistory);
   const dayHistory = useGameStore((s) => s.dayHistory);
   const restartGame = useGameStore((s) => s.restartGame);
@@ -125,7 +123,6 @@ export function GameOverScreen() {
           seats,
           sheriffState,
           mechWolfState,
-          notebook,
           ruleOverrides,
           nightHistory,
           dayHistory,
@@ -139,7 +136,6 @@ export function GameOverScreen() {
       seats,
       sheriffState,
       mechWolfState,
-      notebook,
       ruleOverrides,
       nightHistory,
       dayHistory,
@@ -186,13 +182,6 @@ export function GameOverScreen() {
       );
       setSummaryImage(generated);
       setPreviewOpen(true);
-      // 桌機環境同步觸發自動下載；行動裝置則可於預覽彈窗分享或長按存圖
-      const isTouchDevice =
-        typeof navigator !== 'undefined' &&
-        (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1);
-      if (!isTouchDevice) {
-        triggerPngDownload(generated.blob, generated.filename);
-      }
     } finally {
       setExportingImage(false);
     }
@@ -396,7 +385,7 @@ export function GameOverScreen() {
                         <div className="text-[12px] text-muted tabular-nums">
                           {seat.isAlive
                             ? '存活'
-                            : `R${seat.deathRound ?? '?'} · ${formatDeathReason(seat.deathReason)}`}
+                            : `第 ${seat.deathRound ?? '?'} 輪 · ${formatDeathReason(seat.deathReason)}`}
                         </div>
                       </div>
                     </div>

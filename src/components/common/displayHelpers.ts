@@ -1,5 +1,4 @@
 import { getRoleById } from '../../data/roles';
-import { formatNotebookExportText, hasNotebookContent } from '../../logic/notebook';
 import type {
   BoardDefinition,
   DeathReason,
@@ -9,7 +8,6 @@ import type {
   MechWolfRuntimeState,
   NightActionDraft,
   NightHistoryEntry,
-  NotebookState,
   PlayerSeat,
   RuleOverrides,
   SheriffState,
@@ -350,15 +348,6 @@ export function formatVoteRecordLines(record: VoteRoundRecord): string[] {
   return lines;
 }
 
-export function buildReplayDownloadFilename(boardName?: string, now = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-  const safeBoard = (boardName ?? 'werewolf')
-    .replace(/[\\/:*?"<>|\s]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return `werewolf-replay-${safeBoard || 'game'}-${stamp}.txt`;
-}
-
 export function buildGameReplayText(
   state: Pick<
     GameState,
@@ -366,7 +355,6 @@ export function buildGameReplayText(
   > & {
     sheriffState?: SheriffState;
     mechWolfState?: MechWolfRuntimeState;
-    notebook?: NotebookState;
     ruleOverrides?: Pick<RuleOverrides, 'enableSheriff'>;
   },
   board?: BoardDefinition,
@@ -487,16 +475,6 @@ export function buildGameReplayText(
         }
       }
     }
-  }
-
-  if (state.notebook && hasNotebookContent(state.notebook)) {
-    lines.push('');
-    lines.push(
-      formatNotebookExportText(state.notebook, state.seats, board?.name, {
-        round: state.round,
-        enableSheriff: state.ruleOverrides?.enableSheriff ?? true,
-      }),
-    );
   }
 
   return lines.join('\n');

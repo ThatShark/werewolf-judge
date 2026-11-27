@@ -4,7 +4,6 @@ import { getBoardById } from './data/boards';
 import { getNightSteps } from './logic';
 import { useGameStore } from './store/gameStore';
 import { useWakeLock } from './utils/wakeLock';
-import { ConfirmModal } from './components/common/ConfirmModal';
 import { HistoryDrawer } from './components/common/HistoryDrawer';
 import { QADrawer } from './components/common/QADrawer';
 import { RestartModal } from './components/common/RestartModal';
@@ -36,22 +35,17 @@ function App() {
   const dayHistory = useGameStore((s) => s.dayHistory);
   const ambientAudio = useGameStore((s) => s.ambientAudio);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
-  const undoStack = useGameStore((s) => s.undoStack);
-  const undoLastStep = useGameStore((s) => s.undoLastStep);
   const restartGame = useGameStore((s) => s.restartGame);
 
   const [qaOpen, setQaOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [restartOpen, setRestartOpen] = useState(false);
-  const [confirmUndoOpen, setConfirmUndoOpen] = useState(false);
   const wasNightAutoPlayingRef = useRef(false);
 
   const shouldKeepAwake =
     activeView === 'game' &&
     (phase === 'night' || phase === 'pass_and_reveal' || phase === 'day_vote');
   useWakeLock(shouldKeepAwake);
-
-  const latestUndoLabel = undoStack.length > 0 ? undoStack[undoStack.length - 1].label : undefined;
 
   const board = getBoardById(selectedBoardId);
   const hasActiveGame =
@@ -96,12 +90,7 @@ function App() {
       case 'pass_and_reveal':
         return <PassAndRevealScreen />;
       case 'night':
-        return (
-          <NightConsoleScreen
-            onOpenHistory={() => setHistoryOpen(true)}
-            onOpenQA={() => setQaOpen(true)}
-          />
-        );
+        return <NightConsoleScreen />;
       case 'day_announcement':
         return <DayAnnouncementScreen />;
       case 'day_vote':
@@ -163,9 +152,6 @@ function App() {
             phase={phase}
             round={round}
             board={board}
-            canUndo={undoStack.length > 0}
-            undoLabel={latestUndoLabel}
-            onUndo={() => setConfirmUndoOpen(true)}
             onGoHome={() => setActiveView('home')}
             onOpenQA={() => setQaOpen(true)}
             onOpenHistory={() => setHistoryOpen(true)}
@@ -184,23 +170,6 @@ function App() {
         ruleOverrides={ruleOverrides}
         highlightRoleIds={highlightRoleIds}
         onClose={() => setQaOpen(false)}
-      />
-
-      <ConfirmModal
-        open={confirmUndoOpen && undoStack.length > 0}
-        title="撤銷上一步"
-        description={
-          latestUndoLabel
-            ? `還原「${latestUndoLabel}」前的狀態（可撤銷 ${undoStack.length} 步）。`
-            : '還原至上一步的對局狀態。'
-        }
-        confirmLabel="確認撤銷"
-        tone="warning"
-        onConfirm={() => {
-          undoLastStep();
-          setConfirmUndoOpen(false);
-        }}
-        onCancel={() => setConfirmUndoOpen(false)}
       />
 
       <HistoryDrawer

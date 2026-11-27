@@ -102,7 +102,7 @@ describe('Batch C：Store 持久化與全量流程接線驗證', () => {
     expect(afterNight.wolfGirlState?.confessedSeat).toBe(5);
     expect(afterNight.seats[4].isAlive).toBe(false);
     expect(afterNight.seats[5].isAlive).toBe(false);
-    expect(afterNight.preNightSnapshot).toBeTruthy();
+    expect(afterNight.nightStartSnapshot).toBeTruthy();
 
     // 白夜使者回溯：還原所有昨晚出局者、回到夜晚第 0 步並鎖定已用一次
     const rewind = useGameStore.getState().triggerWhiteNightRewind();

@@ -146,6 +146,13 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
     }
   }
 
+  // 若傳入空投票字典（全員棄票），自動補入所有具投票權玩家至 abstainers
+  if (Object.keys(votes).length === 0) {
+    for (const voterSeat of eligibleVoters) {
+      abstainers.push(voterSeat);
+    }
+  }
+
   // 疊加額外票數（例如烏鴉詛咒 +1 票）
   const normalizedExtraVotes: Record<number, number> = {};
   for (const [targetKey, bonus] of Object.entries(extraVotes)) {

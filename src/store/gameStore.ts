@@ -30,7 +30,6 @@ import {
   createInitialHybridState,
   createInitialInterferenceState,
   createInitialMechWolfState,
-  createInitialNotebookState,
   createInitialPumpkinGhostState,
   createInitialSeats,
   createInitialSeedWolfState,
@@ -41,6 +40,7 @@ import {
   dealBoardRolesWithBottomCards,
   destroySheriffBadge as destroySheriffBadgeLogic,
   finalizePhysicalDealVillagers,
+  formatChineseDay,
   generateSpeakingOrder as generateSpeakingOrderLogic,
   getDefaultRuleOverridesForBoard,
   getExilePkSpeakingOrder,
@@ -81,7 +81,6 @@ import {
   resolveWhiteWolfKingExplode,
   resolveWolfGirlExplode,
   resumeDeferredSheriffElection,
-  setNotebookGridCell as setNotebookGridCellLogic,
   setSheriffInitialSpeakingOrder,
   shouldEndNightEarly,
   shouldTriggerAutoVictory,
@@ -114,7 +113,6 @@ import type {
   KnightDuelResult,
   ManualVictoryOverrideKind,
   NightActionDraft,
-  NotebookMode,
   OnlineJudgeSettings,
   RuleOverrides,
   SheriffState,
@@ -127,7 +125,6 @@ import type {
 } from '../logic/types';
 
 export const GAME_STORAGE_KEY = 'werewolf-judge-storage';
-export const MAX_UNDO_STEPS = 10;
 
 export type AppView = 'home' | 'join_room' | 'rules_atlas' | 'about' | 'game';
 
@@ -140,7 +137,7 @@ export interface SubmitExileVotesOptions {
   sheriffVoteWeight?: number;
 }
 
-export type UndoSnapshotData = Pick<
+export type GameSnapshotData = Pick<
   GameState,
   | 'phase'
   | 'dayStage'
@@ -202,26 +199,17 @@ export type UndoSnapshotData = Pick<
   pendingShooters: PendingShooter[];
 };
 
-export interface UndoSnapshot {
-  label: string;
-  data: UndoSnapshotData;
-}
-
 export interface GameStore extends GameState {
   activeView: AppView;
   pendingShooters: PendingShooter[];
   /** 若白狼王自爆帶走可開槍角色，待所有連鎖開槍結算後自動進入黑夜 */
   enterNightAfterPendingShooters: boolean;
-  /** 純記憶體撤銷堆疊（最多保留 10 步，不寫入 localStorage） */
-  undoStack: UndoSnapshot[];
 
   setActiveView: (view: AppView) => void;
-  undoLastStep: () => { ok: boolean; undoneLabel?: string };
 
   goToHostSetup: () => void;
   selectBoard: (boardId: string) => void;
   goToBoardSelect: () => void;
-  rerollDailyRandomDirection: () => void;
   setBoardPlayerCount: (playerCount: number) => void;
   updateHostMode: (partial: Partial<HostModeConfig>) => void;
   updateOnlineJudgeSettings: (partial: Partial<OnlineJudgeSettings>) => void;
@@ -352,12 +340,6 @@ export interface GameStore extends GameState {
   overrideVictory: (kind: ManualVictoryOverrideKind, customReason?: string) => void;
   forceContinueGame: () => void;
 
-  /** 玩家雙模式筆記本 */
-  setNotebookMode: (mode: NotebookMode) => void;
-  setNotebookFreeformText: (text: string) => void;
-  setNotebookGridCell: (stageKey: string, seatNumber: number, value: string) => void;
-  clearNotebook: (scope?: 'all' | 'freeform' | 'grid') => void;
-
   restartGame: (options: { keepNicknames: boolean }) => void;
   dissolveRoom: () => void;
 }
@@ -471,7 +453,6 @@ function createInitialGameState(): GameState & {
   activeView: AppView;
   pendingShooters: PendingShooter[];
   enterNightAfterPendingShooters: boolean;
-  undoStack: UndoSnapshot[];
 } {
   return {
     activeView: 'home',
@@ -510,7 +491,7 @@ function createInitialGameState(): GameState & {
     treasureMasterState: createInitialTreasureMasterState(),
     wolfGirlState: createInitialWolfGirlState(),
     thiefBottomCards: [],
-    preNightSnapshot: null,
+    nightStartSnapshot: null,
     preExileSnapshot: null,
     gargoyleState: createInitialGargoyleState(),
     pumpkinGhostState: createInitialPumpkinGhostState(),
@@ -539,7 +520,6 @@ function createInitialGameState(): GameState & {
     pendingNightAnnouncement: null,
     exileResolvedToday: null,
     voteInputMode: 'by_voter',
-    notebook: createInitialNotebookState(),
     nightHistory: [],
     dayHistory: [],
     winner: null,
@@ -548,12 +528,22 @@ function createInitialGameState(): GameState & {
     preGameOverPhase: null,
     pendingShooters: [],
     enterNightAfterPendingShooters: false,
-    undoStack: [],
   };
 }
 
-function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
-  const raw: UndoSnapshotData = {
+function hasWhiteNightEnvoy(state: Pick<GameStore, 'selectedBoardId' | 'seats'>): boolean {
+  if (state.seats.some((s) => s.roleId === 'white_night_envoy')) return true;
+  const board = getBoardById(state.selectedBoardId);
+  if (!board) return false;
+  return [
+    ...board.composition.wolf,
+    ...board.composition.good,
+    ...(board.composition.thirdParty ?? []),
+  ].some((slot) => slot.roleId === 'white_night_envoy');
+}
+
+function captureGameSnapshot(state: GameStore): GameSnapshotData {
+  const raw: GameSnapshotData = {
     phase: state.phase,
     dayStage: state.dayStage,
     round: state.round,
@@ -612,15 +602,7 @@ function captureUndoSnapshot(state: GameStore, label: string): UndoSnapshot {
     preGameOverPhase: state.preGameOverPhase,
     pendingShooters: state.pendingShooters,
   };
-  return {
-    label,
-    data: JSON.parse(JSON.stringify(raw)) as UndoSnapshotData,
-  };
-}
-
-function pushUndo(state: GameStore, label: string): UndoSnapshot[] {
-  const next = [...state.undoStack, captureUndoSnapshot(state, label)];
-  return next.length > MAX_UNDO_STEPS ? next.slice(next.length - MAX_UNDO_STEPS) : next;
+  return JSON.parse(JSON.stringify(raw)) as GameSnapshotData;
 }
 
 function mergePendingNightDeaths(
@@ -682,20 +664,6 @@ export const useGameStore = create<GameStore>()(
 
       setActiveView: (view) => set({ activeView: view }),
 
-      undoLastStep: () => {
-        const state = get();
-        if (state.undoStack.length === 0) {
-          return { ok: false };
-        }
-        const lastSnapshot = state.undoStack[state.undoStack.length - 1];
-        const remainingStack = state.undoStack.slice(0, -1);
-        set({
-          ...lastSnapshot.data,
-          undoStack: remainingStack,
-        });
-        return { ok: true, undoneLabel: lastSnapshot.label };
-      },
-
       goToHostSetup: () => {
         set({ phase: 'host_setup' });
       },
@@ -735,10 +703,6 @@ export const useGameStore = create<GameStore>()(
 
       goToBoardSelect: () => {
         set({ phase: 'board_select' });
-      },
-
-      rerollDailyRandomDirection: () => {
-        set({ dailyRandomDirection: pickRandomDirection() });
       },
 
       setBoardPlayerCount: (playerCount) => {
@@ -873,7 +837,6 @@ export const useGameStore = create<GameStore>()(
         }
         set({
           seats: result.seats,
-          undoStack: pushUndo(state, `認領 ${seatNumber} 號身分`),
         });
         return { ok: true };
       },
@@ -928,7 +891,8 @@ export const useGameStore = create<GameStore>()(
       },
 
       completePassAndReveal: () => {
-        const { seats, passRevealConfirmedSeats } = get();
+        const state = get();
+        const { seats, passRevealConfirmedSeats } = state;
         const unconfirmed = seats
           .map((s) => s.seatNumber)
           .filter((num) => !passRevealConfirmedSeats.includes(num));
@@ -938,11 +902,17 @@ export const useGameStore = create<GameStore>()(
             reason: `尚有 ${unconfirmed.join('、')} 號玩家尚未確認身分`,
           };
         }
-        set({
-          phase: 'night',
+        const nextNightPatch = {
+          phase: 'night' as const,
           round: 1,
           currentStepIndex: 0,
           currentNightDraft: createEmptyNightDraft(1),
+        };
+        set({
+          ...nextNightPatch,
+          nightStartSnapshot: hasWhiteNightEnvoy(state)
+            ? captureGameSnapshot({ ...state, ...nextNightPatch })
+            : null,
         });
         return { ok: true };
       },
@@ -985,7 +955,7 @@ export const useGameStore = create<GameStore>()(
           knightDuelUsed: false,
           lastBearRoar: null,
           wolfGirlState: createInitialWolfGirlState(),
-          preNightSnapshot: null,
+          nightStartSnapshot: null,
           preExileSnapshot: null,
           speakingQueue: [],
           currentSpeakerIndex: 0,
@@ -1005,7 +975,6 @@ export const useGameStore = create<GameStore>()(
           preGameOverPhase: null,
           pendingShooters: [],
           passRevealConfirmedSeats: [],
-          undoStack: [],
         };
 
         if (hostMode.dealMode === 'physical_deal') {
@@ -1013,11 +982,17 @@ export const useGameStore = create<GameStore>()(
           if (!physicalCheck.valid) {
             return { ok: false, errors: physicalCheck.errors };
           }
-          set({
+          const nightEntry = {
             ...baseRuntimeReset,
             treasureMasterState: createInitialTreasureMasterState(),
             thiefBottomCards: [],
-            phase: 'night',
+            phase: 'night' as const,
+          };
+          set({
+            ...nightEntry,
+            nightStartSnapshot: hasWhiteNightEnvoy(state)
+              ? captureGameSnapshot({ ...state, ...nightEntry })
+              : null,
           });
           return { ok: true, errors: [] };
         }
@@ -1061,7 +1036,6 @@ export const useGameStore = create<GameStore>()(
             ...state.currentNightDraft,
             ...partial,
           },
-          undoStack: pushUndo(state, '記錄夜間行動'),
         }));
       },
 
@@ -1074,7 +1048,6 @@ export const useGameStore = create<GameStore>()(
         if (currentStepIndex < steps.length - 1) {
           set({
             currentStepIndex: currentStepIndex + 1,
-            undoStack: pushUndo(state, '切換夜間步驟'),
           });
         }
       },
@@ -1143,7 +1116,9 @@ export const useGameStore = create<GameStore>()(
 
       finishNight: () => {
         const state = get();
-        const preNightSnapshot = captureUndoSnapshot(state, `第 ${state.round} 晚入夜前快照`).data;
+        const nightStartSnapshot = hasWhiteNightEnvoy(state)
+          ? (state.nightStartSnapshot ?? captureGameSnapshot(state))
+          : null;
         const resolvedInputSeats =
           state.round === 1 && state.hostMode.dealMode === 'physical_deal'
             ? finalizePhysicalDealVillagers(state.seats)
@@ -1327,7 +1302,7 @@ export const useGameStore = create<GameStore>()(
           lastDreamTarget: result.lastDreamTarget,
           wolfGirlState: result.wolfGirlState,
           treasureMasterState: result.treasureMasterState,
-          preNightSnapshot,
+          nightStartSnapshot,
           preExileSnapshot: null,
           lastBearRoar: result.bearRoar,
           lastFearedSeat: result.lastFearedSeat,
@@ -1375,7 +1350,6 @@ export const useGameStore = create<GameStore>()(
             !deferNightDeaths && triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
           phase: !deferNightDeaths && triggerGameOver ? 'game_over' : 'day_announcement',
           dayStage: initialDayStage,
-          undoStack: pushUndo(state, `結束第 ${state.round} 晚`),
         });
       },
 
@@ -1535,21 +1509,18 @@ export const useGameStore = create<GameStore>()(
             summary,
             targetSeat: nextSheriffState.sheriffSeat,
           }),
-          undoStack: pushUndo(state, '警長上警報名'),
         });
       },
 
       advanceSheriffToVoting: () => {
         set((state) => ({
           sheriffState: advanceSheriffToVotingLogic(state.sheriffState),
-          undoStack: pushUndo(state, '進入警下投票'),
         }));
       },
 
       advanceSheriffPkToVoting: () => {
         set((state) => ({
           sheriffState: advanceSheriffPkToVotingLogic(state.sheriffState),
-          undoStack: pushUndo(state, '進入警長 PK 投票'),
         }));
       },
 
@@ -1586,7 +1557,6 @@ export const useGameStore = create<GameStore>()(
         set({
           sheriffState: nextSheriffState,
           dayHistory: nextDayHistory,
-          undoStack: pushUndo(state, `${seatNumber} 號警上退水`),
         });
       },
 
@@ -1652,7 +1622,6 @@ export const useGameStore = create<GameStore>()(
             targetSeat: resolution.record.electedSeat,
             voteRecord: resolution.record,
           }),
-          undoStack: pushUndo(state, '警長投票計票'),
         });
 
         return resolution;
@@ -1700,7 +1669,6 @@ export const useGameStore = create<GameStore>()(
               ? state.phase
               : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `移交警徽給 ${targetSeat} 號`),
         });
       },
 
@@ -1741,7 +1709,6 @@ export const useGameStore = create<GameStore>()(
               ? state.phase
               : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, '撕毀警徽'),
         });
       },
 
@@ -1899,7 +1866,6 @@ export const useGameStore = create<GameStore>()(
                 exilePkCandidates: [],
               }
             : {}),
-          undoStack: pushUndo(state, `${shooterSeat} 號開槍帶走 ${targetSeat} 號`),
         });
       },
 
@@ -1960,7 +1926,6 @@ export const useGameStore = create<GameStore>()(
                   exilePkCandidates: [],
                 }
               : {}),
-            undoStack: pushUndo(state, `${shooterSeat} 號壓槍不開`),
           };
         });
       },
@@ -1975,7 +1940,6 @@ export const useGameStore = create<GameStore>()(
               currentSpeakerIndex: 0,
               speakingMeta: null,
               remainingSeconds: state.defaultSpeakDurationSec,
-              undoStack: pushUndo(state, '進入死訊公告'),
             };
           }
 
@@ -2013,7 +1977,6 @@ export const useGameStore = create<GameStore>()(
             winReason: triggerGameOver ? finalVictory.winReason : state.winReason,
             preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
             phase: triggerGameOver ? 'game_over' : state.phase,
-            undoStack: pushUndo(state, '進入死訊公告'),
           };
         });
       },
@@ -2025,7 +1988,6 @@ export const useGameStore = create<GameStore>()(
           currentSpeakerIndex: 0,
           speakingMeta: null,
           remainingSeconds: state.defaultSpeakDurationSec,
-          undoStack: pushUndo(state, '進入白天發言'),
         }));
       },
 
@@ -2033,7 +1995,6 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({
           phase: state.winner ? 'game_over' : 'day_vote',
           dayStage: 'exile_vote',
-          undoStack: pushUndo(state, '進入放逐投票'),
         }));
       },
 
@@ -2046,7 +2007,6 @@ export const useGameStore = create<GameStore>()(
           if (state.exilePkStage !== 'pk_speaking') return state;
           return {
             exilePkStage: 'pk_voting' as const,
-            undoStack: pushUndo(state, '進入放逐 PK 重新投票'),
           };
         });
       },
@@ -2084,7 +2044,7 @@ export const useGameStore = create<GameStore>()(
               ? state.speakingMeta.queue
               : state.speakingQueue;
           const pkOrder = getExilePkSpeakingOrder(dayOrder, tally.record.tiedSeats);
-          const summary = `放逐投票平票：${tally.record.tiedSeats.join('、')} 號進入 PK（逆序發言：${pkOrder.join(' → ')}）`;
+          const summary = `${formatChineseDay(state.round)} 放逐投票平票：${tally.record.tiedSeats.join('、')} 號進入平票 PK（逆序發言：${pkOrder.join(' → ')}）`;
           set({
             exilePkCandidates: tally.record.tiedSeats,
             exilePkStage: 'pk_speaking',
@@ -2094,15 +2054,17 @@ export const useGameStore = create<GameStore>()(
               summary,
               voteRecord: tally.record,
             }),
-            undoStack: pushUndo(state, '放逐投票計票（平票 PK）'),
           });
           return tally;
         }
 
         if (tally.outcome === 'no_exile' || tally.record.electedSeat === null) {
+          const isAllAbstain = Object.keys(tally.record.totals).length === 0;
           const summary = isPkRound
-            ? '放逐 PK 投票再次平票，本日無人出局（平安日）'
-            : '放逐投票無人得票，本日無人出局（平安日）';
+            ? isAllAbstain
+              ? `${formatChineseDay(state.round)} 放逐投票（平票 PK）：全員棄票，本日無人出局（平安日）`
+              : `${formatChineseDay(state.round)} 放逐投票（平票 PK）：再次平票，本日無人出局（平安日）`
+            : `${formatChineseDay(state.round)} 放逐投票：全員棄票，本日無人出局（平安日）`;
           set({
             exilePkCandidates: [],
             exilePkStage: 'none',
@@ -2117,14 +2079,15 @@ export const useGameStore = create<GameStore>()(
               summary,
               voteRecord: tally.record,
             }),
-            undoStack: pushUndo(state, '放逐投票計票（平安日）'),
           });
           return tally;
         }
 
-        const preExileSnapshot = captureUndoSnapshot(state, `第 ${state.round} 天放逐前快照`).data;
+        const preExileSnapshot = captureGameSnapshot(state);
         const targetSeat = tally.record.electedSeat;
-        const voteSummary = `放逐投票結果：${targetSeat} 號最高票（${tally.record.totals[targetSeat]} 票）`;
+        const voteSummary = isPkRound
+          ? `${formatChineseDay(state.round)} 放逐投票（平票 PK）：${targetSeat} 號最高票（${tally.record.totals[targetSeat]} 票）`
+          : `${formatChineseDay(state.round)} 放逐投票：${targetSeat} 號最高票（${tally.record.totals[targetSeat]} 票）`;
         const exileResult = resolveDayExile(
           state.seats,
           targetSeat,
@@ -2266,7 +2229,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? finalVictory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `放逐投票計票（${targetSeat} 號）`),
         });
 
         return tally;
@@ -2274,7 +2236,7 @@ export const useGameStore = create<GameStore>()(
 
       exilePlayer: (targetSeat) => {
         const state = get();
-        const preExileSnapshot = captureUndoSnapshot(state, `第 ${state.round} 天放逐前快照`).data;
+        const preExileSnapshot = captureGameSnapshot(state);
         const result = resolveDayExile(
           state.seats,
           targetSeat,
@@ -2409,7 +2371,6 @@ export const useGameStore = create<GameStore>()(
           winReason: finalTriggerGameOver ? finalVictory.winReason : state.winReason,
           preGameOverPhase: finalTriggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: finalTriggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `放逐 ${targetSeat} 號`),
         });
       },
 
@@ -2474,7 +2435,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : 'night',
-          undoStack: pushUndo(state, `${actorSeat} 號好人自曝`),
         });
 
         return {
@@ -2520,7 +2480,6 @@ export const useGameStore = create<GameStore>()(
             summary,
             targetSeat: victimSeat,
           }),
-          undoStack: pushUndo(state, `法老之蛇救活 ${victimSeat} 號`),
         });
         return { allowed: true };
       },
@@ -2560,7 +2519,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `白貓延遲出局（${res.eliminatedSeat} 號）`),
         });
       },
 
@@ -2600,7 +2558,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, '河豚翻牌炸票'),
         });
         return { allowed: true, killedSeats: res.killedSeats };
       },
@@ -2676,7 +2633,6 @@ export const useGameStore = create<GameStore>()(
                 exilePkCandidates: [],
               }
             : {}),
-          undoStack: pushUndo(state, `覺醒獵人向${dirLabel}開槍`),
         });
         return { allowed: true, killedSeat: res.killedSeat };
       },
@@ -2716,7 +2672,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `老流氓延遲出局（${res.eliminatedSeat} 號）`),
         });
       },
 
@@ -2763,7 +2718,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? finalVictory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `復仇者刺殺 ${targetSeat} 號`),
         });
         return { allowed: true, killedSeat: res.killedSeat };
       },
@@ -2808,7 +2762,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `潘朵拉贈送魔盒給 ${targetSeat} 號`),
         });
         return { allowed: true, poisonedSeat: res.poisonedSeat };
       },
@@ -2845,7 +2798,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `${actorSeat} 號使用希望之光`),
         });
         return { allowed: true, triggeredWinner: res.triggeredWinner };
       },
@@ -2889,7 +2841,6 @@ export const useGameStore = create<GameStore>()(
           currentNightDraft: triggerGameOver
             ? state.currentNightDraft
             : createEmptyNightDraft(nextRound),
-          undoStack: pushUndo(state, '九尾獵殺時刻成功'),
         });
         return { success: true, eliminatedSeats: res.eliminatedSeats };
       },
@@ -2916,7 +2867,6 @@ export const useGameStore = create<GameStore>()(
             summary,
             targetSeat: heirSeat,
           }),
-          undoStack: pushUndo(state, `白澤指定繼承人 ${heirSeat} 號`),
         });
         return { allowed: true };
       },
@@ -2963,7 +2913,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `白澤繼承人延遲出局（${res.eliminatedSeat} 號）`),
         });
       },
 
@@ -2975,7 +2924,7 @@ export const useGameStore = create<GameStore>()(
         );
         if (!res.allowed) return { allowed: false, reason: res.reason };
         const summary = '定序王子翻牌發動技能：撤銷方才放逐、全員再發言一次並重新進行放逐投票！';
-        const preSnap = state.preExileSnapshot as UndoSnapshotData | null | undefined;
+        const preSnap = state.preExileSnapshot as GameSnapshotData | null | undefined;
         if (preSnap) {
           set({
             seats: preSnap.seats,
@@ -3005,7 +2954,6 @@ export const useGameStore = create<GameStore>()(
               type: 'manual_judge',
               summary,
             }),
-            undoStack: pushUndo(state, '定序王子翻牌重新投票'),
           });
           return { allowed: true };
         }
@@ -3020,7 +2968,6 @@ export const useGameStore = create<GameStore>()(
             summary,
             outcomeTag: 'sequence_prince_revote',
           }),
-          undoStack: pushUndo(state, '定序王子翻牌重新投票'),
         });
         return { allowed: true };
       },
@@ -3049,7 +2996,6 @@ export const useGameStore = create<GameStore>()(
             summary,
             targetSeat,
           }),
-          undoStack: pushUndo(state, `槓精開槓（${targetSeat} 號）`),
         });
         return { allowed: true, silencedVoterSeat: res.silencedVoterSeat };
       },
@@ -3075,7 +3021,6 @@ export const useGameStore = create<GameStore>()(
             summary,
             actorSeat: res.detectiveSeat,
           }),
-          undoStack: pushUndo(state, '偵探翻牌搶奪警徽'),
         });
         return { allowed: true };
       },
@@ -3117,7 +3062,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_announcement' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `偵探處決 ${targetSeat} 號`),
         });
         return { allowed: true, targetWasWolf: res.targetWasWolf };
       },
@@ -3127,40 +3071,19 @@ export const useGameStore = create<GameStore>()(
         const fbState = state.finalBatchState ?? createInitialFinalBatchState();
         const check = canWhiteNightEnvoyRewind(state.seats, fbState, state.round);
         if (!check.allowed) return { allowed: false, reason: check.reason };
-        const preNightSnap = state.preNightSnapshot as UndoSnapshotData | null | undefined;
-        if (preNightSnap) {
+        const nightStartSnap = state.nightStartSnapshot as GameSnapshotData | null | undefined;
+        if (nightStartSnap) {
           set({
-            ...preNightSnap,
+            ...nightStartSnap,
             phase: 'night',
             currentStepIndex: 0,
-            currentNightDraft: createEmptyNightDraft(preNightSnap.round),
-            preNightSnapshot: null,
+            currentNightDraft: createEmptyNightDraft(nightStartSnap.round),
+            nightStartSnapshot: null,
             preExileSnapshot: null,
             finalBatchState: {
-              ...(preNightSnap.finalBatchState ?? createInitialFinalBatchState()),
+              ...(nightStartSnap.finalBatchState ?? createInitialFinalBatchState()),
               whiteNightEnvoyUsed: true,
             },
-            undoStack: pushUndo(state, '白夜使者時間回溯重跑上一晚'),
-          });
-          return { allowed: true };
-        }
-        // 從 undoStack 中尋找最近一次夜間結算前的快照（或還原前一晚死者並重回上一晚）
-        const nightSnapIdx = [...state.undoStack]
-          .reverse()
-          .findIndex((entry) => entry.label.includes('夜晚') || entry.label.includes('結算'));
-        if (nightSnapIdx !== -1) {
-          const targetEntry = state.undoStack[state.undoStack.length - 1 - nightSnapIdx];
-          const snap = targetEntry.data;
-          set({
-            ...snap,
-            phase: 'night',
-            currentStepIndex: 0,
-            currentNightDraft: createEmptyNightDraft(snap.round),
-            finalBatchState: {
-              ...(snap.finalBatchState ?? createInitialFinalBatchState()),
-              whiteNightEnvoyUsed: true,
-            },
-            undoStack: pushUndo(state, '白夜使者時間回溯重跑上一晚'),
           });
           return { allowed: true };
         }
@@ -3176,7 +3099,6 @@ export const useGameStore = create<GameStore>()(
           currentStepIndex: 0,
           currentNightDraft: createEmptyNightDraft(state.round),
           finalBatchState: { ...fbState, whiteNightEnvoyUsed: true },
-          undoStack: pushUndo(state, '白夜使者時間回溯重跑上一晚'),
         });
         return { allowed: true };
       },
@@ -3268,7 +3190,6 @@ export const useGameStore = create<GameStore>()(
             winReason: synced.victory.winReason,
             preGameOverPhase: 'day_vote',
             phase: 'game_over',
-            undoStack: pushUndo(state, `${wolfSeat} 號狼人自爆`),
           });
         } else {
           set({
@@ -3296,7 +3217,6 @@ export const useGameStore = create<GameStore>()(
             pendingShooters: [],
             enterNightAfterPendingShooters: false,
             phase: 'night',
-            undoStack: pushUndo(state, `${wolfSeat} 號狼人自爆`),
           });
         }
 
@@ -3408,7 +3328,6 @@ export const useGameStore = create<GameStore>()(
             winReason: synced.victory.winReason,
             preGameOverPhase: 'day_vote',
             phase: 'game_over',
-            undoStack: pushUndo(state, `${wolfSeat} 號白狼王自爆`),
           });
         } else if (chainedShooter.length > 0) {
           // 被白狼王自爆帶走者可連鎖開槍：先停留在白天結算開槍，結算完成後自動入夜
@@ -3425,7 +3344,6 @@ export const useGameStore = create<GameStore>()(
             dayHistory: nextDayHistory,
             pendingShooters: chainedShooter,
             enterNightAfterPendingShooters: true,
-            undoStack: pushUndo(state, `${wolfSeat} 號白狼王自爆`),
           });
         } else {
           set({
@@ -3450,7 +3368,6 @@ export const useGameStore = create<GameStore>()(
             pendingShooters: [],
             enterNightAfterPendingShooters: false,
             phase: 'night',
-            undoStack: pushUndo(state, `${wolfSeat} 號白狼王自爆`),
           });
         }
 
@@ -3527,7 +3444,6 @@ export const useGameStore = create<GameStore>()(
             winReason: synced.victory.winReason,
             preGameOverPhase: 'day_vote',
             phase: 'game_over',
-            undoStack: pushUndo(state, `騎士決鬥 ${targetSeat} 號`),
           });
         } else if (result.enterNightImmediately) {
           const nextRound = state.round + 1;
@@ -3553,7 +3469,6 @@ export const useGameStore = create<GameStore>()(
             exilePkCandidates: [],
             pendingShooters: [],
             phase: 'night',
-            undoStack: pushUndo(state, `騎士決鬥 ${targetSeat} 號`),
           });
         } else {
           set({
@@ -3567,7 +3482,6 @@ export const useGameStore = create<GameStore>()(
             knightDuelUsed: true,
             sheriffState: nextSheriffState,
             dayHistory: nextDayHistory,
-            undoStack: pushUndo(state, `騎士決鬥 ${targetSeat} 號`),
           });
         }
 
@@ -3595,7 +3509,6 @@ export const useGameStore = create<GameStore>()(
             summary,
             targetSeat: accusedSeat,
           }),
-          undoStack: pushUndo(state, `偵探集結指證 ${accusedSeat} 號`),
         });
         return { allowed: true, success: res.success };
       },
@@ -3678,7 +3591,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `${actorSeat} 號使用潘朵拉白天手槍`),
         });
         return { allowed: true };
       },
@@ -3745,7 +3657,6 @@ export const useGameStore = create<GameStore>()(
                 exilePkCandidates: [],
                 pendingShooters: [],
               }),
-          undoStack: pushUndo(state, `${wolfGirlSeat} 號狼女孩自爆`),
         });
         return { allowed: true, breakupDeathSeat: res.breakupDeathSeat };
       },
@@ -3790,7 +3701,6 @@ export const useGameStore = create<GameStore>()(
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
           phase: triggerGameOver ? 'game_over' : state.phase,
-          undoStack: pushUndo(state, `蒙面平民延遲出局（${seatNumber} 號）`),
         });
         return { allowed: true };
       },
@@ -3799,22 +3709,27 @@ export const useGameStore = create<GameStore>()(
         const state = get();
         if (state.winner) return;
         const nextRound = state.round + 1;
-        set({
+        const nextNightPatch = {
           round: nextRound,
           currentStepIndex: 0,
           currentNightDraft: createEmptyNightDraft(nextRound),
-          speakingQueue: [],
+          speakingQueue: [] as number[],
           currentSpeakerIndex: 0,
           speakingMeta: null,
           remainingSeconds: state.defaultSpeakDurationSec,
-          exilePkCandidates: [],
-          exilePkStage: 'none',
-          exilePkSpeakingOrder: [],
+          exilePkCandidates: [] as number[],
+          exilePkStage: 'none' as const,
+          exilePkSpeakingOrder: [] as number[],
           exileResolvedToday: null,
           pendingNightAnnouncement: null,
-          pendingShooters: [],
-          phase: 'night',
-          undoStack: pushUndo(state, `進入第 ${nextRound} 晚`),
+          pendingShooters: [] as PendingShooter[],
+          phase: 'night' as const,
+        };
+        set({
+          ...nextNightPatch,
+          nightStartSnapshot: hasWhiteNightEnvoy(state)
+            ? captureGameSnapshot({ ...state, ...nextNightPatch })
+            : null,
         });
       },
 
@@ -3871,7 +3786,6 @@ export const useGameStore = create<GameStore>()(
             eliminatedSeats: result.becameAlive ? [] : [seatNumber],
             outcomeTag: result.becameAlive ? 'manual_revive' : 'manual_eliminate',
           }),
-          undoStack: pushUndo(state, `手動調整 ${seatNumber} 號存活狀態`),
           ...(result.becameAlive && state.winner ? { winner: null, winReason: null } : {}),
         });
       },
@@ -3892,7 +3806,6 @@ export const useGameStore = create<GameStore>()(
               ? state.phase
               : state.preGameOverPhase,
           phase: 'game_over',
-          undoStack: pushUndo(state, '宣告勝負'),
         });
       },
 
@@ -3915,55 +3828,6 @@ export const useGameStore = create<GameStore>()(
             type: 'victory_override_continue',
             summary,
           }),
-          undoStack: pushUndo(state, '強制繼續對局'),
-        });
-      },
-
-      setNotebookMode: (mode) => {
-        set((state) => ({
-          notebook: {
-            ...state.notebook,
-            mode,
-          },
-        }));
-      },
-
-      setNotebookFreeformText: (text) => {
-        set((state) => ({
-          notebook: {
-            ...state.notebook,
-            freeformText: text,
-          },
-        }));
-      },
-
-      setNotebookGridCell: (stageKey, seatNumber, value) => {
-        set((state) => ({
-          notebook: setNotebookGridCellLogic(state.notebook, stageKey, seatNumber, value),
-        }));
-      },
-
-      clearNotebook: (scope = 'all') => {
-        set((state) => {
-          if (scope === 'freeform') {
-            return {
-              notebook: {
-                ...state.notebook,
-                freeformText: '',
-              },
-            };
-          }
-          if (scope === 'grid') {
-            return {
-              notebook: {
-                ...state.notebook,
-                gridCells: {},
-              },
-            };
-          }
-          return {
-            notebook: createInitialNotebookState(state.notebook.mode),
-          };
         });
       },
 
@@ -3980,7 +3844,6 @@ export const useGameStore = create<GameStore>()(
             ambientAudio: { ...state.ambientAudio },
             ruleOverrides: { ...state.ruleOverrides },
             voteInputMode: state.voteInputMode,
-            notebook: createInitialNotebookState(state.notebook.mode),
             savedNicknames: { ...state.savedNicknames },
             defaultSpeakDurationSec: state.defaultSpeakDurationSec,
             remainingSeconds: state.defaultSpeakDurationSec,
@@ -4006,10 +3869,6 @@ export const useGameStore = create<GameStore>()(
     {
       name: GAME_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => {
-        const { undoStack: _undoStack, ...persisted } = state;
-        return persisted;
-      },
       merge: (persistedState, currentState) => {
         const persisted = (persistedState ?? {}) as Partial<GameStore>;
         const normalizeSnapshotSeats = (snap: unknown): unknown => {
@@ -4022,7 +3881,6 @@ export const useGameStore = create<GameStore>()(
           ...currentState,
           ...persisted,
           seats: normalizePlayerSeats(persisted.seats ?? currentState.seats),
-          undoStack: [],
           hostMode: {
             ...DEFAULT_HOST_MODE,
             ...(persisted.hostMode ?? {}),
@@ -4045,11 +3903,6 @@ export const useGameStore = create<GameStore>()(
             ...createInitialSheriffState(),
             ...(persisted.sheriffState ?? {}),
           },
-          notebook: {
-            ...createInitialNotebookState(),
-            ...(persisted.notebook ?? {}),
-            gridCells: persisted.notebook?.gridCells ?? {},
-          },
           voteInputMode: persisted.voteInputMode ?? 'by_voter',
           pendingNightAnnouncement: persisted.pendingNightAnnouncement
             ? {
@@ -4057,7 +3910,7 @@ export const useGameStore = create<GameStore>()(
                 seats: normalizePlayerSeats(persisted.pendingNightAnnouncement.seats),
               }
             : null,
-          preNightSnapshot: normalizeSnapshotSeats(persisted.preNightSnapshot),
+          nightStartSnapshot: normalizeSnapshotSeats(persisted.nightStartSnapshot),
           preExileSnapshot: normalizeSnapshotSeats(persisted.preExileSnapshot),
           exileResolvedToday: persisted.exileResolvedToday ?? null,
           forceContinueAfterVictory: persisted.forceContinueAfterVictory ?? false,

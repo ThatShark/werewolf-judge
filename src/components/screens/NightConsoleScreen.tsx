@@ -125,14 +125,9 @@ import {
   getSeatFactionChip,
 } from '../night/nightStepConfig';
 
-interface NightConsoleScreenProps {
-  onOpenHistory?: () => void;
-  onOpenQA?: () => void;
-}
-
 const BUFFER_PRESET_STEPS = [0, 3, 5, 8, 10];
 
-export function NightConsoleScreen(_props: NightConsoleScreenProps) {
+export function NightConsoleScreen() {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const round = useGameStore((s) => s.round);
   const seats = useGameStore((s) => s.seats);

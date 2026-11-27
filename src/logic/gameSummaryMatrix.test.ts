@@ -90,7 +90,7 @@ describe('buildGameSummaryMatrix', () => {
     expect(matrix.header.winnerLabel).toBe('好人獲勝');
     expect(matrix.players[0].seatCode).toBe('01');
     expect(matrix.players[0].nickname).toBe('小明');
-    expect(matrix.players[1].nickname).toBe('2號');
+    expect(matrix.players[1].nickname).toBe('-');
 
     expect(matrix.sheriff).not.toBeNull();
     expect(matrix.sheriff!.electedSeat).toBe(1);
@@ -206,29 +206,33 @@ describe('buildGameSummaryMatrix', () => {
       dayHistory,
     });
 
-    // Day 1 首輪 + Day 1 PK + Day 2 自爆列
+    // 第一天首輪 + 第一天 PK + 第二天自爆列
     expect(matrix.dayVoteRows).toHaveLength(3);
-    expect(matrix.dayVoteRows[0].label).toBe('Day 1 投票');
+    expect(matrix.dayVoteRows[0].label).toBe('第一天 放逐投票');
     expect(matrix.dayVoteRows[0].cells).toEqual(['6', '-', '6', '6', '1', '5', '5', '5']);
-    expect(matrix.dayVoteRows[1].label).toBe('Day 1 PK投票');
+    expect(matrix.dayVoteRows[1].label).toBe('第一天 放逐投票（平票 PK）');
     expect(matrix.dayVoteRows[1].cells).toEqual(['6', '-', '6', '6', '-', '-', '5', 'X']);
-    expect(matrix.dayVoteRows[2].label).toBe('Day 2 投票');
+    expect(matrix.dayVoteRows[2].label).toBe('第二天 放逐投票');
     expect(matrix.dayVoteRows[2].cells).toEqual(['-', '-', '-', '-', '自爆', '-', '-', '-']);
 
-    // 區塊 E：白天放逐、技能／連帶與出局總覽分離
+    // 區塊 E：5 列每日結果與出局總覽（天亮死訊 / 出局連鎖技能 / 白天主動技能 / 白天放逐 / 本日出局總覽）
     expect(matrix.daySummaryColumns).toHaveLength(2);
     expect(matrix.daySummaryColumns[0]).toEqual({
       round: 1,
-      label: 'D1',
+      label: '第一天',
+      dawnDeathsText: '2',
+      chainSkillsText: 'X',
+      dayActiveSkillsText: 'X',
       exileText: '6',
-      daySkillsText: '無',
       eliminatedText: '2、6',
     });
     expect(matrix.daySummaryColumns[1]).toEqual({
       round: 2,
-      label: 'D2',
+      label: '第二天',
+      dawnDeathsText: '平安夜',
+      chainSkillsText: '3帶8',
+      dayActiveSkillsText: '5爆帶3',
       exileText: 'X',
-      daySkillsText: '5爆帶3 / 3帶8',
       eliminatedText: '3、5、8',
     });
   });
@@ -301,17 +305,21 @@ describe('buildGameSummaryMatrix', () => {
 
     expect(matrix.daySummaryColumns[0]).toEqual({
       round: 1,
-      label: 'D1',
+      label: '第一天',
+      dawnDeathsText: '5',
+      chainSkillsText: '5帶1 / 1帶7',
+      dayActiveSkillsText: 'X',
       exileText: '4',
-      daySkillsText: '5帶1 / 1帶7',
       eliminatedText: '1、4、5、7',
     });
     expect(matrix.daySummaryColumns[1]).toEqual({
       round: 2,
-      label: 'D2',
+      label: '第二天',
+      dawnDeathsText: '平安夜',
+      chainSkillsText: 'X',
+      dayActiveSkillsText: 'X',
       exileText: 'X',
-      daySkillsText: '無',
-      eliminatedText: '平安',
+      eliminatedText: 'X',
     });
   });
 
@@ -379,7 +387,7 @@ describe('buildGameSummaryMatrix', () => {
     expect(matrix.players[7].subNote).toBe('轉化');
 
     // 檢查夜間行動矩陣僅包含本局有的角色且簡碼正確
-    expect(matrix.nightMatrix.roundLabels).toEqual(['N1', 'N2']);
+    expect(matrix.nightMatrix.roundLabels).toEqual(['第一晚', '第二晚']);
     const rowByKey = new Map(matrix.nightMatrix.rows.map((r) => [r.key, r]));
     expect(rowByKey.get('wolf_kill')?.cells).toEqual(['6', '空']);
     expect(rowByKey.get('nightmare')?.cells).toEqual(['恐5', 'X']);
@@ -391,6 +399,50 @@ describe('buildGameSummaryMatrix', () => {
     // 本局未配置的角色不應出現
     expect(rowByKey.has('demon_hunter')).toBe(false);
     expect(rowByKey.has('happy_sheep')).toBe(false);
+  });
+
+  it('放逐投票全員棄票仍保留完整票型列（所有具投票權座位標記 X）', () => {
+    const seats: PlayerSeat[] = [
+      makeSeat(1, 'seer', { isAlive: true }),
+      makeSeat(2, 'witch', { isAlive: false, deathRound: 1, deathReason: 'wolf_kill' }),
+      makeSeat(3, 'villager', { isAlive: true }),
+      makeSeat(4, 'wolf', { isAlive: true }),
+    ];
+    const allAbstain = tallyExileVotes({
+      seats,
+      votes: {},
+      roundIndex: 1,
+    });
+    expect(allAbstain.outcome).toBe('no_exile');
+    expect(allAbstain.record.abstainers).toEqual([1, 3, 4]);
+
+    const matrix = buildGameSummaryMatrix({
+      round: 1,
+      seats,
+      winner: null,
+      sheriffState: createInitialSheriffState(),
+      ruleOverrides: { ...DEFAULT_RULE_OVERRIDES, enableSheriff: false },
+      nightHistory: [],
+      dayHistory: [
+        {
+          round: 1,
+          events: ['第一天 放逐投票：全員棄票，本日無人出局（平安日）'],
+          structuredEvents: [
+            {
+              type: 'exile_vote',
+              summary: '第一天 放逐投票：全員棄票，本日無人出局（平安日）',
+              voteRecord: allAbstain.record,
+            },
+          ],
+        },
+      ],
+    });
+    expect(matrix.dayVoteRows).toHaveLength(1);
+    expect(matrix.dayVoteRows[0]).toEqual({
+      label: '第一天 放逐投票',
+      isPk: false,
+      cells: ['X', '-', 'X', 'X'],
+    });
   });
 
   it('檔名格式符合 狼人殺復盤_YYYYMMDD_板子名稱.png 規範', () => {

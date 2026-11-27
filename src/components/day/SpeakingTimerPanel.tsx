@@ -197,14 +197,25 @@ export function SpeakingTimerPanel() {
                   ? `發言完畢 ${speakingQueue.length} / ${speakingQueue.length}`
                   : `${formatChineseDay(round)} 發言計時`}
             </div>
-            <div className="mt-0.5 truncate text-[18px] font-semibold leading-6 tabular-nums text-primary">
-              {currentSpeakerSeat !== null
-                ? `${formatSeatNum(currentSpeakerSeat)} 號${
-                    currentSpeakerObj?.nickname.trim() ? ` ${currentSpeakerObj.nickname.trim()}` : ''
-                  }${speakingMeta?.sheriffLastSeat === currentSpeakerSeat ? '（歸票）' : ''}`
-                : isSpeakingFinished
-                  ? '所有人發言完畢'
-                  : '尚未抽取順序'}
+            <div className="mt-0.5 flex items-center gap-1.5 truncate text-[18px] font-semibold leading-6 tabular-nums text-primary">
+              <span className="truncate">
+                {currentSpeakerSeat !== null
+                  ? `${formatSeatNum(currentSpeakerSeat)} 號${
+                      currentSpeakerObj?.nickname.trim()
+                        ? ` ${currentSpeakerObj.nickname.trim()}`
+                        : ''
+                    }`
+                  : isSpeakingFinished
+                    ? '所有人發言完畢'
+                    : '尚未抽取順序'}
+              </span>
+              {currentSpeakerSeat !== null &&
+                speakingQueue.length > 0 &&
+                currentSpeakerIndex === speakingQueue.length - 1 && (
+                  <span className="shrink-0 rounded-md border border-sheriff-border bg-sheriff-tint px-1.5 py-0.5 text-[12px] font-semibold leading-4 text-sheriff">
+                    歸票位
+                  </span>
+                )}
             </div>
           </div>
 
@@ -485,20 +496,30 @@ export function SpeakingTimerPanel() {
             {speakingQueue.map((seatNum, idx) => {
               const isDone = idx < currentSpeakerIndex;
               const isCurrent = idx === currentSpeakerIndex;
-              const isSheriffLast = speakingMeta?.sheriffLastSeat === seatNum;
+              const isLastSpeaker = idx === speakingQueue.length - 1;
               return (
                 <span
                   key={`${seatNum}-${idx}`}
-                  className={`inline-flex h-7 items-center rounded-md px-2 text-[12px] font-semibold tabular-nums ${
+                  className={`inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-semibold tabular-nums ${
                     isCurrent
                       ? 'bg-sheriff text-inverse'
                       : isDone
                         ? 'border border-subtle bg-canvas text-muted line-through'
-                        : 'border border-subtle bg-surface text-primary'
+                        : isLastSpeaker
+                          ? 'border border-sheriff-border bg-sheriff-tint text-sheriff'
+                          : 'border border-subtle bg-surface text-primary'
                   }`}
                 >
-                  {formatSeatNum(seatNum)}
-                  {isSheriffLast ? '警' : ''}
+                  <span>{formatSeatNum(seatNum)}</span>
+                  {isLastSpeaker && (
+                    <span
+                      className={`text-[12px] font-semibold ${
+                        isCurrent ? 'text-inverse' : 'text-sheriff'
+                      }`}
+                    >
+                      歸票位
+                    </span>
+                  )}
                 </span>
               );
             })}

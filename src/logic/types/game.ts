@@ -35,22 +35,6 @@ import type {
 } from './roleStates';
 import type { GameWinner, PlayerSeat } from './seat';
 
-/** [V2.0 新增] 玩家雙模式筆記本型別 */
-export type NotebookMode = 'freeform' | 'grid';
-
-export interface NotebookStageColumn {
-  key: string;
-  label: string;
-  shortLabel: string;
-}
-
-export interface NotebookState {
-  mode: NotebookMode;
-  freeformText: string;
-  /** key: stageKey（如 'pre_game', 'sheriff', 'day_1', 'day_2'），value: Record<seatNumber, string> */
-  gridCells: Record<string, Record<number, string>>;
-}
-
 /** [V2.0 新增] 法官手動勝負覆蓋類型 */
 export type ManualVictoryOverrideKind =
   | 'good_surrender'
@@ -224,13 +208,10 @@ export interface GameState {
   /** 中央操作雙模式投票紀錄器模式 */
   voteInputMode: VoteInputMode;
 
-  /** 玩家雙模式筆記本（持久化於 localStorage） */
-  notebook: NotebookState;
-
-  /** 夜間毒師用毒持久化狀態／盜賊剩餘兩張底牌／入夜前與放逐前快照（供時間回溯與定序王子重投） */
+  /** 夜間毒師用毒持久化狀態／盜賊剩餘兩張底牌／入夜快照（白夜使者專屬）與放逐前快照（定序王子專屬） */
   poisonerPoisonUsed?: boolean;
   thiefBottomCards?: string[];
-  preNightSnapshot?: unknown | null;
+  nightStartSnapshot?: unknown | null;
   preExileSnapshot?: unknown | null;
 
   /** 歷史紀錄與勝負 */

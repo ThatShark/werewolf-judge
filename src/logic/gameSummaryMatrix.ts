@@ -1,4 +1,5 @@
 import { getRoleById } from '../data/roles';
+import { formatChineseDay, formatChineseNight } from './formatters';
 import type {
   BoardDefinition,
   DayHistoryEntry,
@@ -66,11 +67,15 @@ export interface SummaryNightMatrix {
 export interface SummaryDayColumn {
   round: number;
   label: string;
-  /** 僅記錄當日白天放逐投票出局的座號（平安日或無人被放逐顯示 'X'） */
+  /** 1. 天亮死訊：昨晚夜死並於天亮公布的出局座號（平安夜填 '平安夜'，無紀錄填 'X'） */
+  dawnDeathsText: string;
+  /** 2. 出局連鎖技能：因出局觸發的被動／連帶技能（如獵人／狼王開槍、狼美人／情侶殉情等，無填 'X'） */
+  chainSkillsText: string;
+  /** 3. 白天主動技能：白天主動發動的技能（如騎士決鬥、狼人自爆、白狼王自爆帶人等，無填 'X'） */
+  dayActiveSkillsText: string;
+  /** 4. 白天放逐：白天公投放逐出局的座號（平安日或自爆中斷填 'X'） */
   exileText: string;
-  /** 單獨記錄該輪的開槍帶人、狼人自爆、騎士決鬥、殉情／連帶出局等技能事件（無則顯示 '無'） */
-  daySkillsText: string;
-  /** 彙整該輪所有出局座號（無人出局顯示 '平安'） */
+  /** 5. 本日出局總覽：彙整該輪日夜所有出局玩家座號（無出局填 'X'） */
   eliminatedText: string;
 }
 
@@ -290,12 +295,13 @@ function buildDayVoteRows(
       voteEvents.forEach((evt, idx) => {
         const record = evt.voteRecord;
         const isPk = idx > 0 || record.roundIndex >= 2;
+        const dayPrefix = formatChineseDay(dayEntry.round);
         const label =
-          idx === 0
-            ? `Day ${dayEntry.round} 投票`
-            : idx === 1
-              ? `Day ${dayEntry.round} PK投票`
-              : `Day ${dayEntry.round} 重投${idx}`;
+          !isPk
+            ? `${dayPrefix} 放逐投票`
+            : idx <= 1
+              ? `${dayPrefix} 放逐投票（平票 PK）`
+              : `${dayPrefix} 放逐投票（平票 PK ${idx}）`;
         const cells = sortedSeats.map((seat) => {
           const voteCell = resolveVoteCell(record, seat.seatNumber);
           if (voteCell === '-' && explodedSeats.has(seat.seatNumber)) {
@@ -307,7 +313,7 @@ function buildDayVoteRows(
       });
     } else if (explodedSeats.size > 0) {
       rows.push({
-        label: `Day ${dayEntry.round} 投票`,
+        label: `${formatChineseDay(dayEntry.round)} 放逐投票`,
         isPk: false,
         cells: sortedSeats.map((seat) => (explodedSeats.has(seat.seatNumber) ? '自爆' : '-')),
       });
@@ -780,7 +786,7 @@ function buildNightMatrix(
 ): SummaryNightMatrix {
   const sortedNights = [...state.nightHistory].sort((a, b) => a.round - b.round);
   const rounds = sortedNights.map((n) => n.round);
-  const roundLabels = rounds.map((r) => `N${r}`);
+  const roundLabels = rounds.map((r) => formatChineseNight(r));
 
   const rows: SummaryNightRow[] = [
     {
@@ -833,79 +839,118 @@ function formatDayExileText(dayEntry: DayHistoryEntry | undefined): string {
   return exiledSeats.length > 0 ? exiledSeats.join('、') : 'X';
 }
 
-function formatDaySkillTags(dayEntry: DayHistoryEntry | undefined): string[] {
-  if (!dayEntry?.structuredEvents) return [];
-  const tags: string[] = [];
+function formatDawnDeathsText(nightEntry: NightHistoryEntry | undefined): string {
+  if (!nightEntry) return 'X';
+  if (nightEntry.deaths.length === 0) return '平安夜';
+  const deadSeats = Array.from(new Set(nightEntry.deaths.map((d) => d.seat))).sort((a, b) => a - b);
+  return deadSeats.join('、');
+}
 
-  for (const evt of dayEntry.structuredEvents) {
-    switch (evt.type) {
-      case 'exile_result':
-        if (evt.targetSeat != null && evt.outcomeTag === 'exile_survived') {
-          tags.push(`${evt.targetSeat}免死`);
-        }
-        break;
-      case 'idiot_reveal':
-        if (evt.targetSeat != null) tags.push(`${evt.targetSeat}翻牌`);
-        break;
-      case 'self_explode':
-        if (evt.actorSeat != null) {
-          if (evt.outcomeTag === 'wolf_girl_explode' && evt.targetSeat != null) {
-            tags.push(`${evt.actorSeat}爆帶${evt.targetSeat}`);
-          } else {
-            tags.push(`${evt.actorSeat}自爆`);
+const LINKED_DEATH_REASONS = new Set([
+  'cupid_lover_link',
+  'ghost_bride_link',
+  'scent_phantom_link',
+  'twins_link',
+  'socialite_link',
+  'medusa_petrify_link',
+  'scarlet_wolf_link',
+  'wolf_girl_breakup',
+  'xu_xian_link',
+]);
+
+function formatDaySkillGroups(
+  round: number,
+  dayEntry: DayHistoryEntry | undefined,
+  seats: PlayerSeat[],
+): { chainTags: string[]; activeTags: string[] } {
+  const chainTags: string[] = [];
+  const activeTags: string[] = [];
+  const recordedCharmSeats = new Set<number>();
+
+  if (dayEntry?.structuredEvents) {
+    for (const evt of dayEntry.structuredEvents) {
+      switch (evt.type) {
+        case 'exile_result':
+          if (evt.targetSeat != null && evt.outcomeTag === 'exile_survived') {
+            chainTags.push(`${evt.targetSeat}免死`);
           }
-        }
-        break;
-      case 'good_self_explode':
-        if (evt.actorSeat != null) tags.push(`${evt.actorSeat}自曝`);
-        break;
-      case 'white_wolf_king_explode':
-        if (evt.actorSeat != null) {
-          tags.push(
-            evt.targetSeat != null
-              ? `${evt.actorSeat}爆帶${evt.targetSeat}`
-              : `${evt.actorSeat}自爆`,
-          );
-        }
-        break;
-      case 'hunter_shoot':
-      case 'wolf_king_shoot':
-        if (evt.actorSeat != null && evt.targetSeat != null) {
-          tags.push(
-            evt.outcomeTag === 'shoot_survived'
-              ? `${evt.actorSeat}射${evt.targetSeat}(免)`
-              : `${evt.actorSeat}帶${evt.targetSeat}`,
-          );
-        }
-        break;
-      case 'knight_duel':
-        if (evt.actorSeat != null && evt.targetSeat != null) {
-          const hit =
-            evt.outcomeTag === 'knight_hit' ||
-            (evt.outcomeTag == null && evt.summary.includes('成功'));
-          tags.push(`${evt.actorSeat}決${evt.targetSeat}${hit ? '✓' : '✗'}`);
-        }
-        break;
-      case 'wolf_beauty_charm_death':
-        if (evt.targetSeat != null) tags.push(`${evt.targetSeat}殉情`);
-        break;
-      case 'manual_judge':
-        if (evt.outcomeTag === 'detective_execute' && evt.targetSeat != null) {
-          tags.push(`處決${evt.targetSeat}`);
-        } else if (evt.outcomeTag === 'pufferfish_explode' && evt.eliminatedSeats?.length) {
-          tags.push(`河豚炸${evt.eliminatedSeats.join(',')}`);
-        } else if (evt.outcomeTag === 'nine_tails_hunt' && evt.eliminatedSeats?.length) {
-          tags.push(`獵殺${evt.eliminatedSeats.join(',')}`);
-        } else if (evt.outcomeTag === 'avenger_assassinate' && evt.targetSeat != null) {
-          tags.push(`刺殺${evt.targetSeat}`);
-        }
-        break;
-      default:
-        break;
+          break;
+        case 'idiot_reveal':
+          if (evt.targetSeat != null) chainTags.push(`${evt.targetSeat}翻牌`);
+          break;
+        case 'hunter_shoot':
+        case 'wolf_king_shoot':
+          if (evt.actorSeat != null && evt.targetSeat != null) {
+            chainTags.push(
+              evt.outcomeTag === 'shoot_survived'
+                ? `${evt.actorSeat}射${evt.targetSeat}(免)`
+                : `${evt.actorSeat}帶${evt.targetSeat}`,
+            );
+          }
+          break;
+        case 'wolf_beauty_charm_death':
+          if (evt.targetSeat != null) {
+            recordedCharmSeats.add(evt.targetSeat);
+            chainTags.push(`${evt.targetSeat}殉情`);
+          }
+          break;
+        case 'self_explode':
+          if (evt.actorSeat != null) {
+            if (evt.outcomeTag === 'wolf_girl_explode' && evt.targetSeat != null) {
+              activeTags.push(`${evt.actorSeat}爆帶${evt.targetSeat}`);
+            } else {
+              activeTags.push(`${evt.actorSeat}自爆`);
+            }
+          }
+          break;
+        case 'good_self_explode':
+          if (evt.actorSeat != null) activeTags.push(`${evt.actorSeat}自曝`);
+          break;
+        case 'white_wolf_king_explode':
+          if (evt.actorSeat != null) {
+            activeTags.push(
+              evt.targetSeat != null
+                ? `${evt.actorSeat}爆帶${evt.targetSeat}`
+                : `${evt.actorSeat}自爆`,
+            );
+          }
+          break;
+        case 'knight_duel':
+          if (evt.actorSeat != null && evt.targetSeat != null) {
+            const hit =
+              evt.outcomeTag === 'knight_hit' ||
+              (evt.outcomeTag == null && evt.summary.includes('成功'));
+            activeTags.push(`${evt.actorSeat}決${evt.targetSeat}${hit ? '✓' : '✗'}`);
+          }
+          break;
+        case 'manual_judge':
+          if (evt.outcomeTag === 'pufferfish_explode' && evt.eliminatedSeats?.length) {
+            chainTags.push(`河豚炸${evt.eliminatedSeats.join(',')}`);
+          } else if (evt.outcomeTag === 'detective_execute' && evt.targetSeat != null) {
+            activeTags.push(`處決${evt.targetSeat}`);
+          } else if (evt.outcomeTag === 'nine_tails_hunt' && evt.eliminatedSeats?.length) {
+            activeTags.push(`獵殺${evt.eliminatedSeats.join(',')}`);
+          } else if (evt.outcomeTag === 'avenger_assassinate' && evt.targetSeat != null) {
+            activeTags.push(`刺殺${evt.targetSeat}`);
+          }
+          break;
+        default:
+          break;
+      }
     }
   }
 
-  return tags;
+  for (const seat of seats) {
+    if (!seat.isAlive && seat.deathRound === round && seat.deathReason) {
+      if (LINKED_DEATH_REASONS.has(seat.deathReason) && !recordedCharmSeats.has(seat.seatNumber)) {
+        chainTags.push(`${seat.seatNumber}殉情`);
+      } else if (seat.deathReason === 'rusty_sword_counter') {
+        chainTags.push(`${seat.seatNumber}反殺`);
+      }
+    }
+  }
+
+  return { chainTags, activeTags };
 }
 
 function collectRoundEliminatedSeats(
@@ -974,16 +1019,19 @@ function buildDaySummaryColumns(state: GameSummaryInput): SummaryDayColumn[] {
   for (let r = 1; r <= maxRound; r += 1) {
     const nightEntry = state.nightHistory.find((n) => n.round === r);
     const dayEntry = state.dayHistory.find((d) => d.round === r);
+    const dawnDeathsText = formatDawnDeathsText(nightEntry);
+    const { chainTags, activeTags } = formatDaySkillGroups(r, dayEntry, state.seats);
     const exileText = formatDayExileText(dayEntry);
-    const skillTags = formatDaySkillTags(dayEntry);
     const eliminated = collectRoundEliminatedSeats(r, nightEntry, dayEntry, state.seats);
 
     columns.push({
       round: r,
-      label: `D${r}`,
+      label: formatChineseDay(r),
+      dawnDeathsText,
+      chainSkillsText: chainTags.length > 0 ? chainTags.join(' / ') : 'X',
+      dayActiveSkillsText: activeTags.length > 0 ? activeTags.join(' / ') : 'X',
       exileText,
-      daySkillsText: skillTags.length > 0 ? skillTags.join(' / ') : '無',
-      eliminatedText: eliminated.length > 0 ? eliminated.join('、') : '平安',
+      eliminatedText: eliminated.length > 0 ? eliminated.join('、') : 'X',
     });
   }
   return columns;
@@ -1007,7 +1055,7 @@ export function buildGameSummaryMatrix(
     return {
       seatNumber: seat.seatNumber,
       seatCode: pad2(seat.seatNumber),
-      nickname: seat.nickname.trim() || `${seat.seatNumber}號`,
+      nickname: seat.nickname.trim() || '-',
       roleName: role?.name ?? '未指派',
       roleCategory: role?.category ?? 'villager',
       subNote: buildPlayerSubNote(seat, state),

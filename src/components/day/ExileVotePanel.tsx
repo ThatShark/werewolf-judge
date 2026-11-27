@@ -32,20 +32,17 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
   const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
   const finalBatchState = useGameStore((s) => s.finalBatchState);
   const interferenceState = useGameStore((s) => s.interferenceState);
-  const undoStack = useGameStore((s) => s.undoStack);
 
   const setVoteInputMode = useGameStore((s) => s.setVoteInputMode);
   const advanceExilePkToVoting = useGameStore((s) => s.advanceExilePkToVoting);
   const submitExileVotes = useGameStore((s) => s.submitExileVotes);
   const exilePlayer = useGameStore((s) => s.exilePlayer);
-  const undoLastStep = useGameStore((s) => s.undoLastStep);
 
   const [votesDraft, setVotesDraft] = useState<Record<number, number | null>>({});
   const [selectedCandidateTab, setSelectedCandidateTab] = useState<number | null>(null);
   const [extraVotes, setExtraVotes] = useState<Record<number, number>>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmBallotOpen, setConfirmBallotOpen] = useState(false);
-  const [confirmUndoRecordOpen, setConfirmUndoRecordOpen] = useState(false);
   const [quickExileSeat, setQuickExileSeat] = useState<number | null>(null);
   const [confirmQuickExileOpen, setConfirmQuickExileOpen] = useState(false);
   const [lastTallyNotice, setLastTallyNotice] = useState<string | null>(null);
@@ -709,18 +706,6 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
             >
               清空草稿
             </button>
-            {undoStack.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setConfirmUndoRecordOpen(true);
-                }}
-                className="min-h-11 flex-1 rounded-md border border-sheriff-border bg-sheriff-tint text-[12px] font-semibold text-sheriff"
-              >
-                撤銷上一步
-              </button>
-            )}
           </div>
         </div>
       </SlideDrawer>
@@ -760,18 +745,6 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
           setConfirmQuickExileOpen(false);
         }}
         onCancel={() => setConfirmQuickExileOpen(false)}
-      />
-
-      <ConfirmModal
-        open={confirmUndoRecordOpen}
-        title="撤銷上一步"
-        confirmLabel="確認撤銷"
-        tone="warning"
-        onConfirm={() => {
-          undoLastStep();
-          setConfirmUndoRecordOpen(false);
-        }}
-        onCancel={() => setConfirmUndoRecordOpen(false)}
       />
     </div>
   );

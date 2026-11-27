@@ -1236,7 +1236,7 @@ export function NightConsoleScreen() {
             ? interferenceState.magicianSwappedSeats.includes(seatNumber)
             : currentStep.actionType === 'wolf_warlock_swap'
               ? interferenceState.wolfWarlockSwappedSeats.includes(seatNumber)
-              : ((interferenceState.lastTricksterPair ?? []) as number[]).includes(seatNumber);
+              : (interferenceState.tricksterSwappedSeats ?? []).includes(seatNumber);
         return {
           selected: isSelected,
           disabled: !isAlive || alreadyUsed,

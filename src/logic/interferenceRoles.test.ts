@@ -105,6 +105,50 @@ describe('第 2 批：干擾、封鎖、目標交換與特殊守護類角色（2
     });
     expect(tally.record.electedSeat).toBe(4);
 
+    // 詭術師整局每個號碼牌只能交換一次（跨夜也不可重複選取已交換過的號碼）
+    expect(() =>
+      resolveNight({
+        seats: trickRes.seats,
+        round: 2,
+        draft: { ...createEmptyNightDraft(2), tricksterSwapPair: [2, 6] },
+        ruleOverrides: DEFAULT_RULE_OVERRIDES,
+        witchAntidoteUsed: false,
+        witchPoisonUsed: false,
+        lastGuardedSeat: null,
+        mechWolfState: createInitialMechWolfState(),
+        pendingSelfExplodeSeat: null,
+        interferenceState: trickRes.interferenceState,
+      }),
+    ).toThrow('不可重複交換');
+
+    // 第 2 夜可選擇尚未交換過的 1 & 6，且隔兩夜仍不可再選第 1 夜已換過的 2 號
+    const trickRes2 = resolveNight({
+      seats: trickRes.seats,
+      round: 2,
+      draft: { ...createEmptyNightDraft(2), tricksterSwapPair: [1, 6] },
+      ruleOverrides: DEFAULT_RULE_OVERRIDES,
+      witchAntidoteUsed: false,
+      witchPoisonUsed: false,
+      lastGuardedSeat: null,
+      mechWolfState: createInitialMechWolfState(),
+      pendingSelfExplodeSeat: null,
+      interferenceState: trickRes.interferenceState,
+    });
+    expect(() =>
+      resolveNight({
+        seats: trickRes2.seats,
+        round: 3,
+        draft: { ...createEmptyNightDraft(3), tricksterSwapPair: [2, 3] },
+        ruleOverrides: DEFAULT_RULE_OVERRIDES,
+        witchAntidoteUsed: false,
+        witchPoisonUsed: false,
+        lastGuardedSeat: null,
+        mechWolfState: createInitialMechWolfState(),
+        pendingSelfExplodeSeat: null,
+        interferenceState: trickRes2.interferenceState,
+      }),
+    ).toThrow('不可重複交換');
+
     // 狼術師單獨換 2 & 3：狼刀 2 實際死 3
     const warlockSeats = makeSeats(['wolf_warlock', 'villager', 'seer', 'witch']);
     const wRes = resolveNight({

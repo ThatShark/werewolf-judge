@@ -833,7 +833,9 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   if (rawMagicianPair) {
     nextInterferenceState.magicianSwappedSeats.push(rawMagicianPair[0], rawMagicianPair[1]);
   }
-  nextInterferenceState.lastTricksterPair = rawTricksterPair;
+  if (rawTricksterPair) {
+    nextInterferenceState.tricksterSwappedSeats.push(rawTricksterPair[0], rawTricksterPair[1]);
+  }
   nextInterferenceState.activeTricksterVoteSwap = effectiveTricksterPair;
 
   let effectiveWolfWarlockPair: [number, number] | null = null;

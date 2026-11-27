@@ -165,7 +165,7 @@ export interface AwakenedDreamCheckOutcome {
 export interface InterferenceRuntimeState {
   magicianSwappedSeats: number[];
   wolfWarlockSwappedSeats: number[];
-  lastTricksterPair: [number, number] | null;
+  tricksterSwappedSeats: number[];
   activeTricksterVoteSwap: [number, number] | null;
   lastTroublemakerTarget: number | null;
   troublemakerJoinedWolfTeam: boolean;

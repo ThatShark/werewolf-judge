@@ -13,7 +13,7 @@ export function createInitialInterferenceState(): InterferenceRuntimeState {
   return {
     magicianSwappedSeats: [],
     wolfWarlockSwappedSeats: [],
-    lastTricksterPair: null,
+    tricksterSwappedSeats: [],
     activeTricksterVoteSwap: null,
     lastTroublemakerTarget: null,
     troublemakerJoinedWolfTeam: false,
@@ -50,7 +50,7 @@ export function cloneInterferenceState(state: InterferenceRuntimeState): Interfe
     ...state,
     magicianSwappedSeats: [...state.magicianSwappedSeats],
     wolfWarlockSwappedSeats: [...state.wolfWarlockSwappedSeats],
-    lastTricksterPair: state.lastTricksterPair ? [...state.lastTricksterPair] : null,
+    tricksterSwappedSeats: [...(state.tricksterSwappedSeats ?? [])],
     activeTricksterVoteSwap: state.activeTricksterVoteSwap
       ? [...state.activeTricksterVoteSwap]
       : null,
@@ -178,10 +178,10 @@ export function canTricksterWolfSwap(
   if (pair[0] === pair[1]) {
     return { allowed: false, reason: '不可選擇同一位玩家進行交換' };
   }
-  const prevSet = new Set(state.lastTricksterPair ?? []);
+  const usedSet = new Set(state.tricksterSwappedSeats ?? []);
   for (const num of [pair[0], pair[1]]) {
-    if (prevSet.has(num)) {
-      return { allowed: false, reason: `詭術師不可連續兩晚選擇同一號碼（${num} 號）` };
+    if (usedSet.has(num)) {
+      return { allowed: false, reason: `${num} 號整局已被詭術師交換過，不可重複交換` };
     }
     const seat = seats.find((s) => s.seatNumber === num);
     if (!seat || !seat.isAlive) {

@@ -212,8 +212,8 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
     () =>
       aliveSeats.filter(
         (s) =>
-          (s.roleId === 'idiot' && s.idiotRevealed) ||
-          Boolean(s.petrified) ||
+          (s.roleId === 'idiot' && s.statuses.idiotRevealed) ||
+          Boolean(s.statuses.petrified) ||
           (isPkRound && pkSet.has(s.seatNumber)),
       ),
     [aliveSeats, isPkRound, pkSet],
@@ -442,7 +442,7 @@ export function ExileVotePanel({ disabled = false }: ExileVotePanelProps) {
               const tag =
                 isPkRound && pkSet.has(s.seatNumber)
                   ? 'PK候選人'
-                  : s.petrified
+                  : s.statuses.petrified
                     ? '石化'
                     : '白痴已翻牌';
               return `${formatSeatNum(s.seatNumber)}號(${tag})`;

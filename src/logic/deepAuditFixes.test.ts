@@ -30,6 +30,7 @@ function makeSeat(
     nickname: `${seatNumber}號`,
     roleId,
     isAlive: true,
+    statuses: {},
     ...extra,
   };
 }
@@ -280,7 +281,7 @@ describe('深度規則體檢修復驗證（開膛手傑克雙板、睡美人獨�
       makeSeat(4, 'villager'),
       makeSeat(5, 'dream_catcher'),
       makeSeat(6, 'bear'),
-      makeSeat(7, 'villager', { convertedByAwakenedGargoyle: true }),
+      makeSeat(7, 'villager', { statuses: { convertedByAwakenedGargoyle: true } }),
     ];
 
     // 狼刀 4 號（被蝕時狼妃封鎖），守衛守 4 號被反彈為自守，女巫救 4 號 → 4 號不奶穿存活！且 lastGuardedSeat 記原目標 4 號

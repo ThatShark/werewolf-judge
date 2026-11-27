@@ -136,7 +136,7 @@ describe('白天完整行為與投票紀錄系統（警長競選／吞警徽／�
   it('放逐投票明細：自動排除已翻牌白痴、套用警長 1.5 票與烏鴉額外 +1 票接口', () => {
     // 12 號為已翻牌免死的白痴（失去投票權），9 號為警長
     const seats = make12Seats().map((seat) =>
-      seat.seatNumber === 12 ? { ...seat, idiotRevealed: true } : seat,
+      seat.seatNumber === 12 ? { ...seat, statuses: { ...seat.statuses, idiotRevealed: true } } : seat,
     );
 
     const eligible = getEligibleExileVoters(seats);
@@ -255,7 +255,7 @@ describe('白天完整行為與投票紀錄系統（警長競選／吞警徽／�
   it('中央雙模式投票等價性：逐人記錄（by_voter）與依候選人唱票（by_candidate）產出完全一致的計票結果', () => {
     const seats = make12Seats();
     // 12 號白痴已翻牌（自動排除投票權），9 號為警長（1.5 票）
-    seats[11].idiotRevealed = true;
+    seats[11].statuses.idiotRevealed = true;
     const eligibleVoters = getEligibleExileVoters(seats);
     const candidateSeats = seats.filter((s) => s.isAlive).map((s) => s.seatNumber);
 

@@ -269,7 +269,11 @@ export function getSeatAttachedStatusTags(
     ctx;
 
   if (hybridState?.idolSeat === sn) tags.push({ label: '被混血', tone: 'third' });
-  if (seat.maskedDelayedDeath || seat.oldRascalDelayedDeath || seat.baiZeDelayedDeath) {
+  if (
+    seat.statuses.maskedDelayedDeath ||
+    seat.statuses.oldRascalDelayedDeath ||
+    seat.statuses.baiZeDelayedDeath
+  ) {
     tags.push({ label: '負傷', tone: 'wolf' });
   }
   const isLucky =
@@ -293,14 +297,14 @@ export function getSeatAttachedStatusTags(
     tags.push({ label: '連夢', tone: 'third' });
   }
   if (draft.nightmareFearTarget === sn) tags.push({ label: '恐懼', tone: 'wolf' });
-  if (seat.infectedBySeedWolf || seat.infectedByZombie || draft.seedWolfInfectTarget === sn) {
+  if (seat.statuses.infectedBySeedWolf || seat.statuses.infectedByZombie || draft.seedWolfInfectTarget === sn) {
     tags.push({ label: '感染', tone: 'third' });
   }
-  if (seat.petrified || draft.medusaPetrifyTarget === sn) tags.push({ label: '石化', tone: 'wolf' });
-  if (seat.muted || draft.muteElderTarget === sn) tags.push({ label: '禁言', tone: 'sheriff' });
+  if (seat.statuses.petrified || draft.medusaPetrifyTarget === sn) tags.push({ label: '石化', tone: 'wolf' });
+  if (seat.statuses.muted || draft.muteElderTarget === sn) tags.push({ label: '禁言', tone: 'sheriff' });
   if (conversionState?.cupidLovers?.includes(sn)) tags.push({ label: '情侶', tone: 'third' });
-  if (seat.idiotRevealed || seat.whiteCatRevealed) tags.push({ label: '翻牌', tone: 'sheriff' });
-  if (seat.isPuppetized) tags.push({ label: '傀儡', tone: 'wolf' });
+  if (seat.statuses.idiotRevealed || seat.statuses.whiteCatRevealed) tags.push({ label: '翻牌', tone: 'sheriff' });
+  if (seat.statuses.isPuppetized) tags.push({ label: '傀儡', tone: 'wolf' });
   if (combatState?.scarletAttachedSeats?.includes(sn)) tags.push({ label: '猩紅', tone: 'wolf' });
   if (combatState?.nightNobleServantSeat === sn) tags.push({ label: '夜僕', tone: 'third' });
   if (thirdPartySpecialState?.sleepingSeats?.includes(sn)) tags.push({ label: '沉睡', tone: 'third' });

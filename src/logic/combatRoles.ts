@@ -66,7 +66,7 @@ export function canDemonHunterHunt(
   targetSeat: number | null,
   round: number,
 ): ActionCheckResult {
-  const dh = seats.find((s) => s.roleId === 'demon_hunter' && s.isAlive && !s.infectedBySeedWolf);
+  const dh = seats.find((s) => s.roleId === 'demon_hunter' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!dh) return { allowed: false, reason: '場上沒有存活的獵魔人' };
   if (targetSeat === null) return { allowed: true };
   if (round < 2) return { allowed: false, reason: '獵魔人自第二晚起才可發動狩獵' };
@@ -78,7 +78,7 @@ export function canDemonHunterHunt(
 
 /** 獵魔人免疫女巫毒藥 */
 export function isDemonHunterImmuneToPoison(seat: PlayerSeat | undefined, reason: DeathReason): boolean {
-  if (!seat || seat.roleId !== 'demon_hunter' || seat.infectedBySeedWolf) return false;
+  if (!seat || seat.roleId !== 'demon_hunter' || seat.statuses.infectedBySeedWolf) return false;
   return reason === 'witch_poison' || reason === 'awakened_witch_poison';
 }
 
@@ -258,7 +258,7 @@ export function canBeeWildHuntSting(
   targets: [number | null, number | null] | undefined,
   round: number,
 ): ActionCheckResult {
-  const bee = seats.find((s) => s.roleId === 'bee_wild_hunt' && s.isAlive && !s.infectedBySeedWolf);
+  const bee = seats.find((s) => s.roleId === 'bee_wild_hunt' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!bee) return { allowed: false, reason: '場上沒有存活的蜂之狂獵' };
   if (!targets || (targets[0] === null && targets[1] === null)) return { allowed: true };
   if (round < 2) return { allowed: false, reason: '蜂之狂獵自第二晚起才可發動蜂刺' };
@@ -279,7 +279,7 @@ export function canPerseusExecute(
   targetSeat: number | null,
   round: number,
 ): ActionCheckResult {
-  const perseus = seats.find((s) => s.roleId === 'perseus' && s.isAlive && !s.infectedBySeedWolf);
+  const perseus = seats.find((s) => s.roleId === 'perseus' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!perseus) return { allowed: false, reason: '場上沒有存活的珀爾修斯' };
   if (targetSeat === null) return { allowed: true };
   if (round < 2) return { allowed: false, reason: '珀爾修斯自第二晚起才可發動處決' };
@@ -346,7 +346,7 @@ export function evaluateAnubisScaleWins(leftSeat: PlayerSeat, rightSeat: PlayerS
 export function isBloodMoonLastWolfExileSurvive(seats: PlayerSeat[], targetSeat: number): boolean {
   const target = seats.find((s) => s.seatNumber === targetSeat);
   if (!target || !target.isAlive || target.roleId !== 'blood_moon_apostle') return false;
-  if (target.bloodMoonExileSurvived) return false;
+  if (target.statuses.bloodMoonExileSurvived) return false;
   const otherAliveWolves = seats.filter(
     (s) => s.isAlive && s.seatNumber !== targetSeat && isSeatWolfFaction(s),
   );
@@ -373,7 +373,7 @@ export function resolvePufferfishExplode(
   killedSeats: number[];
   victory: VictoryResult;
 } {
-  const puffer = seats.find((s) => s.roleId === 'pufferfish' && s.isAlive && !s.infectedBySeedWolf);
+  const puffer = seats.find((s) => s.roleId === 'pufferfish' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!puffer) {
     return { allowed: false, reason: '場上沒有存活的河豚', seats, killedSeats: [], victory: { winner: null, winReason: null } };
   }
@@ -399,7 +399,7 @@ export function resolvePufferfishExplode(
   }
   const uniqueVoters = rawUnique.filter((num) => {
     const s = seats.find((seat) => seat.seatNumber === num);
-    return Boolean(s && s.isAlive && !(s.roleId === 'white_cat' && s.whiteCatRevealed));
+    return Boolean(s && s.isAlive && !(s.roleId === 'white_cat' && s.statuses.whiteCatRevealed));
   });
   if (uniqueVoters.length === 0) {
     return { allowed: false, reason: '沒有可被炸死的投票玩家，河豚無法翻牌', seats, killedSeats: [], victory: { winner: null, winReason: null } };
@@ -417,7 +417,7 @@ export function resolvePufferfishExplode(
   }
   const updatedSeats = seats.map((s) =>
     revealedWhiteCatSet.has(s.seatNumber)
-      ? { ...s, whiteCatRevealed: true }
+      ? { ...s, statuses: { ...s.statuses, whiteCatRevealed: true } }
       : killSet.has(s.seatNumber)
         ? { ...s, isAlive: false, deathReason: 'pufferfish_explode' as const, deathRound: round }
         : s,
@@ -436,7 +436,7 @@ export function isOldRascalDelayableDeath(
   seat: PlayerSeat | undefined,
   reason: DeathReason,
 ): boolean {
-  if (!seat || seat.roleId !== 'old_rascal' || seat.infectedBySeedWolf) return false;
+  if (!seat || seat.roleId !== 'old_rascal' || seat.statuses.infectedBySeedWolf) return false;
   return (
     reason === 'witch_poison' ||
     reason === 'awakened_witch_poison' ||
@@ -638,7 +638,7 @@ export function canAwakenedIdiotShield(
   state: CombatRuntimeState,
   targetSeat: number | null,
 ): ActionCheckResult {
-  const ai = seats.find((s) => s.roleId === 'awakened_idiot' && s.isAlive && !s.infectedBySeedWolf);
+  const ai = seats.find((s) => s.roleId === 'awakened_idiot' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!ai) return { allowed: false, reason: '場上沒有存活的覺醒白痴' };
   if (targetSeat === null) return { allowed: true };
   if (!state.awakenedIdiotSecretActive) {

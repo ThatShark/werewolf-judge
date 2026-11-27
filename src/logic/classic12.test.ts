@@ -174,7 +174,7 @@ describe('MVP 板子 1：12 人局 - 經典', () => {
     );
     expect(resNoExtra.idiotRevealed).toBe(true);
     expect(resNoExtra.seats[11].isAlive).toBe(true);
-    expect(resNoExtra.seats[11].idiotRevealed).toBe(true);
+    expect(resNoExtra.seats[11].statuses.idiotRevealed).toBe(true);
     expect(resNoExtra.victory.winner).toBe('wolf');
 
     // idiotNeedsExtraKill = true：白痴翻牌免死後仍算存活神職，尚未判屠神，須追刀才贏

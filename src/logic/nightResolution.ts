@@ -340,7 +340,7 @@ function killSeat(
   // 老流氓被女巫／毒師毒殺進入延遲死亡（隔天發言結束後才出局）
   if (isOldRascalDelayableDeath(existing, reason)) {
     return seats.map((seat) =>
-      seat.seatNumber === seatNumber ? { ...seat, oldRascalDelayedDeath: true } : seat,
+      seat.seatNumber === seatNumber ? { ...seat, statuses: { ...seat.statuses, oldRascalDelayedDeath: true } } : seat,
     );
   }
 
@@ -351,7 +351,7 @@ function killSeat(
       whiteCatRevealedSeats.push(seatNumber);
     }
     return seats.map((seat) =>
-      seat.seatNumber === seatNumber ? { ...seat, whiteCatRevealed: true } : seat,
+      seat.seatNumber === seatNumber ? { ...seat, statuses: { ...seat.statuses, whiteCatRevealed: true } } : seat,
     );
   }
 
@@ -369,8 +369,11 @@ function killSeat(
       seat.seatNumber === seatNumber
         ? {
             ...seat,
-            maskedDelayedDeath: true,
-            maskedDelayedDeathReason: seat.maskedDelayedDeathReason ?? reason,
+            statuses: {
+              ...seat.statuses,
+              maskedDelayedDeath: true,
+              maskedDelayedDeathReason: seat.statuses.maskedDelayedDeathReason ?? reason,
+            },
           }
         : seat,
     );
@@ -432,8 +435,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   let updatedSeats: PlayerSeat[] = initialSeats.map((seat) => ({
     ...seat,
-    petrified: false,
-    muted: false,
+    statuses: {
+      ...seat.statuses,
+      petrified: false,
+      muted: false,
+    },
   }));
   let nextMechWolfState = { ...mechWolfState };
   let nextWolfGirlState = { ...wolfGirlState };
@@ -623,7 +629,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let penguinFrozenSeat: number | null = null;
   if (draft.penguinFreezeTarget !== undefined) {
     const alivePenguin = updatedSeats.find(
-      (s) => s.roleId === 'penguin' && s.isAlive && !s.infectedBySeedWolf,
+      (s) => s.roleId === 'penguin' && s.isAlive && !s.statuses.infectedBySeedWolf,
     );
     if (alivePenguin && fearedSeat !== alivePenguin.seatNumber) {
       const check = canPenguinFreeze(
@@ -644,6 +650,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
           nickname: '',
           roleId: null,
           isAlive: false,
+          statuses: {},
         },
       ),
   );
@@ -651,7 +658,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let foxCubCharmedSeat: number | null = null;
   if (draft.foxCubCharmTarget !== undefined && draft.foxCubCharmTarget !== null) {
     const aliveFoxCub = updatedSeats.find(
-      (s) => s.roleId === 'fox_cub' && s.isAlive && !s.infectedBySeedWolf,
+      (s) => s.roleId === 'fox_cub' && s.isAlive && !s.statuses.infectedBySeedWolf,
     );
     if (aliveFoxCub && fearedSeat !== aliveFoxCub.seatNumber) {
       const check = canFoxCubCharm(
@@ -673,6 +680,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
           nickname: '',
           roleId: null,
           isAlive: false,
+          statuses: {},
         },
       ),
   );
@@ -694,14 +702,14 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     const perseusImmuneToPetrify = Boolean(
       requestedPetrifyObj &&
         requestedPetrifyObj.roleId === 'perseus' &&
-        !requestedPetrifyObj.infectedBySeedWolf,
+        !requestedPetrifyObj.statuses.infectedBySeedWolf,
     );
     medusaPetrifiedSeat = perseusImmuneToPetrify ? null : requestedPetrifySeat;
     nextInterferenceState.lastMedusaTarget = requestedPetrifySeat;
     nextInterferenceState.activePetrifiedSeat = medusaPetrifiedSeat;
     if (medusaPetrifiedSeat !== null) {
       updatedSeats = updatedSeats.map((s) =>
-        s.seatNumber === medusaPetrifiedSeat ? { ...s, petrified: true } : s,
+        s.seatNumber === medusaPetrifiedSeat ? { ...s, statuses: { ...s.statuses, petrified: true } } : s,
       );
     }
   }
@@ -914,7 +922,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let radiantShieldSeat: number | null = null;
   let radiantSecondShieldSeat: number | null = null;
   const aliveRadiantEarl = updatedSeats.find(
-    (s) => s.roleId === 'radiant_earl' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'radiant_earl' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (draft.radiantEarlTarget !== undefined) {
     const check = canRadiantEarlShield(
@@ -937,7 +945,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   let socialiteFavoredSeat: number | null = null;
   const aliveSocialite = updatedSeats.find(
-    (s) => s.roleId === 'socialite' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'socialite' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (
     aliveSocialite &&
@@ -958,7 +966,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   let enchanterTargetSeat: number | null = null;
   let enchanterConsecutiveDeath = false;
   const aliveEnchanter = updatedSeats.find(
-    (s) => s.roleId === 'enchanter' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'enchanter' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (
     aliveEnchanter &&
@@ -1022,7 +1030,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   let awakenedIdiotShieldTarget: number | null = null;
   const aliveAwakenedIdiot = updatedSeats.find(
-    (s) => s.roleId === 'awakened_idiot' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'awakened_idiot' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (
     aliveAwakenedIdiot &&
@@ -1159,7 +1167,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         nextConversionState.awakenedGargoyleConvertedSeats.push(convertTargetSeat);
       }
       updatedSeats = updatedSeats.map((s) =>
-        s.seatNumber === convertTargetSeat ? { ...s, convertedByAwakenedGargoyle: true } : s,
+        s.seatNumber === convertTargetSeat ? { ...s, statuses: { ...s.statuses, convertedByAwakenedGargoyle: true } } : s,
       );
     }
   }
@@ -1188,7 +1196,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     if (!check.allowed) throw new Error(check.reason);
     nextConversionState.puppetSeat = draft.puppetTarget;
     updatedSeats = updatedSeats.map((s) =>
-      s.seatNumber === draft.puppetTarget ? { ...s, isPuppetized: true } : s,
+      s.seatNumber === draft.puppetTarget ? { ...s, statuses: { ...s.statuses, isPuppetized: true } } : s,
     );
   }
 
@@ -1232,7 +1240,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     const uniqueZ = Array.from(new Set(draft.zombieInfectTargets));
     nextConversionState.zombieInfectedSeats.push(...uniqueZ);
     updatedSeats = updatedSeats.map((s) =>
-      uniqueZ.includes(s.seatNumber) ? { ...s, infectedByZombie: true } : s,
+      uniqueZ.includes(s.seatNumber) ? { ...s, statuses: { ...s.statuses, infectedByZombie: true } } : s,
     );
   }
 
@@ -1430,11 +1438,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 2. 守衛行動檢核（若守衛被夢魘恐懼／企鵝冰凍／梅杜莎石化／削弱／種狼感染／傀儡則當晚無法守護；受搗蛋鬼／魔術師／蝕時狼妃影響轉移）
   const aliveGuard = updatedSeats.find(
-    (seat) => seat.roleId === 'guard' && seat.isAlive && !seat.infectedBySeedWolf,
+    (seat) => seat.roleId === 'guard' && seat.isAlive && !seat.statuses.infectedBySeedWolf,
   );
   const guardFeared = Boolean(
     aliveGuard &&
-      (isSeatBlockedByInterference(aliveGuard.seatNumber) || aliveGuard.isPuppetized),
+      (isSeatBlockedByInterference(aliveGuard.seatNumber) || aliveGuard.statuses.isPuppetized),
   );
   const hasAliveGuard = Boolean(aliveGuard && !guardFeared);
   let effectiveGuardTarget: number | null = null;
@@ -1478,7 +1486,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 2.5 攝夢人行動檢核（若被夢魘恐懼則無法攝夢且重置連夢紀錄；被種狼感染／吞噬則失能；受蝕時狼妃封鎖依板子區分無效或自攝）
   const aliveDreamCatcher = updatedSeats.find(
-    (seat) => seat.roleId === 'dream_catcher' && seat.isAlive && !seat.infectedBySeedWolf,
+    (seat) => seat.roleId === 'dream_catcher' && seat.isAlive && !seat.statuses.infectedBySeedWolf,
   );
   const dreamCatcherFeared = Boolean(
     aliveDreamCatcher &&
@@ -1516,7 +1524,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   const awakenedDreamActive = Boolean(
     aliveAwakenedDreamCatcher &&
       aliveAwakenedDreamCatcher.isAlive &&
-      !aliveAwakenedDreamCatcher.infectedBySeedWolf,
+      !aliveAwakenedDreamCatcher.statuses.infectedBySeedWolf,
   );
   const awakenedDreamFeared = Boolean(
     awakenedDreamActive &&
@@ -1661,6 +1669,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         nickname: '',
         roleId: null,
         isAlive: false,
+        statuses: {},
       },
     )
   ) {
@@ -1746,7 +1755,10 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
         seat.seatNumber === requestedSeedInfectTarget
           ? {
               ...seat,
-              infectedBySeedWolf: true,
+              statuses: {
+                ...seat.statuses,
+                infectedBySeedWolf: true,
+              },
             }
           : seat,
       );
@@ -1757,11 +1769,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 4. 女巫行動檢核（解毒互斥 + 自救限制；被傀儡／灰太狼偷毒無法用毒；管家同夜可雙藥／導師增幅雙毒；被削弱僅禁毒仍可用解藥）
   const activeWitch = updatedSeats.find(
-    (seat) => seat.roleId === 'witch' && seat.isAlive && !seat.infectedBySeedWolf,
+    (seat) => seat.roleId === 'witch' && seat.isAlive && !seat.statuses.infectedBySeedWolf,
   );
   const witchHardBlocked =
     !activeWitch ||
-    activeWitch.isPuppetized ||
+    activeWitch.statuses.isPuppetized ||
     bloodMoonSealedGood ||
     fearedSeat === activeWitch.seatNumber ||
     penguinFrozenSeat === activeWitch.seatNumber ||
@@ -1837,11 +1849,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 4.2 覺醒女巫行動檢核（1 解藥 + 3 瓶需協助者投票同意之毒藥）
   const activeAwakenedWitch = updatedSeats.find(
-    (seat) => seat.roleId === 'awakened_witch' && seat.isAlive && !seat.infectedBySeedWolf,
+    (seat) => seat.roleId === 'awakened_witch' && seat.isAlive && !seat.statuses.infectedBySeedWolf,
   );
   const awBlocked =
     !activeAwakenedWitch ||
-    activeAwakenedWitch.isPuppetized ||
+    activeAwakenedWitch.statuses.isPuppetized ||
     isSeatBlockedByInterference(activeAwakenedWitch.seatNumber);
   const effectiveAwUseAntidote = awBlocked ? false : Boolean(draft.awakenedWitchUseAntidote);
   const rawAwPoisonTarget = awBlocked ? null : (draft.awakenedWitchPoisonTarget ?? null);
@@ -1882,11 +1894,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 4.5 毒師行動檢核（僅 1 瓶毒藥；被干擾封鎖／傀儡／種狼感染則無法用毒；受目標交換與反彈影響）
   const activePoisoner = updatedSeats.find(
-    (seat) => seat.roleId === 'poisoner' && seat.isAlive && !seat.infectedBySeedWolf,
+    (seat) => seat.roleId === 'poisoner' && seat.isAlive && !seat.statuses.infectedBySeedWolf,
   );
   const poisonerBlocked =
     !activePoisoner ||
-    activePoisoner.isPuppetized ||
+    activePoisoner.statuses.isPuppetized ||
     isSeatBlockedByInterference(activePoisoner.seatNumber);
   const rawPoisonerTarget = poisonerBlocked ? null : (draft.poisonerTarget ?? null);
   let requestedPoisonerTarget: number | null = null;
@@ -2041,7 +2053,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 血月使徒最後一狼被放逐免死：隔夜復仇刀後正式出局
   const survivedBloodMoon = updatedSeats.find(
-    (s) => s.isAlive && s.roleId === 'blood_moon_apostle' && s.bloodMoonExileSurvived,
+    (s) => s.isAlive && s.roleId === 'blood_moon_apostle' && s.statuses.bloodMoonExileSurvived,
   );
   if (survivedBloodMoon) {
     nextCombatState.bloodMoonPendingExileDeathNextNight = false;
@@ -2145,11 +2157,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
 
   // 6. 查驗資訊（預言家 / 通靈師 / 機械狼學通靈師；若遭夢魘恐懼／吞噬／傀儡或當晚被種狼感染則受影響）
   const seerSeatObj = initialSeats.find(
-    (seat) => seat.roleId === 'seer' && seat.isAlive && !seat.infectedBySeedWolf,
+    (seat) => seat.roleId === 'seer' && seat.isAlive && !seat.statuses.infectedBySeedWolf,
   );
   const seerInfectedTonight = Boolean(
     seerSeatObj &&
-      updatedSeats.find((s) => s.seatNumber === seerSeatObj.seatNumber)?.infectedBySeedWolf,
+      updatedSeats.find((s) => s.seatNumber === seerSeatObj.seatNumber)?.statuses.infectedBySeedWolf,
   );
   const seerBlocked =
     !seerSeatObj || isSeatBlockedByInterference(seerSeatObj.seatNumber) || seerInfectedTonight;
@@ -2171,7 +2183,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     ? updatedSeats.find((s) => s.seatNumber === seerSeatObj.seatNumber)
     : undefined;
   const seerResult =
-    rawSeerResult && seerUpdatedObj?.isPuppetized
+    rawSeerResult && seerUpdatedObj?.statuses.isPuppetized
       ? {
           ...rawSeerResult,
           faction: rawSeerResult.faction === 'wolf' ? ('good' as const) : ('wolf' as const),
@@ -2179,11 +2191,11 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
       : rawSeerResult;
 
   const psychicSeatObj = initialSeats.find(
-    (seat) => seat.roleId === 'psychic' && seat.isAlive && !seat.infectedBySeedWolf,
+    (seat) => seat.roleId === 'psychic' && seat.isAlive && !seat.statuses.infectedBySeedWolf,
   );
   const psychicInfectedTonight = Boolean(
     psychicSeatObj &&
-      updatedSeats.find((s) => s.seatNumber === psychicSeatObj.seatNumber)?.infectedBySeedWolf,
+      updatedSeats.find((s) => s.seatNumber === psychicSeatObj.seatNumber)?.statuses.infectedBySeedWolf,
   );
   const psychicBlocked =
     !psychicSeatObj ||
@@ -2228,10 +2240,10 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   // 6.5 第 1 批查驗與資訊感知類角色結算
   const isRoleBlocked = (roleId: string): { seat: PlayerSeat | undefined; blocked: boolean } => {
     const seatObj = initialSeats.find(
-      (s) => s.roleId === roleId && s.isAlive && !s.infectedBySeedWolf,
+      (s) => s.roleId === roleId && s.isAlive && !s.statuses.infectedBySeedWolf,
     );
     const infectedTonight = Boolean(
-      seatObj && updatedSeats.find((s) => s.seatNumber === seatObj.seatNumber)?.infectedBySeedWolf,
+      seatObj && updatedSeats.find((s) => s.seatNumber === seatObj.seatNumber)?.statuses.infectedBySeedWolf,
     );
     return {
       seat: seatObj,
@@ -2916,7 +2928,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   // 名媛夜死或被種狼感染 → 寵幸者殉情（仍可發動技能）
   if (aliveSocialite && socialiteFavoredSeat !== null) {
     const socialiteNow = updatedSeats.find((s) => s.seatNumber === aliveSocialite.seatNumber);
-    if (socialiteNow && (!socialiteNow.isAlive || socialiteNow.infectedBySeedWolf)) {
+    if (socialiteNow && (!socialiteNow.isAlive || socialiteNow.statuses.infectedBySeedWolf)) {
       doKill(socialiteFavoredSeat, 'socialite_link');
     }
   }
@@ -2924,21 +2936,21 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   // 禁言長老禁言標記（依開夜時是否存活且未被封鎖判定）
   if (draft.muteElderTarget !== undefined && draft.muteElderTarget !== null) {
     const aliveMuteElder = initialSeats.find(
-      (s) => s.roleId === 'mute_elder' && s.isAlive && !s.infectedBySeedWolf,
+      (s) => s.roleId === 'mute_elder' && s.isAlive && !s.statuses.infectedBySeedWolf,
     );
     if (aliveMuteElder && !isSeatBlockedByInterference(aliveMuteElder.seatNumber)) {
       const check = canMuteElderMute(updatedSeats, draft.muteElderTarget);
       if (!check.allowed) throw new Error(check.reason);
       nextInterferenceState.activeMutedSeat = draft.muteElderTarget;
       updatedSeats = updatedSeats.map((s) =>
-        s.seatNumber === draft.muteElderTarget ? { ...s, muted: true } : s,
+        s.seatNumber === draft.muteElderTarget ? { ...s, statuses: { ...s.statuses, muted: true } } : s,
       );
     }
   }
 
   // 煉金魔女法老之蛇待救目標紀錄（記錄所有夜死候選名單，並保留單一欄位相容舊版）
   const aliveAlchemyWitch = updatedSeats.find(
-    (s) => s.roleId === 'alchemy_witch' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'alchemy_witch' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (aliveAlchemyWitch && !nextInterferenceState.alchemySnakeUsed && deaths.length > 0) {
     nextInterferenceState.alchemySnakePendingVictimSeat = deaths[0].seat;
@@ -2981,7 +2993,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     draft.demonHunterTarget !== null
   ) {
     const aliveDh = updatedSeats.find(
-      (s) => s.roleId === 'demon_hunter' && s.isAlive && !s.infectedBySeedWolf,
+      (s) => s.roleId === 'demon_hunter' && s.isAlive && !s.statuses.infectedBySeedWolf,
     );
     if (aliveDh && !isSeatBlockedByInterference(aliveDh.seatNumber)) {
       const check = canDemonHunterHunt(updatedSeats, draft.demonHunterTarget, round);
@@ -3021,7 +3033,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     draft.beeWildHuntTargets[1] !== null
   ) {
     const aliveBee = updatedSeats.find(
-      (s) => s.roleId === 'bee_wild_hunt' && s.isAlive && !s.infectedBySeedWolf,
+      (s) => s.roleId === 'bee_wild_hunt' && s.isAlive && !s.statuses.infectedBySeedWolf,
     );
     if (aliveBee && !isSeatBlockedByInterference(aliveBee.seatNumber)) {
       const check = canBeeWildHuntSting(
@@ -3053,7 +3065,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
     draft.perseusExecuteTarget !== null
   ) {
     const alivePerseus = updatedSeats.find(
-      (s) => s.roleId === 'perseus' && s.isAlive && !s.infectedBySeedWolf,
+      (s) => s.roleId === 'perseus' && s.isAlive && !s.statuses.infectedBySeedWolf,
     );
     if (alivePerseus && fearedSeat !== alivePerseus.seatNumber) {
       const check = canPerseusExecute(
@@ -3787,7 +3799,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   const muteElderObj = updatedSeats.find((s) => s.roleId === 'mute_elder');
   if (muteElderObj && isSeatAsleep(updatedSeats, nextThirdPartySpecialState, muteElderObj.seatNumber)) {
     nextInterferenceState.activeMutedSeat = null;
-    updatedSeats = updatedSeats.map((s) => (s.muted ? { ...s, muted: false } : s));
+    updatedSeats = updatedSeats.map((s) => (s.statuses.muted ? { ...s, statuses: { ...s.statuses, muted: false } } : s));
   }
 
   // 8.68i 白澤神職繼承人夜死延遲至下一白天放逐投票結束後（若為最後一神則不延遲）
@@ -3804,7 +3816,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
           s.seatNumber !== heirSeatNum &&
           s.roleId != null &&
           !isSeatWolfFaction(s) &&
-          (s.baiZeDualFaction ||
+          (s.statuses.baiZeDualFaction ||
             (s.roleId !== 'villager' &&
               s.roleId !== 'senior_villager' &&
               s.roleId !== 'old_rascal' &&
@@ -3819,7 +3831,7 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
                 isAlive: true,
                 deathReason: undefined,
                 deathRound: undefined,
-                baiZeDelayedDeath: true,
+                statuses: { ...s.statuses, baiZeDelayedDeath: true },
               }
             : s,
         );

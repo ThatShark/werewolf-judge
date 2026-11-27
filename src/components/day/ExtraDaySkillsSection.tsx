@@ -120,19 +120,19 @@ export function ExtraDaySkillsSection({ disabled = false }: ExtraDaySkillsSectio
 
   // 4. 延遲死亡列
   const maskedDelayedSeats = useMemo(
-    () => seats.filter((s) => s.isAlive && s.maskedDelayedDeath),
+    () => seats.filter((s) => s.isAlive && s.statuses.maskedDelayedDeath),
     [seats],
   );
   const whiteCatDelayedSeats = useMemo(
-    () => seats.filter((s) => s.isAlive && s.whiteCatRevealed),
+    () => seats.filter((s) => s.isAlive && s.statuses.whiteCatRevealed),
     [seats],
   );
   const oldRascalDelayedSeats = useMemo(
-    () => seats.filter((s) => s.isAlive && s.oldRascalDelayedDeath),
+    () => seats.filter((s) => s.isAlive && s.statuses.oldRascalDelayedDeath),
     [seats],
   );
   const baiZeDelayedSeats = useMemo(
-    () => seats.filter((s) => s.isAlive && s.baiZeDelayedDeath),
+    () => seats.filter((s) => s.isAlive && s.statuses.baiZeDelayedDeath),
     [seats],
   );
 

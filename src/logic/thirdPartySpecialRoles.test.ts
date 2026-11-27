@@ -23,6 +23,7 @@ function makeSeats(roles: string[]): PlayerSeat[] {
     nickname: `${idx + 1}號`,
     roleId,
     isAlive: true,
+    statuses: {},
   }));
 }
 
@@ -179,7 +180,7 @@ describe('第 5 批：第三方獨立勝利、特殊計分與收集／贈禮類�
     // 白澤指定平民 3 號為繼承人 -> 3 號同時計入神職與平民（屠神須連同 3 號淘汰）
     const inh = resolveBaiZeInherit(seats, createInitialThirdPartySpecialState(), 3);
     expect(inh.allowed).toBe(true);
-    expect(inh.seats[2].baiZeDualFaction).toBe(true);
+    expect(inh.seats[2].statuses.baiZeDualFaction).toBe(true);
     // 若白澤(2)與預言家(5)都出局，因 3 號具神民雙陣營，狼人仍未屠神
     const godsDownExceptDual = inh.seats.map((s) =>
       s.seatNumber === 2 || s.seatNumber === 5 ? { ...s, isAlive: false } : s,
@@ -197,7 +198,7 @@ describe('第 5 批：第三方獨立勝利、特殊計分與收集／贈禮類�
       'idiot',
       'villager',
     ]);
-    seats[4].idiotRevealed = true;
+    seats[4].statuses.idiotRevealed = true;
     expect(canCrowCurse(seats, createInitialThirdPartySpecialState(), 5).allowed).toBe(false);
 
     // 第 2 晚：舞者選 [1(狼), 3(舞者), 6(民)] 進舞池，狼刀 3 號（舞者在舞池中免疫狼刀），假面未改判 -> 1 號少數出局

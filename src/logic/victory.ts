@@ -34,7 +34,7 @@ function getEffectiveSide(
     return 'wolf';
   }
   // 被種狼感染或覺醒石像鬼轉化為狼人者，即時改計入狼人陣營
-  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) {
+  if (seat.statuses.infectedBySeedWolf || seat.statuses.convertedByAwakenedGargoyle) {
     return 'wolf';
   }
   if (
@@ -116,12 +116,12 @@ export function countAliveFactions(
     } else if (side === 'villager') {
       villagers += 1;
       // 白澤繼承人（平民）轉為神／民雙陣營：狼隊屠神亦須淘汰該玩家
-      if (seat.baiZeDualFaction) {
+      if (seat.statuses.baiZeDualFaction) {
         gods += 1;
       }
     } else if (side === 'god') {
       // 白痴翻牌免死後，若規則設定不需追刀（idiotNeedsExtraKill = false），則不再計入存活神職
-      if (seat.roleId === 'idiot' && seat.idiotRevealed && !ruleOverrides.idiotNeedsExtraKill) {
+      if (seat.roleId === 'idiot' && seat.statuses.idiotRevealed && !ruleOverrides.idiotNeedsExtraKill) {
         continue;
       }
       gods += 1;
@@ -167,11 +167,11 @@ export function checkVictory(
     if (side === 'wolf') hasAnyWolf = true;
     else if (side === 'villager') {
       hasAnyVillager = true;
-      if (seat.baiZeDualFaction) hasAnyGod = true;
+      if (seat.statuses.baiZeDualFaction) hasAnyGod = true;
     } else if (side === 'god') hasAnyGod = true;
 
     // 若原好人（神職／平民）被種狼感染或覺醒石像鬼轉化為狼人，本局仍視為原本存在該陣營邊，避免最後一神／最後一民被轉化時漏判屠邊
-    if ((seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) && seat.roleId) {
+    if ((seat.statuses.infectedBySeedWolf || seat.statuses.convertedByAwakenedGargoyle) && seat.roleId) {
       const origRole = getRoleById(seat.roleId);
       if (origRole?.category === 'villager') hasAnyVillager = true;
       else if (origRole?.category === 'god') hasAnyGod = true;

@@ -27,7 +27,7 @@ export function CompactSeatStatusGrid({
     const isSheriff = activeSheriffSeat === seat.seatNumber;
     const isNightDead = nightDeadSet.has(seat.seatNumber);
     const isSpeaking = currentSpeakerSeat === seat.seatNumber;
-    const isIdiotRevealed = Boolean(seat.roleId === 'idiot' && seat.idiotRevealed);
+    const isIdiotRevealed = Boolean(seat.roleId === 'idiot' && seat.statuses.idiotRevealed);
 
     return (
       <button

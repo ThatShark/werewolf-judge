@@ -52,6 +52,7 @@ import {
   isSeatEffectiveWolf,
   isValidPlayerCountForBoard,
   mergeRuleOverrides,
+  normalizePlayerSeats,
   pickRandomDirection,
   resolveAlchemySnakeRevive,
   resolveAvengerAssassinate,
@@ -2022,8 +2023,8 @@ export const useGameStore = create<GameStore>()(
                   round: state.round,
                   seatNumber: targetSeat,
                   roleId: exiledSeatObj.roleId,
-                  infectedBySeedWolf: exiledSeatObj.infectedBySeedWolf,
-                  convertedByAwakenedGargoyle: exiledSeatObj.convertedByAwakenedGargoyle,
+                  infectedBySeedWolf: exiledSeatObj.statuses.infectedBySeedWolf,
+                  convertedByAwakenedGargoyle: exiledSeatObj.statuses.convertedByAwakenedGargoyle,
                   effectiveFaction:
                     getSeatEffectiveFaction(exiledSeatObj, state.conversionState) ?? undefined,
                 },
@@ -2141,8 +2142,8 @@ export const useGameStore = create<GameStore>()(
                   round: state.round,
                   seatNumber: targetSeat,
                   roleId: exiledSeatObj.roleId,
-                  infectedBySeedWolf: exiledSeatObj.infectedBySeedWolf,
-                  convertedByAwakenedGargoyle: exiledSeatObj.convertedByAwakenedGargoyle,
+                  infectedBySeedWolf: exiledSeatObj.statuses.infectedBySeedWolf,
+                  convertedByAwakenedGargoyle: exiledSeatObj.statuses.convertedByAwakenedGargoyle,
                   effectiveFaction:
                     getSeatEffectiveFaction(exiledSeatObj, state.conversionState) ?? undefined,
                 },
@@ -3760,9 +3761,16 @@ export const useGameStore = create<GameStore>()(
       },
       merge: (persistedState, currentState) => {
         const persisted = (persistedState ?? {}) as Partial<GameStore>;
+        const normalizeSnapshotSeats = (snap: unknown): unknown => {
+          if (!snap || typeof snap !== 'object') return snap ?? null;
+          const record = snap as Record<string, unknown>;
+          if (!Array.isArray(record.seats)) return snap;
+          return { ...record, seats: normalizePlayerSeats(record.seats) };
+        };
         return {
           ...currentState,
           ...persisted,
+          seats: normalizePlayerSeats(persisted.seats ?? currentState.seats),
           undoStack: [],
           hostMode: {
             ...DEFAULT_HOST_MODE,
@@ -3792,7 +3800,14 @@ export const useGameStore = create<GameStore>()(
             gridCells: persisted.notebook?.gridCells ?? {},
           },
           voteInputMode: persisted.voteInputMode ?? 'by_voter',
-          pendingNightAnnouncement: persisted.pendingNightAnnouncement ?? null,
+          pendingNightAnnouncement: persisted.pendingNightAnnouncement
+            ? {
+                ...persisted.pendingNightAnnouncement,
+                seats: normalizePlayerSeats(persisted.pendingNightAnnouncement.seats),
+              }
+            : null,
+          preNightSnapshot: normalizeSnapshotSeats(persisted.preNightSnapshot),
+          preExileSnapshot: normalizeSnapshotSeats(persisted.preExileSnapshot),
           exileResolvedToday: persisted.exileResolvedToday ?? null,
           forceContinueAfterVictory: persisted.forceContinueAfterVictory ?? false,
           preGameOverPhase: persisted.preGameOverPhase ?? null,

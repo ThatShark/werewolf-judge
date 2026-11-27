@@ -111,19 +111,19 @@ export function evaluateNightStepLockState(
     step.actionType === 'wolf_kill'
       ? seats.filter((s) => {
           if (!s.isAlive) return false;
-          if (s.roleId === 'hidden_wolf' && !hiddenWolfState?.hasJoinedWolfTeam && !s.infectedBySeedWolf) {
+          if (s.roleId === 'hidden_wolf' && !hiddenWolfState?.hasJoinedWolfTeam && !s.statuses.infectedBySeedWolf) {
             return false;
           }
-          if (s.roleId === 'gargoyle' && !gargoyleState?.hasJoinedWolfTeam && !s.infectedBySeedWolf) {
+          if (s.roleId === 'gargoyle' && !gargoyleState?.hasJoinedWolfTeam && !s.statuses.infectedBySeedWolf) {
             return false;
           }
-          if (s.roleId === 'night_noble' && !s.infectedBySeedWolf) {
+          if (s.roleId === 'night_noble' && !s.statuses.infectedBySeedWolf) {
             return false;
           }
-          if (s.roleId === 'wolf_girl' && !s.infectedBySeedWolf) {
+          if (s.roleId === 'wolf_girl' && !s.statuses.infectedBySeedWolf) {
             return false;
           }
-          if (s.roleId === 'treasure_master' && !s.infectedBySeedWolf) {
+          if (s.roleId === 'treasure_master' && !s.statuses.infectedBySeedWolf) {
             // 若場上尚有其他有效狼人，盜寶大師尚未歸隊執刀
             const hasOtherEffectiveWolf = seats.some(
               (other) =>
@@ -210,7 +210,7 @@ export function evaluateNightStepLockState(
     }
     if (aliveKnifeWolves.length === 1) {
       const soleWolf = aliveKnifeWolves[0];
-      if (soleWolf.petrified || draft.medusaPetrifyTarget === soleWolf.seatNumber) {
+      if (soleWolf.statuses.petrified || draft.medusaPetrifyTarget === soleWolf.seatNumber) {
         return {
           locked: true,
           reason: `唯一執刀狼（${soleWolf.seatNumber} 號）遭梅杜莎石化：今晚無法落刀，所有座位已鎖死。`,
@@ -278,13 +278,13 @@ export function evaluateNightStepLockState(
 
     // 5. 梅杜莎石化（當晚或持續石化；柏修斯免疫石化除非被種狼感染）
     const isPerseusExempt = (s: PlayerSeat) =>
-      s.roleId === 'perseus' && !s.infectedBySeedWolf;
+      s.roleId === 'perseus' && !s.statuses.infectedBySeedWolf;
     if (
       step.actionType !== 'medusa_petrify' &&
       aliveActors.every(
         (s) =>
           !isPerseusExempt(s) &&
-          (Boolean(s.petrified) || s.seatNumber === draft.medusaPetrifyTarget),
+          (Boolean(s.statuses.petrified) || s.seatNumber === draft.medusaPetrifyTarget),
       )
     ) {
       return {

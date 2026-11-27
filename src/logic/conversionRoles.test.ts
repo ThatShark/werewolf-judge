@@ -19,6 +19,7 @@ function makeSeats(roles: string[]): PlayerSeat[] {
     nickname: `${idx + 1}號`,
     roleId,
     isAlive: true,
+    statuses: {},
   }));
 }
 
@@ -172,7 +173,7 @@ describe('第 4 批：死亡連帶、首夜認主、換牌與陣營轉換類角�
       mechWolfState: createInitialMechWolfState(),
       pendingSelfExplodeSeat: null,
     });
-    expect(n1.seats[1].convertedByAwakenedGargoyle).toBe(true);
+    expect(n1.seats[1].statuses.convertedByAwakenedGargoyle).toBe(true);
     expect(getSeerCheckResult(n1.seats, 2)?.faction).toBe('wolf');
     expect(n1.conversionState.wildChildTurnedWolf).toBe(true);
 
@@ -219,7 +220,7 @@ describe('第 4 批：死亡連帶、首夜認主、換牌與陣營轉換類角�
       mechWolfState: createInitialMechWolfState(),
       pendingSelfExplodeSeat: null,
     });
-    expect(pupN1.seats[1].isPuppetized).toBe(true);
+    expect(pupN1.seats[1].statuses.isPuppetized).toBe(true);
     expect(pupN1.seerResult?.faction).toBe('wolf');
 
     // 殭屍每晚感染 2 人（場上其他存活皆被感染 → 殭屍單獨獲勝）

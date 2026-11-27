@@ -305,7 +305,7 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     expect(voteRes.outcome).toBe('exile');
     expect(voteRes.record.electedSeat).toBe(12);
     expect(useGameStore.getState().seats[11].isAlive).toBe(true);
-    expect(useGameStore.getState().seats[11].idiotRevealed).toBe(true);
+    expect(useGameStore.getState().seats[11].statuses.idiotRevealed).toBe(true);
 
     const day2 = useGameStore.getState().dayHistory.find((d) => d.round === 2);
     expect(day2?.structuredEvents?.some((e) => e.type === 'idiot_reveal')).toBe(true);
@@ -716,5 +716,50 @@ describe('Zustand GameStore 與 Persist 持久化', () => {
     const split9 = splitSeatsIntoSymmetricColumns([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(split9.left).toEqual([1, 2, 3, 4, 5]);
     expect(split9.right).toEqual([6, 7, 8, 9]);
+  });
+
+  it('localStorage 讀取舊版扁平 PlayerSeat 欄位時自動正規化至 seat.statuses', async () => {
+    localStorage.setItem(
+      GAME_STORAGE_KEY,
+      JSON.stringify({
+        state: {
+          phase: 'day_vote',
+          dayStage: 'exile_vote',
+          round: 2,
+          selectedBoardId: '12p-classic',
+          seats: [
+            {
+              seatNumber: 1,
+              nickname: '舊版白痴',
+              roleId: 'idiot',
+              isAlive: true,
+              idiotRevealed: true,
+              petrified: true,
+              muted: true,
+            },
+            {
+              seatNumber: 2,
+              nickname: '舊版感染者',
+              roleId: 'villager',
+              isAlive: true,
+              infectedBySeedWolf: true,
+              baiZeDualFaction: true,
+            },
+          ],
+        },
+        version: 0,
+      }),
+    );
+
+    await useGameStore.persist.rehydrate();
+    const rehydratedSeats = useGameStore.getState().seats;
+    expect(rehydratedSeats).toHaveLength(2);
+    expect(rehydratedSeats[0].statuses.idiotRevealed).toBe(true);
+    expect(rehydratedSeats[0].statuses.petrified).toBe(true);
+    expect(rehydratedSeats[0].statuses.muted).toBe(true);
+    expect('idiotRevealed' in rehydratedSeats[0]).toBe(false);
+    expect(rehydratedSeats[1].statuses.infectedBySeedWolf).toBe(true);
+    expect(rehydratedSeats[1].statuses.baiZeDualFaction).toBe(true);
+    expect('infectedBySeedWolf' in rehydratedSeats[1]).toBe(false);
   });
 });

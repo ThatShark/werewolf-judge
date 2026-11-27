@@ -106,9 +106,9 @@ export function getSeerCheckResult(
 
   // 被種狼感染轉化、被覺醒石像鬼轉化、被傀儡狼傀儡化者、轉狼的超級黑市／野孩子／覺醒孤獨少女／繼承狼影子，以及白蛇／許仙被預言家查驗皆為狼人（查殺）
   if (
-    target.infectedBySeedWolf ||
-    target.convertedByAwakenedGargoyle ||
-    target.isPuppetized ||
+    target.statuses.infectedBySeedWolf ||
+    target.statuses.convertedByAwakenedGargoyle ||
+    target.statuses.isPuppetized ||
     target.roleId === 'white_snake_seer' ||
     target.roleId === 'xu_xian_phantom' ||
     (target.roleId === 'super_black_market_merchant' &&

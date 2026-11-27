@@ -32,7 +32,7 @@ export function createInitialHiddenWolfState(): HiddenWolfRuntimeState {
 
 /** 判斷該座位目前是否屬於狼人陣營（含被種狼感染或覺醒石像鬼轉化者） */
 export function isSeatWolfFaction(seat: PlayerSeat): boolean {
-  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) return true;
+  if (seat.statuses.infectedBySeedWolf || seat.statuses.convertedByAwakenedGargoyle) return true;
   if (!seat.roleId) return false;
   const role = getRoleById(seat.roleId);
   return role?.faction === 'wolf';
@@ -172,7 +172,7 @@ export function getSeatEffectiveFaction(
   ) {
     return 'third_party';
   }
-  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) return 'wolf';
+  if (seat.statuses.infectedBySeedWolf || seat.statuses.convertedByAwakenedGargoyle) return 'wolf';
   if (seat.roleId === 'wild_child' && conversionState?.wildChildTurnedWolf) return 'wolf';
   if (seat.roleId === 'awakened_lonely_girl') {
     if (conversionState?.awakenedLonelyGirlStatus === 'wolf') return 'wolf';
@@ -262,7 +262,7 @@ export function canSeedWolfInfect(
   if (target.seatNumber === seedWolf.seatNumber) {
     return { allowed: false, reason: '種狼不可感染自己' };
   }
-  if (target.infectedBySeedWolf) {
+  if (target.statuses.infectedBySeedWolf) {
     return { allowed: false, reason: '該玩家已被感染為狼人' };
   }
   const targetRole = getRoleById(target.roleId);
@@ -292,7 +292,7 @@ export function shouldHiddenWolfJoinWolfTeam(
   if (state.hasJoinedWolfTeam) return true;
   const hiddenWolf = findHiddenWolfSeat(seats);
   if (!hiddenWolf || !hiddenWolf.isAlive) return false;
-  if (hiddenWolf.infectedBySeedWolf) return true;
+  if (hiddenWolf.statuses.infectedBySeedWolf) return true;
 
   const hasAliveOtherWolf = seats.some((seat) => {
     if (!seat.isAlive || seat.seatNumber === hiddenWolf.seatNumber) return false;

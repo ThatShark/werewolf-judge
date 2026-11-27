@@ -78,7 +78,7 @@ export function DayBurstSkillsPanel({
       seats.filter(
         (s) =>
           s.isAlive &&
-          !s.infectedBySeedWolf &&
+          !s.statuses.infectedBySeedWolf &&
           (s.roleId === 'fool_seer' || s.roleId === 'iron_good'),
       ),
     [seats],
@@ -103,10 +103,10 @@ export function DayBurstSkillsPanel({
       count += 1;
     }
     if (seats.some((s) => s.isAlive && s.roleId === 'wolf_girl')) count += 1;
-    if (seats.some((s) => s.isAlive && s.maskedDelayedDeath)) count += 1;
-    if (seats.some((s) => s.isAlive && s.whiteCatRevealed)) count += 1;
-    if (seats.some((s) => s.isAlive && s.oldRascalDelayedDeath)) count += 1;
-    if (seats.some((s) => s.isAlive && s.baiZeDelayedDeath)) count += 1;
+    if (seats.some((s) => s.isAlive && s.statuses.maskedDelayedDeath)) count += 1;
+    if (seats.some((s) => s.isAlive && s.statuses.whiteCatRevealed)) count += 1;
+    if (seats.some((s) => s.isAlive && s.statuses.oldRascalDelayedDeath)) count += 1;
+    if (seats.some((s) => s.isAlive && s.statuses.baiZeDelayedDeath)) count += 1;
     if (seats.some((s) => s.isAlive && s.roleId === 'bai_ze')) count += 1;
     if (seats.some((s) => s.isAlive && s.roleId === 'pufferfish') && !combatState?.pufferfishBombUsed) {
       count += 1;

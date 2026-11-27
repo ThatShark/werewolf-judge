@@ -21,6 +21,7 @@ function makeSeats(roles: string[]): PlayerSeat[] {
     nickname: `${idx + 1}號`,
     roleId,
     isAlive: true,
+    statuses: {},
   }));
 }
 
@@ -263,7 +264,7 @@ describe('第 3 批：免疫、反傷、額外傷害與特殊擊殺類角色（2
       createInitialMechWolfState(),
     );
     expect(bmExile.seats[0].isAlive).toBe(true);
-    expect(bmExile.seats[0].bloodMoonExileSurvived).toBe(true);
+    expect(bmExile.seats[0].statuses.bloodMoonExileSurvived).toBe(true);
 
     const bmSealed = resolveNight({
       seats: bmSeats,
@@ -298,7 +299,7 @@ describe('第 3 批：免疫、反傷、額外傷害與特殊擊殺類角色（2
       createInitialMechWolfState(),
     );
     expect(shootOr.targetSurvived).toBe(true);
-    expect(shootOr.seats[0].oldRascalDelayedDeath).toBe(true);
+    expect(shootOr.seats[0].statuses.oldRascalDelayedDeath).toBe(true);
     const orEnd = resolveOldRascalDelayedDeath(
       shootOr.seats,
       2,

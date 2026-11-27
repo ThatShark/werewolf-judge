@@ -2737,7 +2737,7 @@ export function NightConsoleScreen(_props: NightConsoleScreenProps) {
           {seat.isAlive && control.disabled && control.reason && control.reason !== '技能鎖定' && (
             <span className="max-w-[68px] shrink-0 truncate text-wolf">{control.reason}</span>
           )}
-          {seat.isAlive && seat.idiotRevealed && !showRoleBadge && (
+          {seat.isAlive && seat.statuses.idiotRevealed && !showRoleBadge && (
             <span className="text-sheriff">翻</span>
           )}
           {!showRoleBadge &&

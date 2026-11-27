@@ -32,6 +32,7 @@ function makeSeats(roles: string[]): PlayerSeat[] {
     nickname: `${idx + 1}號`,
     roleId,
     isAlive: true,
+    statuses: {},
   }));
 }
 
@@ -408,7 +409,7 @@ describe('Batch A & B 規格對帳修復與零測試角色完整行為斷言', (
         mechWolfState: createInitialMechWolfState(),
         pendingSelfExplodeSeat: null,
       });
-      expect(n1Fail.seats[2].convertedByAwakenedGargoyle).toBeFalsy();
+      expect(n1Fail.seats[2].statuses.convertedByAwakenedGargoyle).toBeFalsy();
 
       const n1ConvertVillager = resolveNight({
         seats: n1Fail.seats,
@@ -421,7 +422,7 @@ describe('Batch A & B 規格對帳修復與零測試角色完整行為斷言', (
         mechWolfState: createInitialMechWolfState(),
         pendingSelfExplodeSeat: null,
       });
-      expect(n1ConvertVillager.seats[3].convertedByAwakenedGargoyle).toBe(true);
+      expect(n1ConvertVillager.seats[3].statuses.convertedByAwakenedGargoyle).toBe(true);
       // 場上唯一平民被轉化為狼人後，仍保留原始平民邊存在判定並觸發狼人屠民勝（不因轉化而漏判屠邊）
       const v = checkVictory(n1ConvertVillager.seats, DEFAULT_RULE_OVERRIDES, undefined, {
         conversionState: n1ConvertVillager.conversionState,

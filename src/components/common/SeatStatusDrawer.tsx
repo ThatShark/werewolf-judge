@@ -132,7 +132,7 @@ export function SeatStatusDrawer({ open, board, onClose }: SeatStatusDrawerProps
                     </div>
                     <div className="mt-0.5 text-[12px] text-muted tabular-nums">
                       {seat.isAlive
-                        ? seat.idiotRevealed
+                        ? seat.statuses.idiotRevealed
                           ? '存活 · 白痴已翻牌'
                           : '存活'
                         : `第 ${seat.deathRound ?? '?'} 輪 · ${formatDeathReason(seat.deathReason)}`}

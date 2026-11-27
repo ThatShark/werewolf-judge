@@ -21,6 +21,7 @@ function makeSeats(roles: string[]): PlayerSeat[] {
     nickname: `${idx + 1}號`,
     roleId,
     isAlive: true,
+    statuses: {},
   }));
 }
 
@@ -198,8 +199,8 @@ describe('第 2 批：干擾、封鎖、目標交換與特殊守護類角色（2
     expect(n1.seats[5].isAlive).toBe(false);
     expect(n1.seats[5].deathReason).toBe('medusa_poison_reflect');
     expect(n1.seats[6].isAlive).toBe(true);
-    expect(n1.seats[6].muted).toBe(true);
-    expect(n1.seats[6].petrified).toBe(true);
+    expect(n1.seats[6].statuses.muted).toBe(true);
+    expect(n1.seats[6].statuses.petrified).toBe(true);
 
     // 石化中的 7 號（白痴）不可投票且放逐不可翻牌
     expect(() => tallyExileVotes({ seats: n1.seats, votes: { 7: 4 } })).toThrow('石化');
@@ -421,7 +422,7 @@ describe('第 2 批：干擾、封鎖、目標交換與特殊守護類角色（2
       interferenceState: createInitialInterferenceState(),
     });
     expect(n1.seats[1].isAlive).toBe(true);
-    expect(n1.seats[1].whiteCatRevealed).toBe(true);
+    expect(n1.seats[1].statuses.whiteCatRevealed).toBe(true);
     expect(n1.interferenceState.awakenedWitchPoisonsUsed).toBe(1);
 
     // 放逐階段結束後白貓延遲死亡

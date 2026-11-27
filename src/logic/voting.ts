@@ -43,8 +43,8 @@ export function getEligibleExileVoters(
     .filter(
       (seat) =>
         seat.isAlive &&
-        !((seat.roleId === 'idiot' || seat.roleId === 'awakened_idiot') && seat.idiotRevealed) &&
-        !seat.petrified &&
+        !((seat.roleId === 'idiot' || seat.roleId === 'awakened_idiot') && seat.statuses.idiotRevealed) &&
+        !seat.statuses.petrified &&
         seat.seatNumber !== silencedVoterSeat &&
         (!pkSet || !pkSet.has(seat.seatNumber)),
     )
@@ -110,10 +110,10 @@ export function tallyExileVotes(input: TallyExileVotesInput): ExileVoteTallyResu
         throw new Error(`${voterSeat} 號遭槓精開槓奪票，本輪無法投票`);
       }
       const seatObj = seats.find((s) => s.seatNumber === voterSeat);
-      if ((seatObj?.roleId === 'idiot' || seatObj?.roleId === 'awakened_idiot') && seatObj.idiotRevealed) {
+      if ((seatObj?.roleId === 'idiot' || seatObj?.roleId === 'awakened_idiot') && seatObj.statuses.idiotRevealed) {
         throw new Error(`${voterSeat} 號（白痴）已翻牌免死，失去放逐投票權`);
       }
-      if (seatObj?.petrified) {
+      if (seatObj?.statuses.petrified) {
         throw new Error(`${voterSeat} 號遭梅杜莎石化，本輪無法投票`);
       }
       throw new Error(`${voterSeat} 號不具放逐投票權（不存在或已出局）`);

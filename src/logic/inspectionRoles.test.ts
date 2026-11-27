@@ -32,6 +32,7 @@ function makeSeats(roles: string[]): PlayerSeat[] {
     nickname: `${idx + 1}號`,
     roleId,
     isAlive: true,
+    statuses: {},
   }));
 }
 
@@ -448,7 +449,7 @@ describe('第 1 批：查驗與資訊感知類角色規則引擎（19 角色）'
     expect(evaluateSeniorVillagerReveal(seats, 1).revealed).toBe(true);
     expect(evaluateSeniorVillagerReveal(seats, 2).revealed).toBe(false);
 
-    seats[0].infectedBySeedWolf = true;
+    seats[0].statuses.infectedBySeedWolf = true;
     expect(evaluateSeniorVillagerReveal(seats, 1).revealed).toBe(false);
   });
 

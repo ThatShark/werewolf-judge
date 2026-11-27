@@ -17,7 +17,7 @@ export function isSeatEffectiveWolf(
   } = {},
 ): boolean {
   if (!seat || !seat.roleId) return false;
-  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) return true;
+  if (seat.statuses.infectedBySeedWolf || seat.statuses.convertedByAwakenedGargoyle) return true;
   if (
     seat.roleId === 'super_black_market_merchant' &&
     options.thirdPartySpecialState?.superBlackMarketTurnedWolf

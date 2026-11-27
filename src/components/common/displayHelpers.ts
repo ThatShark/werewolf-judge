@@ -402,7 +402,7 @@ export function buildGameReplayText(
     }
     const tagSuffix = tags.length > 0 ? ` [${tags.join(' / ')}]` : '';
     const statusText = seat.isAlive
-      ? seat.idiotRevealed
+      ? seat.statuses.idiotRevealed
         ? '存活（白痴已翻牌）'
         : '存活'
       : `第 ${seat.deathRound ?? '?'} 輪出局（${formatDeathReason(seat.deathReason)}）`;

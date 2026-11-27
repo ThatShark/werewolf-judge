@@ -228,7 +228,7 @@ export function resolveMaskedVillagerDelayedDeath(
       victory: { winner: null, winReason: null },
     };
   }
-  if (!target.maskedDelayedDeath) {
+  if (!target.statuses.maskedDelayedDeath) {
     return {
       allowed: false,
       reason: '該玩家目前未處於蒙面人負傷延遲死亡狀態',
@@ -240,7 +240,7 @@ export function resolveMaskedVillagerDelayedDeath(
     };
   }
 
-  const deathReason = target.maskedDelayedDeathReason ?? 'masked_delayed_death';
+  const deathReason = target.statuses.maskedDelayedDeathReason ?? 'masked_delayed_death';
   const updatedSeats = seats.map((seat) =>
     seat.seatNumber === seatNumber
       ? {
@@ -248,7 +248,10 @@ export function resolveMaskedVillagerDelayedDeath(
           isAlive: false,
           deathReason,
           deathRound: round,
-          maskedDelayedDeath: false,
+          statuses: {
+            ...seat.statuses,
+            maskedDelayedDeath: false,
+          },
         }
       : seat,
   );

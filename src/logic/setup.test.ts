@@ -8,6 +8,7 @@ import {
   DEFAULT_RULE_OVERRIDES,
   claimSeatRole,
   clampOnlineJudgeSettings,
+  createDefaultSeatStatuses,
   createInitialSeats,
   dealRandomRoles,
   finalizePhysicalDealVillagers,
@@ -15,6 +16,7 @@ import {
   getNightSteps,
   getStepClaimSummary,
   getUnclaimedSeatNumbers,
+  normalizePlayerSeat,
   validatePhysicalDealSetup,
   validateRoleAssignment,
 } from './setup';
@@ -352,5 +354,39 @@ describe('MVP 板子靜態資料與發牌驗證', () => {
     const mechSummary = getStepClaimSummary(mechBoard, mechSeats, ['mech_wolf']);
     expect(mechSummary.isComplete).toBe(true);
     expect(mechSummary.roles[0].claimedSeats).toEqual([3]);
+  });
+
+  it('createDefaultSeatStatuses 與 normalizePlayerSeat 可兼容舊版扁平角色狀態結構', () => {
+    expect(createDefaultSeatStatuses()).toEqual({});
+    expect(createDefaultSeatStatuses({ idiotRevealed: true })).toEqual({ idiotRevealed: true });
+
+    const normalized = normalizePlayerSeat({
+      seatNumber: 4,
+      nickname: '四號',
+      roleId: 'masked_villager',
+      isAlive: true,
+      maskedDelayedDeath: true,
+      maskedDelayedDeathReason: 'wolf_kill',
+      whiteCatRevealed: true,
+      convertedByAwakenedGargoyle: true,
+      gender: 'female',
+      secondRoleId: 'detective',
+    });
+
+    expect(normalized).toEqual({
+      seatNumber: 4,
+      nickname: '四號',
+      roleId: 'masked_villager',
+      isAlive: true,
+      gender: 'female',
+      secondRoleId: 'detective',
+      statuses: {
+        maskedDelayedDeath: true,
+        maskedDelayedDeathReason: 'wolf_kill',
+        whiteCatRevealed: true,
+        convertedByAwakenedGargoyle: true,
+      },
+    });
+    expect('maskedDelayedDeath' in normalized).toBe(false);
   });
 });

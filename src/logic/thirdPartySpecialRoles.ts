@@ -511,7 +511,9 @@ export function resolveBaiZeInherit(
   if (role?.category === 'villager') {
     nextState.baiZeHeirRoleType = 'villager';
     const nextSeats = seats.map((s) =>
-      s.seatNumber === heirSeat ? { ...s, baiZeDualFaction: true } : s,
+      s.seatNumber === heirSeat
+        ? { ...s, statuses: { ...s.statuses, baiZeDualFaction: true } }
+        : s,
     );
     return { allowed: true, seats: nextSeats, state: nextState, heirType: 'villager' };
   }
@@ -606,7 +608,7 @@ export function canCrowCurse(
   if (state.crowLastCursedSeat === targetSeat) {
     return { allowed: false, reason: '烏鴉不可連續兩晚詛咒同一位玩家。' };
   }
-  if (target.roleId === 'idiot' && target.idiotRevealed) {
+  if (target.roleId === 'idiot' && target.statuses.idiotRevealed) {
     return { allowed: false, reason: '烏鴉不可詛咒已翻牌的白痴。' };
   }
   return { allowed: true };

@@ -129,7 +129,9 @@ describe('Batch C：Store 持久化與全量流程接線驗證', () => {
       phase: 'day_vote',
       dayStage: 'exile_vote',
       seats: s.seats.map((seat) =>
-        seat.seatNumber === 2 ? { ...seat, convertedByAwakenedGargoyle: true } : seat,
+        seat.seatNumber === 2
+          ? { ...seat, statuses: { ...seat.statuses, convertedByAwakenedGargoyle: true } }
+          : seat,
       ),
       conversionState: {
         ...createInitialConversionState(),
@@ -200,7 +202,9 @@ describe('Batch C：Store 持久化與全量流程接線驗證', () => {
       phase: 'day_announcement',
       dayStage: 'sheriff_election',
       seats: s.seats.map((seat) =>
-        seat.seatNumber === 5 ? { ...seat, baiZeDelayedDeath: true } : seat,
+        seat.seatNumber === 5
+          ? { ...seat, statuses: { ...seat.statuses, baiZeDelayedDeath: true } }
+          : seat,
       ),
       pendingShooters: [
         {

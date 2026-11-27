@@ -134,10 +134,10 @@ export function DayAnnouncementScreen() {
     !interferenceState?.alchemySnakeUsed &&
     snakeVictimSeats.length > 0;
   const hasWhiteCatPending = seats.some(
-    (s) => s.isAlive && s.roleId === 'white_cat' && s.whiteCatRevealed,
+    (s) => s.isAlive && s.roleId === 'white_cat' && s.statuses.whiteCatRevealed,
   );
-  const hasOldRascalPending = seats.some((s) => s.isAlive && s.oldRascalDelayedDeath);
-  const hasBaiZePending = seats.some((s) => s.isAlive && s.baiZeDelayedDeath);
+  const hasOldRascalPending = seats.some((s) => s.isAlive && s.statuses.oldRascalDelayedDeath);
+  const hasBaiZePending = seats.some((s) => s.isAlive && s.statuses.baiZeDelayedDeath);
   const delayedSkillCount =
     (canAlchemySnakeRevive ? 1 : 0) +
     (hasWhiteCatPending ? 1 : 0) +

@@ -429,7 +429,7 @@ describe('4. 種狼（seed_wolf）全自動規則結算測試', () => {
 
     expect(n1.deaths).toHaveLength(0);
     expect(n1.seedWolfState).toEqual({ infectUsed: true, infectedSeat: 3 });
-    expect(n1.seats.find((s) => s.seatNumber === 3)?.infectedBySeedWolf).toBe(true);
+    expect(n1.seats.find((s) => s.seatNumber === 3)?.statuses.infectedBySeedWolf).toBe(true);
     // 被感染的預言家當晚即失去查驗技能
     expect(n1.seerResult).toBeNull();
     // 若後續再查驗 3 號為查殺，且 3 號可以自爆
@@ -479,7 +479,7 @@ describe('4. 種狼（seed_wolf）全自動規則結算測試', () => {
       seedWolfState: createInitialSeedWolfState(),
     });
     expect(guardedRes.seedWolfState).toEqual({ infectUsed: true, infectedSeat: null });
-    expect(guardedRes.seats.find((s) => s.seatNumber === 4)?.infectedBySeedWolf).toBeFalsy();
+    expect(guardedRes.seats.find((s) => s.seatNumber === 4)?.statuses.infectedBySeedWolf).toBeFalsy();
     expect(guardedRes.seerResult).toEqual({ targetSeat: 1, faction: 'wolf' });
 
     // 2) 感染隱狼（娛百版 Q&A）→ 隱狼轉查殺且可自爆

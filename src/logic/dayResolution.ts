@@ -103,7 +103,7 @@ export function checkCanShoot(
 
   // 覺醒獵人：獨立判斷（除被種狼感染或傀儡化外，無論何種死因皆可選擇方向開槍）
   if (shooter.roleId === 'awakened_hunter') {
-    if (shooter.infectedBySeedWolf || shooter.isPuppetized) {
+    if (shooter.statuses.infectedBySeedWolf || shooter.statuses.isPuppetized) {
       return {
         seatNumber: shooterSeat,
         roleId: 'awakened_hunter',
@@ -298,12 +298,12 @@ export function checkCanShoot(
 
   // 被種狼感染／傀儡化／灰太狼借槍後失去原有獵人技能（不可開槍）
   if (shooter.roleId === 'hunter') {
-    if (shooter.infectedBySeedWolf || shooter.isPuppetized) {
+    if (shooter.statuses.infectedBySeedWolf || shooter.statuses.isPuppetized) {
       return {
         seatNumber: shooterSeat,
         roleId: 'hunter',
         canShoot: false,
-        reason: shooter.isPuppetized
+        reason: shooter.statuses.isPuppetized
           ? '獵人被傀儡化，無法開槍'
           : '獵人已被種狼感染失去原有技能，無法開槍',
       };
@@ -575,7 +575,7 @@ export function resolveShoot(
   ) {
     const survivedSeats = whiteCatCheck.newlyRevealed
       ? seats.map((seat) =>
-          seat.seatNumber === actualTargetSeat ? { ...seat, whiteCatRevealed: true } : { ...seat },
+          seat.seatNumber === actualTargetSeat ? { ...seat, statuses: { ...seat.statuses, whiteCatRevealed: true } } : { ...seat },
         )
       : seats.map((seat) => ({ ...seat }));
     const victory = checkVictory(survivedSeats, ruleOverrides, treasureMasterState, victoryOptions);
@@ -595,7 +595,7 @@ export function resolveShoot(
   // 老流氓被獵人射殺進入負傷延遲死亡狀態（隔天發言結束後才出局）
   if (target && isOldRascalDelayableDeath(target, shootReason)) {
     const delayedSeats = seats.map((seat) =>
-      seat.seatNumber === actualTargetSeat ? { ...seat, oldRascalDelayedDeath: true } : { ...seat },
+      seat.seatNumber === actualTargetSeat ? { ...seat, statuses: { ...seat.statuses, oldRascalDelayedDeath: true } } : { ...seat },
     );
     return {
       seats: delayedSeats,
@@ -761,7 +761,10 @@ export function resolveDayExile(
         ? {
             ...seat,
             isAlive: true,
-            treasureMasterMaskedExileSurvived: true,
+            statuses: {
+              ...seat.statuses,
+              treasureMasterMaskedExileSurvived: true,
+            },
           }
         : seat,
     );
@@ -790,7 +793,7 @@ export function resolveDayExile(
   if (isBloodMoonLastWolfExileSurvive(seats, targetSeat)) {
     const updatedSeats = seats.map((seat) =>
       seat.seatNumber === targetSeat
-        ? { ...seat, isAlive: true, bloodMoonExileSurvived: true }
+        ? { ...seat, isAlive: true, statuses: { ...seat.statuses, bloodMoonExileSurvived: true } }
         : seat,
     );
     return {
@@ -813,7 +816,10 @@ export function resolveDayExile(
         ? {
             ...seat,
             isAlive: true,
-            whiteCatRevealed: true,
+            statuses: {
+              ...seat.statuses,
+              whiteCatRevealed: true,
+            },
           }
         : seat,
     );
@@ -833,16 +839,19 @@ export function resolveDayExile(
   // 白痴／覺醒白痴白天首次被放逐：翻牌免死並失去投票權（若已被種狼感染或遭梅杜莎石化則無法翻牌）
   if (
     (target.roleId === 'idiot' || target.roleId === 'awakened_idiot') &&
-    !target.idiotRevealed &&
-    !target.infectedBySeedWolf &&
-    !target.petrified
+    !target.statuses.idiotRevealed &&
+    !target.statuses.infectedBySeedWolf &&
+    !target.statuses.petrified
   ) {
     const updatedSeats = seats.map((seat) =>
       seat.seatNumber === targetSeat
         ? {
             ...seat,
             isAlive: true,
-            idiotRevealed: true,
+            statuses: {
+              ...seat.statuses,
+              idiotRevealed: true,
+            },
           }
         : seat,
     );
@@ -884,7 +893,7 @@ export function resolveDayExile(
 
   // 若放逐出局者為梅杜莎（非自爆），被石化的玩家跟隨出局
   if (target.roleId === 'medusa') {
-    const petrifiedSeat = updatedSeats.find((s) => s.isAlive && s.petrified);
+    const petrifiedSeat = updatedSeats.find((s) => s.isAlive && s.statuses.petrified);
     if (petrifiedSeat) {
       updatedSeats = updatedSeats.map((s) =>
         s.seatNumber === petrifiedSeat.seatNumber
@@ -1017,7 +1026,7 @@ export function resolveSelfExplode(
     };
   }
 
-  if (player.roleId === 'hidden_wolf' && !player.infectedBySeedWolf) {
+  if (player.roleId === 'hidden_wolf' && !player.statuses.infectedBySeedWolf) {
     return {
       allowed: false,
       reason: '隱狼不可自爆',
@@ -1285,7 +1294,7 @@ export function resolveWhiteWolfKingExplode(
     if (isPhantomWolfInvincible(target, options?.finalBatchState) || whiteCatCheck.survive) {
       if (whiteCatCheck.newlyRevealed) {
         updatedSeats = updatedSeats.map((seat) =>
-          seat.seatNumber === targetSeat ? { ...seat, whiteCatRevealed: true } : seat,
+          seat.seatNumber === targetSeat ? { ...seat, statuses: { ...seat.statuses, whiteCatRevealed: true } } : seat,
         );
       }
     } else {
@@ -1405,10 +1414,10 @@ export function resolveKnightDuel(
       victory: { winner: null, winReason: null },
     };
   }
-  if (knight.roleId !== 'knight' || knight.infectedBySeedWolf) {
+  if (knight.roleId !== 'knight' || knight.statuses.infectedBySeedWolf) {
     return {
       allowed: false,
-      reason: knight.infectedBySeedWolf ? '騎士已被種狼感染失去決鬥技能' : '僅騎士可發動翻牌決鬥',
+      reason: knight.statuses.infectedBySeedWolf ? '騎士已被種狼感染失去決鬥技能' : '僅騎士可發動翻牌決鬥',
       seats,
       knightSeat,
       targetSeat,
@@ -1548,7 +1557,7 @@ export function resolveWhiteCatDelayedDeath(
   mechWolfState: MechWolfRuntimeState;
   victory: ReturnType<typeof checkVictory>;
 } {
-  const revealedCat = seats.find((s) => s.isAlive && s.roleId === 'white_cat' && s.whiteCatRevealed);
+  const revealedCat = seats.find((s) => s.isAlive && s.roleId === 'white_cat' && s.statuses.whiteCatRevealed);
   if (!revealedCat) {
     return {
       seats: seats.map((s) => ({ ...s })),
@@ -1562,7 +1571,7 @@ export function resolveWhiteCatDelayedDeath(
       ? {
           ...s,
           isAlive: false,
-          whiteCatRevealed: false,
+          statuses: { ...s.statuses, whiteCatRevealed: false },
           deathReason: 'white_cat_delayed_death' as const,
           deathRound: round,
         }
@@ -1624,7 +1633,7 @@ export function resolveOldRascalDelayedDeath(
   mechWolfState: MechWolfRuntimeState;
   victory: ReturnType<typeof checkVictory>;
 } {
-  const delayed = seats.find((s) => s.isAlive && s.oldRascalDelayedDeath);
+  const delayed = seats.find((s) => s.isAlive && s.statuses.oldRascalDelayedDeath);
   if (!delayed) {
     return {
       seats: seats.map((s) => ({ ...s })),
@@ -1638,7 +1647,7 @@ export function resolveOldRascalDelayedDeath(
       ? {
           ...s,
           isAlive: false,
-          oldRascalDelayedDeath: false,
+          statuses: { ...s.statuses, oldRascalDelayedDeath: false },
           deathReason: 'old_rascal_delayed_death' as const,
           deathRound: round,
         }
@@ -1688,7 +1697,7 @@ export function resolveBaiZeDelayedDeath(
   mechWolfState: MechWolfRuntimeState;
   victory: ReturnType<typeof checkVictory>;
 } {
-  const delayed = seats.find((s) => s.isAlive && s.baiZeDelayedDeath);
+  const delayed = seats.find((s) => s.isAlive && s.statuses.baiZeDelayedDeath);
   if (!delayed) {
     return {
       seats: seats.map((s) => ({ ...s })),
@@ -1702,7 +1711,7 @@ export function resolveBaiZeDelayedDeath(
       ? {
           ...s,
           isAlive: false,
-          baiZeDelayedDeath: false,
+          statuses: { ...s.statuses, baiZeDelayedDeath: false },
           deathReason: 'bai_ze_delayed_death' as const,
           deathRound: round,
         }

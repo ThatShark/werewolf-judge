@@ -10,9 +10,9 @@ import {
 import type { PlayerSeat } from './types';
 
 const SAMPLE_SEATS: PlayerSeat[] = [
-  { seatNumber: 1, nickname: '阿明', roleId: 'wolf', isAlive: true },
-  { seatNumber: 2, nickname: '', roleId: 'seer', isAlive: true },
-  { seatNumber: 3, nickname: '小美', roleId: 'witch', isAlive: false, deathRound: 1 },
+  { seatNumber: 1, nickname: '阿明', roleId: 'wolf', isAlive: true, statuses: {} },
+  { seatNumber: 2, nickname: '', roleId: 'seer', isAlive: true, statuses: {} },
+  { seatNumber: 3, nickname: '小美', roleId: 'witch', isAlive: false, deathRound: 1, statuses: {} },
 ];
 
 describe('玩家雙模式筆記本純邏輯（notebook.ts）', () => {

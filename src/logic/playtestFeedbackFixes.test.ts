@@ -40,6 +40,7 @@ function buildClassic12Seats(): PlayerSeat[] {
     nickname: '',
     roleId,
     isAlive: true,
+    statuses: {},
   }));
 }
 

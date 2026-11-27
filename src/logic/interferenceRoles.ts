@@ -102,7 +102,7 @@ export function canMagicianSwap(
   pair: [number | null, number | null] | undefined,
 ): ActionCheckResult {
   const magician = seats.find(
-    (s) => s.roleId === 'magician' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'magician' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!magician) {
     return { allowed: false, reason: '場上沒有存活的魔術師' };
@@ -267,7 +267,7 @@ export function canPenguinFreeze(
   lastTarget: number | null,
   targetSeat: number | null,
 ): ActionCheckResult {
-  const penguin = seats.find((s) => s.roleId === 'penguin' && s.isAlive && !s.infectedBySeedWolf);
+  const penguin = seats.find((s) => s.roleId === 'penguin' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!penguin) {
     return { allowed: false, reason: '場上沒有存活的企鵝' };
   }
@@ -290,7 +290,7 @@ export function canFoxCubCharm(
   targetSeat: number | null,
   round: number,
 ): ActionCheckResult {
-  const foxCub = seats.find((s) => s.roleId === 'fox_cub' && s.isAlive && !s.infectedBySeedWolf);
+  const foxCub = seats.find((s) => s.roleId === 'fox_cub' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!foxCub) {
     return { allowed: false, reason: '場上沒有存活的子狐' };
   }
@@ -314,7 +314,7 @@ export function canMuteElderMute(
   seats: PlayerSeat[],
   targetSeat: number | null,
 ): ActionCheckResult {
-  const elder = seats.find((s) => s.roleId === 'mute_elder' && s.isAlive && !s.infectedBySeedWolf);
+  const elder = seats.find((s) => s.roleId === 'mute_elder' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!elder) {
     return { allowed: false, reason: '場上沒有存活的禁言長老' };
   }
@@ -395,7 +395,7 @@ export function canDaylightScholarAct(
   round: number,
 ): ActionCheckResult {
   const scholar = seats.find(
-    (s) => s.roleId === 'daylight_scholar' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'daylight_scholar' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!scholar) {
     return { allowed: false, reason: '場上沒有存活的白晝學者' };
@@ -496,7 +496,7 @@ export function canFortuneTellerMark(
   targetSeat: number | null,
 ): ActionCheckResult {
   const ft = seats.find(
-    (s) => s.roleId === 'fortune_teller' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'fortune_teller' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!ft) {
     return { allowed: false, reason: '場上沒有存活的占卜師' };
@@ -534,7 +534,7 @@ export function canAlchemyWitchUseFog(
   alchemyFogUsed: boolean,
   targets: number[] | undefined,
 ): ActionCheckResult {
-  const aw = seats.find((s) => s.roleId === 'alchemy_witch' && s.isAlive && !s.infectedBySeedWolf);
+  const aw = seats.find((s) => s.roleId === 'alchemy_witch' && s.isAlive && !s.statuses.infectedBySeedWolf);
   if (!aw) {
     return { allowed: false, reason: '場上沒有存活的煉金魔女' };
   }
@@ -569,7 +569,7 @@ export function canRadiantEarlShield(
   round: number,
 ): ActionCheckResult {
   const earl = seats.find(
-    (s) => s.roleId === 'radiant_earl' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'radiant_earl' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!earl) {
     return { allowed: false, reason: '場上沒有存活的流光伯爵' };
@@ -599,7 +599,7 @@ export function canSocialiteFavor(
   targetSeat: number | null,
 ): ActionCheckResult {
   const socialite = seats.find(
-    (s) => s.roleId === 'socialite' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'socialite' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!socialite) {
     return { allowed: false, reason: '場上沒有存活的名媛' };
@@ -622,7 +622,7 @@ export function canEnchanterBewitch(
   targetSeat: number | null,
 ): ActionCheckResult {
   const enchanter = seats.find(
-    (s) => s.roleId === 'enchanter' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'enchanter' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!enchanter) {
     return { allowed: false, reason: '場上沒有存活的蠱惑師' };
@@ -702,7 +702,7 @@ export function canAwakenedWitchUseAntidote(
   ruleOverrides: RuleOverrides,
 ): ActionCheckResult {
   const aw = seats.find(
-    (s) => s.roleId === 'awakened_witch' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'awakened_witch' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!aw) return { allowed: false, reason: '場上沒有存活的覺醒女巫' };
   if (antidoteUsed) return { allowed: false, reason: '覺醒女巫解藥已使用完畢' };
@@ -726,7 +726,7 @@ export function canAwakenedWitchUsePoison(
   helpers: number[] = [],
 ): ActionCheckResult {
   const aw = seats.find(
-    (s) => s.roleId === 'awakened_witch' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'awakened_witch' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!aw) return { allowed: false, reason: '場上沒有存活的覺醒女巫' };
   if (poisonTarget === null) return { allowed: true };
@@ -789,13 +789,13 @@ export function shouldWhiteCatSurviveDeath(
   seat: PlayerSeat | undefined,
   reason: DeathReason,
 ): { survive: boolean; newlyRevealed: boolean } {
-  if (!seat || seat.roleId !== 'white_cat' || seat.infectedBySeedWolf) {
+  if (!seat || seat.roleId !== 'white_cat' || seat.statuses.infectedBySeedWolf) {
     return { survive: false, newlyRevealed: false };
   }
   if (reason === 'white_cat_delayed_death' || reason === 'manual_judge') {
     return { survive: false, newlyRevealed: false };
   }
-  if (seat.whiteCatRevealed) {
+  if (seat.statuses.whiteCatRevealed) {
     return { survive: true, newlyRevealed: false };
   }
   return { survive: true, newlyRevealed: true };
@@ -803,7 +803,7 @@ export function shouldWhiteCatSurviveDeath(
 
 /** 判斷一個角色是否為神職（用於蝕時狼妃反彈判定） */
 export function isGodRoleSeat(seat: PlayerSeat | undefined): boolean {
-  if (!seat || !seat.roleId || seat.infectedBySeedWolf) return false;
+  if (!seat || !seat.roleId || seat.statuses.infectedBySeedWolf) return false;
   const role = getRoleById(seat.roleId);
   return role?.category === 'god';
 }

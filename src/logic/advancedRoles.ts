@@ -82,7 +82,9 @@ export function applyWolfBeautyCharmDeath(
   if (whiteCatCheck.survive) {
     return {
       seats: seats.map((seat) =>
-        seat.seatNumber === activeCharmedSeat ? { ...seat, whiteCatRevealed: true } : seat,
+        seat.seatNumber === activeCharmedSeat
+          ? { ...seat, statuses: { ...seat.statuses, whiteCatRevealed: true } }
+          : seat,
       ),
       charmedDeathSeat: null,
     };
@@ -144,7 +146,7 @@ export function canDreamCatcherDream(
 }
 
 function isSeatWolfForBear(seat: PlayerSeat, mechWolfState: MechWolfRuntimeState): boolean {
-  if (seat.infectedBySeedWolf || seat.convertedByAwakenedGargoyle) return true;
+  if (seat.statuses.infectedBySeedWolf || seat.statuses.convertedByAwakenedGargoyle) return true;
   if (!seat.roleId) return false;
   if (seat.roleId === 'mech_wolf') {
     if (!mechWolfState.learnedRoleId) {
@@ -186,7 +188,7 @@ export function evaluateBearRoar(
       reason: '熊已出局，天亮不會咆哮',
     };
   }
-  if (bear.infectedBySeedWolf) {
+  if (bear.statuses.infectedBySeedWolf) {
     return {
       bearSeat: bear.seatNumber,
       bearAlive: true,

@@ -209,7 +209,7 @@ export function canGoodSelfExplode(seats: PlayerSeat[], seatNumber: number): Act
   if (seat.roleId !== 'fool_seer' && seat.roleId !== 'iron_good') {
     return { allowed: false, reason: '只有愚言家與鐵好人可在白天發動好人自曝' };
   }
-  if (seat.infectedBySeedWolf) {
+  if (seat.statuses.infectedBySeedWolf) {
     return { allowed: false, reason: '已被種狼感染轉化為狼人，請使用狼人自爆' };
   }
   return { allowed: true };
@@ -414,7 +414,7 @@ export function doesPureWhiteKillTarget(
   const target = seats.find((s) => s.seatNumber === targetSeat);
   if (!target || !target.isAlive) return false;
   if (target.roleId === 'cursed_fox') return false;
-  if (target.infectedBySeedWolf) return true;
+  if (target.statuses.infectedBySeedWolf) return true;
 
   if (target.roleId === 'mech_wolf') {
     if (!mechWolfState.learnedRoleId) return true;
@@ -650,7 +650,7 @@ export function evaluateMoonSpiritHowl(
 
   const { leftNeighbor, rightNeighbor } = findAliveNeighbors(seats, moonSpirit.seatNumber);
   const isGodNeighbor = (seat: PlayerSeat | null): boolean => {
-    if (!seat || !seat.roleId || seat.infectedBySeedWolf) return false;
+    if (!seat || !seat.roleId || seat.statuses.infectedBySeedWolf) return false;
     const role = getRoleById(seat.roleId);
     return role?.category === 'god';
   };
@@ -756,7 +756,7 @@ export function evaluateSeniorVillagerReveal(
       reason: '僅於第一天死訊後公布高級平民身分',
     };
   }
-  if (senior.infectedBySeedWolf) {
+  if (senior.statuses.infectedBySeedWolf) {
     return {
       seatNumber: senior.seatNumber,
       revealed: false,
@@ -785,7 +785,7 @@ export function canAwakenedDreamCatcherDream(
   options: { allowSkip?: boolean } = {},
 ): ActionCheckResult {
   const adc = seats.find(
-    (s) => s.roleId === 'awakened_dream_catcher' && s.isAlive && !s.infectedBySeedWolf,
+    (s) => s.roleId === 'awakened_dream_catcher' && s.isAlive && !s.statuses.infectedBySeedWolf,
   );
   if (!adc) {
     return { allowed: false, reason: '場上沒有存活的覺醒攝夢人' };

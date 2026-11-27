@@ -4,6 +4,7 @@ import type {
   AmbientAudioSettings,
   BoardDefinition,
   ClaimSeatRoleResult,
+  DeathReason,
   HostModeConfig,
   HostModeDescriptor,
   LuckyFirstNightSkillsConfig,
@@ -15,6 +16,7 @@ import type {
   RoleAssignmentValidation,
   RoleSlot,
   RuleOverrides,
+  SeatRoleStatuses,
   SheriffState,
   StepClaimRoleStatus,
   StepClaimSummary,
@@ -322,6 +324,78 @@ export function createEmptyNightDraft(round: number): NightActionDraft {
   };
 }
 
+const SEAT_STATUS_KEYS: ReadonlyArray<keyof SeatRoleStatuses> = [
+  'idiotRevealed',
+  'maskedDelayedDeath',
+  'maskedDelayedDeathReason',
+  'treasureMasterMaskedExileSurvived',
+  'infectedBySeedWolf',
+  'whiteCatRevealed',
+  'petrified',
+  'muted',
+  'oldRascalDelayedDeath',
+  'bloodMoonExileSurvived',
+  'convertedByAwakenedGargoyle',
+  'isPuppetized',
+  'infectedByZombie',
+  'baiZeDualFaction',
+  'baiZeDelayedDeath',
+];
+
+export function createDefaultSeatStatuses(
+  overrides: Partial<SeatRoleStatuses> = {},
+): SeatRoleStatuses {
+  return {
+    ...overrides,
+  };
+}
+
+/**
+ * 將任意座位物件（含舊版扁平頂層角色旗標之 localStorage 資料）正規化為新版 PlayerSeat 結構。
+ */
+export function normalizePlayerSeat(raw: unknown): PlayerSeat {
+  const record = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const existingStatuses =
+    record.statuses && typeof record.statuses === 'object'
+      ? (record.statuses as Partial<SeatRoleStatuses>)
+      : {};
+
+  const statuses: SeatRoleStatuses = createDefaultSeatStatuses(existingStatuses);
+  for (const key of SEAT_STATUS_KEYS) {
+    if (statuses[key] === undefined && record[key] !== undefined) {
+      (statuses as Record<string, unknown>)[key] = record[key];
+    }
+  }
+
+  const seat: PlayerSeat = {
+    seatNumber: typeof record.seatNumber === 'number' ? record.seatNumber : 0,
+    nickname: typeof record.nickname === 'string' ? record.nickname : '',
+    roleId: typeof record.roleId === 'string' ? record.roleId : null,
+    isAlive: typeof record.isAlive === 'boolean' ? record.isAlive : true,
+    statuses,
+  };
+
+  if (record.secondRoleId !== undefined) {
+    seat.secondRoleId = record.secondRoleId as PlayerSeat['secondRoleId'];
+  }
+  if (record.gender === 'male' || record.gender === 'female') {
+    seat.gender = record.gender;
+  }
+  if (typeof record.deathReason === 'string') {
+    seat.deathReason = record.deathReason as DeathReason;
+  }
+  if (typeof record.deathRound === 'number') {
+    seat.deathRound = record.deathRound;
+  }
+
+  return seat;
+}
+
+export function normalizePlayerSeats(rawSeats: unknown): PlayerSeat[] {
+  if (!Array.isArray(rawSeats)) return [];
+  return rawSeats.map((seat) => normalizePlayerSeat(seat));
+}
+
 export function createInitialSeats(
   playerCount: number,
   savedNicknames: Record<number, string> = {},
@@ -333,6 +407,7 @@ export function createInitialSeats(
       nickname: savedNicknames[seatNumber] ?? '',
       roleId: null,
       isAlive: true,
+      statuses: createDefaultSeatStatuses(),
     };
   });
 }

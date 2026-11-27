@@ -625,7 +625,16 @@ export function syncConversionOnDeaths(
       nextState.shadowInheritedRoleId = master.roleId;
       if (master.roleId) {
         updatedSeats = updatedSeats.map((s) =>
-          s.roleId === 'shadow' ? { ...s, infectedBySeedWolf: s.infectedBySeedWolf || master.infectedBySeedWolf } : s,
+          s.roleId === 'shadow'
+            ? {
+                ...s,
+                statuses: {
+                  ...s.statuses,
+                  infectedBySeedWolf:
+                    s.statuses.infectedBySeedWolf || master.statuses.infectedBySeedWolf,
+                },
+              }
+            : s,
         );
       }
     }
@@ -774,7 +783,9 @@ export function checkConversionThirdPartyVictory(
     const otherAlive = seats.filter((s) => s.isAlive && s.seatNumber !== aliveZombie.seatNumber);
     if (
       otherAlive.length > 0 &&
-      otherAlive.every((s) => state.zombieInfectedSeats.includes(s.seatNumber) || s.infectedByZombie)
+      otherAlive.every(
+        (s) => state.zombieInfectedSeats.includes(s.seatNumber) || s.statuses.infectedByZombie,
+      )
     ) {
       return {
         winner: 'third_party',

@@ -207,7 +207,7 @@ describe('12 人局 - 盜寶大師（盜寶大師／蒙面人／毒師／攝夢�
     expect(night2.deaths).toEqual([]);
     expect(night2.maskedDelayedSeats).toEqual([11]);
     expect(night2.seats[10].isAlive).toBe(true);
-    expect(night2.seats[10].maskedDelayedDeath).toBe(true);
+    expect(night2.seats[10].statuses.maskedDelayedDeath).toBe(true);
     expect(night2.victory.winner).toBeNull();
 
     // 第二天白天蒙面人發言結束後正式死亡 -> 觸發狼人屠神勝利

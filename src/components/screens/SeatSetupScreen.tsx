@@ -58,6 +58,10 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
 
   const board = getBoardById(selectedBoardId);
   const modeDescriptor = useMemo(() => getHostModeDescriptor(hostMode), [hostMode]);
+  const boardRoleIds = useMemo(
+    () => (board ? getBoardRoleIdSet(board) : new Set<string>()),
+    [board],
+  );
 
   if (!board) {
     return (
@@ -81,7 +85,6 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
   const isJackSecondIdBoard = board.id === '12p-jack-the-ripper-2';
   const { left: leftSeats, right: rightSeats } = splitSeatsIntoSymmetricColumns(seats);
 
-  const boardRoleIds = useMemo(() => getBoardRoleIdSet(board), [board]);
   const hasWitchRole = boardRoleIds.has('witch') || boardRoleIds.has('awakened_witch');
   const hasMechWolfRole = boardRoleIds.has('mech_wolf');
   const hasIdiotRole = boardRoleIds.has('idiot');
@@ -171,7 +174,7 @@ export function SeatSetupScreen({ onOpenQA }: SeatSetupScreenProps) {
         onChange={(e) => setSeatNickname(seat.seatNumber, e.target.value)}
         placeholder={`${seat.seatNumber}號`}
         aria-label={`${seat.seatNumber} 號玩家暱稱`}
-        className="min-h-11 min-w-0 flex-1 bg-transparent text-[14px] text-primary placeholder:text-muted focus:outline-none"
+        className="min-h-11 min-w-0 flex-1 bg-transparent text-base text-primary placeholder:text-muted focus:outline-none"
       />
     </div>
   );

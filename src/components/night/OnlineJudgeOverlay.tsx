@@ -103,7 +103,7 @@ export function OnlineJudgeOverlay({
                   : '天亮倒數'
       }
       onClick={isTapToWakeMode ? handleBlackoutClick : undefined}
-      className={`fixed inset-0 z-40 flex h-dvh w-full select-none flex-col justify-between bg-blackout px-5 py-6 text-primary ${
+      className={`safe-pt safe-pb fixed inset-0 z-40 flex h-dvh w-full select-none flex-col justify-between bg-blackout px-5 py-6 text-primary ${
         isTapToWakeMode ? 'cursor-pointer' : ''
       }`}
     >

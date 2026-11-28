@@ -127,6 +127,21 @@ import {
 } from '../night/nightStepConfig';
 
 const BUFFER_PRESET_STEPS = [0, 3, 5, 8, 10];
+const DEFAULT_SEED_WOLF_STATE = Object.freeze(createInitialSeedWolfState());
+const DEFAULT_GARGOYLE_STATE = Object.freeze(createInitialGargoyleState());
+const DEFAULT_PUMPKIN_GHOST_STATE = Object.freeze(createInitialPumpkinGhostState());
+const DEFAULT_SUPER_GRAVEKEEPER_STATE = Object.freeze(createInitialSuperGravekeeperState());
+const DEFAULT_INTERFERENCE_STATE = Object.freeze(createInitialInterferenceState());
+const DEFAULT_COMBAT_STATE = Object.freeze(createInitialCombatState());
+const DEFAULT_CONVERSION_STATE = Object.freeze(createInitialConversionState());
+const DEFAULT_HIDDEN_WOLF_STATE = Object.freeze(createInitialHiddenWolfState());
+const DEFAULT_TREASURE_MASTER_STATE = Object.freeze(createInitialTreasureMasterState());
+const DEFAULT_FINAL_BATCH_STATE = Object.freeze(createInitialFinalBatchState());
+const EMPTY_EXILED_HISTORY: NonNullable<ReturnType<typeof useGameStore.getState>['exiledHistory']> =
+  Object.freeze([]) as unknown as NonNullable<
+    ReturnType<typeof useGameStore.getState>['exiledHistory']
+  >;
+const EMPTY_STRING_ARRAY: string[] = Object.freeze([]) as unknown as string[];
 
 export function NightConsoleScreen() {
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
@@ -148,36 +163,36 @@ export function NightConsoleScreen() {
   const lastFearedSeat = useGameStore((s) => s.lastFearedSeat ?? null);
   const hybridState = useGameStore((s) => s.hybridState);
   const thirdPartySpecialState = useGameStore((s) => s.thirdPartySpecialState);
-  const seedWolfState = useGameStore((s) => s.seedWolfState ?? createInitialSeedWolfState());
-  const gargoyleState = useGameStore((s) => s.gargoyleState ?? createInitialGargoyleState());
+  const seedWolfState = useGameStore((s) => s.seedWolfState ?? DEFAULT_SEED_WOLF_STATE);
+  const gargoyleState = useGameStore((s) => s.gargoyleState ?? DEFAULT_GARGOYLE_STATE);
   const pumpkinGhostState = useGameStore(
-    (s) => s.pumpkinGhostState ?? createInitialPumpkinGhostState(),
+    (s) => s.pumpkinGhostState ?? DEFAULT_PUMPKIN_GHOST_STATE,
   );
   const superGravekeeperState = useGameStore(
-    (s) => s.superGravekeeperState ?? createInitialSuperGravekeeperState(),
+    (s) => s.superGravekeeperState ?? DEFAULT_SUPER_GRAVEKEEPER_STATE,
   );
   const foxLostAbility = useGameStore((s) => s.foxLostAbility ?? false);
-  const exiledHistory = useGameStore((s) => s.exiledHistory ?? []);
+  const exiledHistory = useGameStore((s) => s.exiledHistory ?? EMPTY_EXILED_HISTORY);
   const lastAwakenedDreamTarget = useGameStore((s) => s.lastAwakenedDreamTarget ?? null);
   const interferenceState = useGameStore(
-    (s) => s.interferenceState ?? createInitialInterferenceState(),
+    (s) => s.interferenceState ?? DEFAULT_INTERFERENCE_STATE,
   );
-  const combatState = useGameStore((s) => s.combatState ?? createInitialCombatState());
+  const combatState = useGameStore((s) => s.combatState ?? DEFAULT_COMBAT_STATE);
   const conversionState = useGameStore(
-    (s) => s.conversionState ?? createInitialConversionState(),
+    (s) => s.conversionState ?? DEFAULT_CONVERSION_STATE,
   );
   const hiddenWolfState = useGameStore(
-    (s) => s.hiddenWolfState ?? createInitialHiddenWolfState(),
+    (s) => s.hiddenWolfState ?? DEFAULT_HIDDEN_WOLF_STATE,
   );
   const treasureMasterState = useGameStore(
-    (s) => s.treasureMasterState ?? createInitialTreasureMasterState(),
+    (s) => s.treasureMasterState ?? DEFAULT_TREASURE_MASTER_STATE,
   );
   const finalBatchState = useGameStore(
-    (s) => s.finalBatchState ?? createInitialFinalBatchState(),
+    (s) => s.finalBatchState ?? DEFAULT_FINAL_BATCH_STATE,
   );
   const poisonerPoisonUsed = useGameStore((s) => s.poisonerPoisonUsed ?? false);
   const thiefBottomCards = useGameStore(
-    (s) => s.thiefBottomCards ?? s.conversionState?.thiefBottomCards ?? [],
+    (s) => s.thiefBottomCards ?? s.conversionState?.thiefBottomCards ?? EMPTY_STRING_ARRAY,
   );
 
   const claimSeatRole = useGameStore((s) => s.claimSeatRole);
@@ -264,6 +279,7 @@ export function NightConsoleScreen() {
   // 實體法官抽屜與遮罩
   const [maskSeatRoles, setMaskSeatRoles] = useState(false);
   const [confirmFinishOpen, setConfirmFinishOpen] = useState(false);
+  const [earlyVictoryFinishPending, setEarlyVictoryFinishPending] = useState(false);
   const [confirmWitchPotionOpen, setConfirmWitchPotionOpen] = useState(false);
   const [seatDrawerOpen, setSeatDrawerOpen] = useState(false);
   const [scriptDrawerOpen, setScriptDrawerOpen] = useState(false);
@@ -633,6 +649,22 @@ export function NightConsoleScreen() {
     return getDrunkSeerCheckResult(seats, pendingTarget, { manualOverride: pendingDrunkManual });
   }, [currentStep, revealConfirmed, pendingTarget, seats, pendingDrunkManual]);
 
+  const activeLuckyActor = useMemo(
+    () =>
+      resolveActiveLuckyActorForNight(
+        currentNightDraft,
+        thirdPartySpecialState,
+        round,
+        ruleOverrides,
+      ),
+    [currentNightDraft, thirdPartySpecialState, round, ruleOverrides],
+  );
+
+  const unclaimedFallbackRoleId = useMemo(
+    () => (board ? resolveUnclaimedRoleFallback(board, seats) : null),
+    [board, seats],
+  );
+
   if (!board || !currentStep) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-subtle bg-surface p-6 text-center text-sm text-secondary">
@@ -644,17 +676,6 @@ export function NightConsoleScreen() {
   const mechWolfSeat = findMechWolfSeat(seats);
   const dreamCatcherSeat = seats.find((s) => s.roleId === 'dream_catcher');
   const hunterSeat = seats.find((s) => s.roleId === 'hunter');
-
-  const activeLuckyActor = useMemo(
-    () =>
-      resolveActiveLuckyActorForNight(
-        currentNightDraft,
-        thirdPartySpecialState,
-        round,
-        ruleOverrides,
-      ),
-    [currentNightDraft, thirdPartySpecialState, round, ruleOverrides],
-  );
 
   const isInfoRevealStep =
     currentStep.actionType === 'seer_check' ||
@@ -800,11 +821,6 @@ export function NightConsoleScreen() {
     pendingTarget !== null
       ? getSeerCheckResult(seats, pendingTarget, { conversionState, thirdPartySpecialState })
       : null;
-
-  const unclaimedFallbackRoleId = useMemo(
-    () => resolveUnclaimedRoleFallback(board, seats),
-    [board, seats],
-  );
 
   const psychicOutcome =
     currentStep.actionType === 'psychic_check' && revealConfirmed && pendingTarget !== null
@@ -2121,18 +2137,11 @@ export function NightConsoleScreen() {
     }
   };
 
-  // 推進步驟（夜晚中途提前達成勝負立即天亮；線上法官進入閉眼→睜眼靜音緩衝）
+  // 推進步驟（夜晚中途提前達成勝負也須經確認彈窗，避免手滑直接跳轉結束畫面；線上法官進入閉眼→睜眼靜音緩衝）
   const advanceAfterCommit = () => {
-    // 夜間任一步驟結算後若已達成陣營勝利條件（且後續已無救人步驟），立即結束剩餘夜間步驟並天亮結算
-    if (!isLastStep && checkEarlyNightVictory()) {
-      ambientAudioEngine.playSoftCue('dawn');
-      if (isOnlineJudge) {
-        ttsEngine.speakFromGesture('天亮了，請睜眼', {
-          enabled: onlineJudgeSettings.ttsEnabled,
-          rate: onlineJudgeSettings.ttsRate,
-        });
-      }
-      finishNight();
+    if (checkEarlyNightVictory()) {
+      setEarlyVictoryFinishPending(true);
+      setConfirmFinishOpen(true);
       return;
     }
 
@@ -2166,10 +2175,25 @@ export function NightConsoleScreen() {
     }
 
     if (isLastStep) {
+      setEarlyVictoryFinishPending(false);
       setConfirmFinishOpen(true);
     } else {
       nextNightStep();
     }
+  };
+
+  const handlePrevNightStep = () => {
+    if (isFirstStep) return;
+    if (isOnlineJudge) {
+      ttsEngine.cancel();
+      setTouchConfirmEvent(null);
+      setTouchConfirmIdx(0);
+      setDawnCountdownDigit(null);
+      setOnlinePhase('active');
+    }
+    setEarlyVictoryFinishPending(false);
+    setConfirmFinishOpen(false);
+    prevNightStep();
   };
 
   // 處理「認領階段」確認鍵（支援同角色多席次批次認領／解除）
@@ -2433,7 +2457,7 @@ export function NightConsoleScreen() {
     );
 
   // 產生資訊結果與「放大展示給玩家看」資料（適用實體法官與線上語音法官）
-  const currentFlashcardCandidate: InfoFlashcardData | null = useMemo(() => {
+  const currentFlashcardCandidate: InfoFlashcardData | null = (() => {
     if (isClaimStage) return null;
     if (seerOutcome) {
       return {
@@ -2592,34 +2616,7 @@ export function NightConsoleScreen() {
       }
     }
     return null;
-  }, [
-    isClaimStage,
-    seerOutcome,
-    luckySeerOutcome,
-    psychicOutcome,
-    mechWolfPsychicOutcome,
-    awakenedSeerOutcome,
-    lanternSeerOutcome,
-    drunkSeerOutcome,
-    foolSeerOutcome,
-    foxOutcome,
-    gargoyleOutcome,
-    wolfWitchOutcome,
-    pureWhiteOutcome,
-    pumpkinGhostOutcome,
-    demonWolfOutcome,
-    gravekeeperOutcome,
-    currentStep.actionType,
-    currentStep.actorLabel,
-    hunterSeat,
-    isHunterPoisonedTonight,
-    mechLearnedTargetSeat,
-    witchAntidoteUsed,
-    isSkillLocked,
-    wolfTargetSeat,
-    pendingTarget,
-    pendingMultiTargets,
-  ]);
+  })();
 
   const primaryButtonLabel = (() => {
     if (isClaimStage) {
@@ -4312,21 +4309,19 @@ export function NightConsoleScreen() {
 
         {/* 底部操作列：上一步線框 ＋ 單一實心主按鈕 */}
         <div className="flex items-center gap-2">
-          {!isOnlineJudge && (
-            <button
-              type="button"
-              disabled={isFirstStep}
-              onClick={prevNightStep}
-              aria-label="上一步"
-              className={`min-h-12 min-w-12 shrink-0 rounded-md border px-3 text-[14px] font-semibold transition ${
-                isFirstStep
-                  ? 'cursor-not-allowed border-subtle bg-canvas text-muted opacity-50'
-                  : 'border-subtle bg-surface text-secondary hover:border-strong hover:text-primary'
-              }`}
-            >
-              ←
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={isFirstStep}
+            onClick={handlePrevNightStep}
+            aria-label="上一步"
+            className={`min-h-12 min-w-12 shrink-0 rounded-md border px-3 text-[14px] font-semibold transition ${
+              isFirstStep
+                ? 'cursor-not-allowed border-subtle bg-canvas text-muted opacity-50'
+                : 'border-subtle bg-surface text-secondary hover:border-strong hover:text-primary'
+            }`}
+          >
+            ←
+          </button>
 
           <button
             type="button"
@@ -4449,18 +4444,32 @@ export function NightConsoleScreen() {
         onCancel={() => setConfirmWitchPotionOpen(false)}
       />
 
-      {/* 實體法官：結束今夜結算確認彈窗 */}
+      {/* 結束今夜結算確認彈窗（含提早達勝二次確認，防手滑直接跳轉結束畫面） */}
       <ConfirmModal
         open={confirmFinishOpen}
-        title={`結束第 ${round} 晚並結算`}
+        title={earlyVictoryFinishPending ? `已達成勝負條件，確認結束第 ${round} 晚` : `結束第 ${round} 晚並結算`}
         confirmLabel="確認結算"
-        cancelLabel="返回"
+        cancelLabel="返回修改"
         tone="warning"
         onConfirm={() => {
+          const wasEarlyVictory = earlyVictoryFinishPending;
           setConfirmFinishOpen(false);
+          setEarlyVictoryFinishPending(false);
+          if (wasEarlyVictory) {
+            ambientAudioEngine.playSoftCue('dawn');
+            if (isOnlineJudge) {
+              ttsEngine.speakFromGesture('天亮了，請睜眼', {
+                enabled: onlineJudgeSettings.ttsEnabled,
+                rate: onlineJudgeSettings.ttsRate,
+              });
+            }
+          }
           finishNight();
         }}
-        onCancel={() => setConfirmFinishOpen(false)}
+        onCancel={() => {
+          setConfirmFinishOpen(false);
+          setEarlyVictoryFinishPending(false);
+        }}
       >
         <div className="space-y-2">
           <ul className="space-y-1 border-l-2 border-subtle pl-3 text-[12px] text-secondary tabular-nums">

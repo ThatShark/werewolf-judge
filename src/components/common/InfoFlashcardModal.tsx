@@ -45,7 +45,7 @@ export function InfoFlashcardModal({ data, onClose }: InfoFlashcardModalProps) {
       aria-modal="true"
       aria-label={data.eyebrow}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex h-dvh w-full cursor-pointer select-none flex-col justify-between bg-blackout px-6 py-8 text-primary"
+      className="safe-pt safe-pb fixed inset-0 z-50 flex h-dvh w-full cursor-pointer select-none flex-col justify-between bg-blackout px-6 py-8 text-primary"
     >
       <div className="mx-auto flex w-full max-w-lg items-center justify-between">
         <span className="text-[12px] font-semibold uppercase tracking-widest text-muted">

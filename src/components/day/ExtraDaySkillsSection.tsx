@@ -23,23 +23,23 @@ const PANDORA_ITEM_LABELS: Record<PandoraBoxItem, string> = {
   day_gun: '白天手槍',
 };
 
+const DEFAULT_CONVERSION_STATE = Object.freeze(createInitialConversionState());
+const DEFAULT_THIRD_PARTY_STATE = Object.freeze(createInitialThirdPartySpecialState());
+const DEFAULT_COMBAT_STATE = Object.freeze(createInitialCombatState());
+const DEFAULT_INTERFERENCE_STATE = Object.freeze(createInitialInterferenceState());
+const DEFAULT_FINAL_BATCH_STATE = Object.freeze(createInitialFinalBatchState());
+
 export function ExtraDaySkillsSection({ disabled = false }: ExtraDaySkillsSectionProps) {
   const round = useGameStore((s) => s.round);
   const selectedBoardId = useGameStore((s) => s.selectedBoardId);
   const seats = useGameStore((s) => s.seats);
-  const conversionState = useGameStore(
-    (s) => s.conversionState ?? createInitialConversionState(),
-  );
+  const conversionState = useGameStore((s) => s.conversionState ?? DEFAULT_CONVERSION_STATE);
   const thirdPartySpecialState = useGameStore(
-    (s) => s.thirdPartySpecialState ?? createInitialThirdPartySpecialState(),
+    (s) => s.thirdPartySpecialState ?? DEFAULT_THIRD_PARTY_STATE,
   );
-  const combatState = useGameStore((s) => s.combatState ?? createInitialCombatState());
-  const interferenceState = useGameStore(
-    (s) => s.interferenceState ?? createInitialInterferenceState(),
-  );
-  const finalBatchState = useGameStore(
-    (s) => s.finalBatchState ?? createInitialFinalBatchState(),
-  );
+  const combatState = useGameStore((s) => s.combatState ?? DEFAULT_COMBAT_STATE);
+  const interferenceState = useGameStore((s) => s.interferenceState ?? DEFAULT_INTERFERENCE_STATE);
+  const finalBatchState = useGameStore((s) => s.finalBatchState ?? DEFAULT_FINAL_BATCH_STATE);
 
   const detectiveCollectiveAccuse = useGameStore((s) => s.detectiveCollectiveAccuse);
   const usePandoraDayGun = useGameStore((s) => s.usePandoraDayGun);

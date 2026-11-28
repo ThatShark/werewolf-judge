@@ -35,6 +35,8 @@ function App() {
   const dayHistory = useGameStore((s) => s.dayHistory);
   const ambientAudio = useGameStore((s) => s.ambientAudio);
   const ruleOverrides = useGameStore((s) => s.ruleOverrides);
+  const canUndoDayAction = useGameStore((s) => s.lastDayActionSnapshot !== null);
+  const undoLastDayAction = useGameStore((s) => s.undoLastDayAction);
   const restartGame = useGameStore((s) => s.restartGame);
 
   const [qaOpen, setQaOpen] = useState(false);
@@ -65,13 +67,13 @@ function App() {
       ambientAudioEngine.stop();
       wasNightAutoPlayingRef.current = false;
     }
-  }, [
-    activeView,
-    phase,
-    ambientAudio.autoPlayAtNight,
-    ambientAudio.presetId,
-    ambientAudio.volume,
-  ]);
+    // 音量調整由下方獨立 effect 透過 setVolume 即時更新，避免重播重建音訊節點
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView, phase, ambientAudio.autoPlayAtNight, ambientAudio.presetId]);
+
+  useEffect(() => {
+    ambientAudioEngine.setVolume(ambientAudio.volume);
+  }, [ambientAudio.volume]);
 
   const highlightRoleIds = useMemo(() => {
     if (!board || phase !== 'night') return [];
@@ -152,13 +154,17 @@ function App() {
             phase={phase}
             round={round}
             board={board}
+            canUndoDayAction={canUndoDayAction}
+            onUndoDayAction={() => {
+              undoLastDayAction();
+            }}
             onGoHome={() => setActiveView('home')}
             onOpenQA={() => setQaOpen(true)}
             onOpenHistory={() => setHistoryOpen(true)}
             onOpenRestart={() => setRestartOpen(true)}
           />
 
-          <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 py-2 md:max-w-2xl">
+          <main className="safe-pb mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 py-2 md:max-w-2xl">
             {renderMainContent()}
           </main>
         </>

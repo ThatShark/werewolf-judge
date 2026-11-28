@@ -17,6 +17,7 @@ import {
   checkVictory,
   claimSeatRole as claimSeatRoleLogic,
   clampOnlineJudgeSettings,
+  clearNightStepDraftFields,
   cloneLuckyFirstNightSkills,
   cloneThirdPartySpecialState,
   createEmptyNightDraft,
@@ -197,15 +198,19 @@ export type GameSnapshotData = Pick<
   | 'preGameOverPhase'
 > & {
   pendingShooters: PendingShooter[];
+  enterNightAfterPendingShooters?: boolean;
 };
 
 export interface GameStore extends GameState {
   activeView: AppView;
   pendingShooters: PendingShooter[];
-  /** 若白狼王自爆帶走可開槍角色，待所有連鎖開槍結算後自動進入黑夜 */
+  /** 若白狼王自爆帶走可開槍角色，待所有連鎖開槍或警徽移交結算後自動進入黑夜 */
   enterNightAfterPendingShooters: boolean;
+  /** 白天最近 1 筆角色行為或放逐結算前之快照（最多 1 筆、不寫入 localStorage） */
+  lastDayActionSnapshot: GameSnapshotData | null;
 
   setActiveView: (view: AppView) => void;
+  undoLastDayAction: () => boolean;
 
   goToHostSetup: () => void;
   selectBoard: (boardId: string) => void;
@@ -453,6 +458,7 @@ function createInitialGameState(): GameState & {
   activeView: AppView;
   pendingShooters: PendingShooter[];
   enterNightAfterPendingShooters: boolean;
+  lastDayActionSnapshot: GameSnapshotData | null;
 } {
   return {
     activeView: 'home',
@@ -528,6 +534,7 @@ function createInitialGameState(): GameState & {
     preGameOverPhase: null,
     pendingShooters: [],
     enterNightAfterPendingShooters: false,
+    lastDayActionSnapshot: null,
   };
 }
 
@@ -601,9 +608,34 @@ function captureGameSnapshot(state: GameStore): GameSnapshotData {
     forceContinueAfterVictory: state.forceContinueAfterVictory,
     preGameOverPhase: state.preGameOverPhase,
     pendingShooters: state.pendingShooters,
+    enterNightAfterPendingShooters: state.enterNightAfterPendingShooters,
   };
   return JSON.parse(JSON.stringify(raw)) as GameSnapshotData;
 }
+
+const safeLocalStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      return localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    try {
+      localStorage.setItem(name, value);
+    } catch {
+      // 忽略瀏覽器儲存配額超限或無痕模式存取拒絕，避免中斷對局
+    }
+  },
+  removeItem: (name: string): void => {
+    try {
+      localStorage.removeItem(name);
+    } catch {
+      // 忽略異常
+    }
+  },
+};
 
 function mergePendingNightDeaths(
   seats: GameState['seats'],
@@ -663,6 +695,18 @@ export const useGameStore = create<GameStore>()(
       ...createInitialGameState(),
 
       setActiveView: (view) => set({ activeView: view }),
+
+      undoLastDayAction: () => {
+        const state = get();
+        const snap = state.lastDayActionSnapshot;
+        if (!snap) return false;
+        set({
+          ...snap,
+          enterNightAfterPendingShooters: snap.enterNightAfterPendingShooters ?? false,
+          lastDayActionSnapshot: null,
+        });
+        return true;
+      },
 
       goToHostSetup: () => {
         set({ phase: 'host_setup' });
@@ -923,6 +967,7 @@ export const useGameStore = create<GameStore>()(
         set({
           phase: 'seat_setup',
           passRevealConfirmedSeats: [],
+          lastDayActionSnapshot: null,
         });
       },
 
@@ -957,9 +1002,29 @@ export const useGameStore = create<GameStore>()(
           lastDreamTarget: null,
           knightDuelUsed: false,
           lastBearRoar: null,
+          lastFearedSeat: null,
+          evilKnightCounterUsed: false,
+          hybridState: createInitialHybridState(),
+          seedWolfState: createInitialSeedWolfState(),
+          hiddenWolfState: createInitialHiddenWolfState(),
           wolfGirlState: createInitialWolfGirlState(),
+          gargoyleState: createInitialGargoyleState(),
+          pumpkinGhostState: createInitialPumpkinGhostState(),
+          superGravekeeperState: createInitialSuperGravekeeperState(),
+          foxLostAbility: false,
+          exiledHistory: [],
+          lastAwakenedDreamTarget: null,
+          lastMoonSpiritHowl: null,
+          lastNineTailedFoxResult: null,
+          lastSeniorVillagerReveal: null,
+          interferenceState: createInitialInterferenceState(),
+          combatState: createInitialCombatState(),
+          conversionState: createInitialConversionState(),
+          thirdPartySpecialState: createInitialThirdPartySpecialState(),
+          finalBatchState: createInitialFinalBatchState(),
           nightStartSnapshot: null,
           preExileSnapshot: null,
+          lastDayActionSnapshot: null,
           speakingQueue: [],
           currentSpeakerIndex: 0,
           speakingMeta: null,
@@ -977,6 +1042,7 @@ export const useGameStore = create<GameStore>()(
           forceContinueAfterVictory: false,
           preGameOverPhase: null,
           pendingShooters: [],
+          enterNightAfterPendingShooters: false,
           passRevealConfirmedSeats: [],
         };
 
@@ -1017,7 +1083,10 @@ export const useGameStore = create<GameStore>()(
               ...createInitialTreasureMasterState(),
               bottomCards: dealtBundle.treasureMasterBottomCards,
             }
-          : (state.treasureMasterState ?? createInitialTreasureMasterState());
+          : {
+              ...createInitialTreasureMasterState(),
+              bottomCards: state.treasureMasterState?.bottomCards ?? [],
+            };
 
         set({
           ...baseRuntimeReset,
@@ -1025,7 +1094,7 @@ export const useGameStore = create<GameStore>()(
           thiefBottomCards: finalThiefBottomCards,
           treasureMasterState: finalTreasureMasterState,
           conversionState: {
-            ...(state.conversionState ?? createInitialConversionState()),
+            ...createInitialConversionState(),
             thiefBottomCards: finalThiefBottomCards,
           },
           phase: 'pass_and_reveal',
@@ -1056,9 +1125,23 @@ export const useGameStore = create<GameStore>()(
       },
 
       prevNightStep: () => {
-        set((state) => ({
-          currentStepIndex: Math.max(0, state.currentStepIndex - 1),
-        }));
+        set((state) => {
+          if (state.currentStepIndex <= 0) {
+            return { currentStepIndex: 0 };
+          }
+          const prevIdx = state.currentStepIndex - 1;
+          const board = getBoardById(state.selectedBoardId);
+          let nextDraft = state.currentNightDraft;
+          if (board) {
+            const steps = getNightSteps(board, state.round, state.hostMode.dealMode);
+            nextDraft = clearNightStepDraftFields(nextDraft, steps[state.currentStepIndex]);
+            nextDraft = clearNightStepDraftFields(nextDraft, steps[prevIdx]);
+          }
+          return {
+            currentStepIndex: prevIdx,
+            currentNightDraft: nextDraft,
+          };
+        });
       },
 
       checkEarlyNightVictory: () => {
@@ -1346,6 +1429,7 @@ export const useGameStore = create<GameStore>()(
               }
             : null,
           enterNightAfterPendingShooters: false,
+          lastDayActionSnapshot: null,
           nightHistory: nextNightHistory,
           dayHistory: nextDayHistory,
           pendingShooters: deferNightDeaths ? [] : pendingShooters,
@@ -1634,6 +1718,7 @@ export const useGameStore = create<GameStore>()(
 
       transferSheriffBadge: (targetSeat) => {
         const state = get();
+        const daySnapshot = captureGameSnapshot(state);
         const fromSeat = state.sheriffState.pendingBadgeTransferFrom ?? state.sheriffState.sheriffSeat;
         const nextSheriffState = transferSheriffBadgeLogic(
           state.sheriffState,
@@ -1658,8 +1743,14 @@ export const useGameStore = create<GameStore>()(
           tieVictory,
           state.forceContinueAfterVictory,
         );
+        const shouldEnterNightNow =
+          !triggerGameOver &&
+          state.enterNightAfterPendingShooters &&
+          state.pendingShooters.length === 0;
+        const nextRound = shouldEnterNightNow ? state.round + 1 : state.round;
 
         set({
+          lastDayActionSnapshot: daySnapshot,
           sheriffState: nextSheriffState,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'badge_transfer',
@@ -1667,18 +1758,37 @@ export const useGameStore = create<GameStore>()(
             actorSeat: fromSeat,
             targetSeat,
           }),
+          enterNightAfterPendingShooters:
+            triggerGameOver || shouldEnterNightNow ? false : state.enterNightAfterPendingShooters,
           winner: triggerGameOver ? tieVictory.winner : state.winner,
           winReason: triggerGameOver ? tieVictory.winReason : state.winReason,
           preGameOverPhase:
             triggerGameOver && (state.phase === 'day_announcement' || state.phase === 'day_vote')
               ? state.phase
               : state.preGameOverPhase,
-          phase: triggerGameOver ? 'game_over' : state.phase,
+          phase: triggerGameOver ? 'game_over' : shouldEnterNightNow ? 'night' : state.phase,
+          ...(shouldEnterNightNow
+            ? {
+                round: nextRound,
+                currentStepIndex: 0,
+                currentNightDraft: createEmptyNightDraft(nextRound),
+                speakingQueue: [],
+                currentSpeakerIndex: 0,
+                speakingMeta: null,
+                remainingSeconds: state.defaultSpeakDurationSec,
+                exilePkCandidates: [],
+                exilePkStage: 'none' as const,
+                exilePkSpeakingOrder: [],
+                exileResolvedToday: null,
+                pendingNightAnnouncement: null,
+              }
+            : {}),
         });
       },
 
       destroySheriffBadge: () => {
         const state = get();
+        const daySnapshot = captureGameSnapshot(state);
         const fromSeat = state.sheriffState.pendingBadgeTransferFrom ?? state.sheriffState.sheriffSeat;
         const nextSheriffState = destroySheriffBadgeLogic(state.sheriffState);
         const summary = `${fromSeat} 號撕毀警徽，本局後續無警長`;
@@ -1699,21 +1809,45 @@ export const useGameStore = create<GameStore>()(
           tieVictory,
           state.forceContinueAfterVictory,
         );
+        const shouldEnterNightNow =
+          !triggerGameOver &&
+          state.enterNightAfterPendingShooters &&
+          state.pendingShooters.length === 0;
+        const nextRound = shouldEnterNightNow ? state.round + 1 : state.round;
 
         set({
+          lastDayActionSnapshot: daySnapshot,
           sheriffState: nextSheriffState,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'badge_destroy',
             summary,
             actorSeat: fromSeat,
           }),
+          enterNightAfterPendingShooters:
+            triggerGameOver || shouldEnterNightNow ? false : state.enterNightAfterPendingShooters,
           winner: triggerGameOver ? tieVictory.winner : state.winner,
           winReason: triggerGameOver ? tieVictory.winReason : state.winReason,
           preGameOverPhase:
             triggerGameOver && (state.phase === 'day_announcement' || state.phase === 'day_vote')
               ? state.phase
               : state.preGameOverPhase,
-          phase: triggerGameOver ? 'game_over' : state.phase,
+          phase: triggerGameOver ? 'game_over' : shouldEnterNightNow ? 'night' : state.phase,
+          ...(shouldEnterNightNow
+            ? {
+                round: nextRound,
+                currentStepIndex: 0,
+                currentNightDraft: createEmptyNightDraft(nextRound),
+                speakingQueue: [],
+                currentSpeakerIndex: 0,
+                speakingMeta: null,
+                remainingSeconds: state.defaultSpeakDurationSec,
+                exilePkCandidates: [],
+                exilePkStage: 'none' as const,
+                exilePkSpeakingOrder: [],
+                exileResolvedToday: null,
+                pendingNightAnnouncement: null,
+              }
+            : {}),
         });
       },
 
@@ -1834,10 +1968,13 @@ export const useGameStore = create<GameStore>()(
         const shouldEnterNightNow =
           !triggerGameOver &&
           state.enterNightAfterPendingShooters &&
-          remainingShooters.length === 0;
+          remainingShooters.length === 0 &&
+          nextSheriffState.pendingBadgeTransferFrom === null;
         const nextRound = shouldEnterNightNow ? state.round + 1 : state.round;
+        const daySnapshot = captureGameSnapshot(state);
 
         set({
+          lastDayActionSnapshot: daySnapshot,
           seats: synced.seats,
           mechWolfState: result.mechWolfState,
           gargoyleState: synced.gargoyleState,
@@ -1848,6 +1985,7 @@ export const useGameStore = create<GameStore>()(
           activeCharmedSeat:
             result.charmedDeathSeat !== null ? null : state.activeCharmedSeat,
           sheriffState: nextSheriffState,
+          pendingNightAnnouncement: null,
           pendingShooters: remainingShooters,
           enterNightAfterPendingShooters:
             triggerGameOver || shouldEnterNightNow ? false : state.enterNightAfterPendingShooters,
@@ -1869,6 +2007,9 @@ export const useGameStore = create<GameStore>()(
                 speakingMeta: null,
                 remainingSeconds: state.defaultSpeakDurationSec,
                 exilePkCandidates: [],
+                exilePkStage: 'none' as const,
+                exilePkSpeakingOrder: [],
+                exileResolvedToday: null,
               }
             : {}),
         });
@@ -1876,6 +2017,7 @@ export const useGameStore = create<GameStore>()(
 
       skipShoot: (shooterSeat) => {
         set((state) => {
+          const daySnapshot = captureGameSnapshot(state);
           const remainingShooters = state.pendingShooters.filter(
             (s) => s.seatNumber !== shooterSeat,
           );
@@ -1899,9 +2041,11 @@ export const useGameStore = create<GameStore>()(
           const shouldEnterNightNow =
             !triggerGameOver &&
             state.enterNightAfterPendingShooters &&
-            remainingShooters.length === 0;
+            remainingShooters.length === 0 &&
+            state.sheriffState.pendingBadgeTransferFrom === null;
           const nextRound = shouldEnterNightNow ? state.round + 1 : state.round;
           return {
+            lastDayActionSnapshot: daySnapshot,
             pendingShooters: remainingShooters,
             enterNightAfterPendingShooters:
               triggerGameOver || shouldEnterNightNow
@@ -1929,6 +2073,9 @@ export const useGameStore = create<GameStore>()(
                   speakingMeta: null,
                   remainingSeconds: state.defaultSpeakDurationSec,
                   exilePkCandidates: [],
+                  exilePkStage: 'none' as const,
+                  exilePkSpeakingOrder: [],
+                  exileResolvedToday: null,
                 }
               : {}),
           };
@@ -1945,10 +2092,11 @@ export const useGameStore = create<GameStore>()(
               currentSpeakerIndex: 0,
               speakingMeta: null,
               remainingSeconds: state.defaultSpeakDurationSec,
+              lastDayActionSnapshot: null,
             };
           }
 
-          const appliedSeats = pending.seats;
+          const appliedSeats = mergePendingNightDeaths(state.seats, pending);
           const syncedSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, appliedSeats);
           const finalVictory = evaluateDayTieLockVictory({
             baseVictory: pending.victory,
@@ -1973,6 +2121,7 @@ export const useGameStore = create<GameStore>()(
             pendingShooters: pending.pendingShooters,
             sheriffState: syncedSheriffState,
             pendingNightAnnouncement: null,
+            lastDayActionSnapshot: null,
             dayStage: 'death_announcement' as const,
             speakingQueue: [],
             currentSpeakerIndex: 0,
@@ -1993,6 +2142,7 @@ export const useGameStore = create<GameStore>()(
           currentSpeakerIndex: 0,
           speakingMeta: null,
           remainingSeconds: state.defaultSpeakDurationSec,
+          lastDayActionSnapshot: null,
         }));
       },
 
@@ -2000,6 +2150,7 @@ export const useGameStore = create<GameStore>()(
         set((state) => ({
           phase: state.winner ? 'game_over' : 'day_vote',
           dayStage: 'exile_vote',
+          lastDayActionSnapshot: null,
         }));
       },
 
@@ -2204,8 +2355,11 @@ export const useGameStore = create<GameStore>()(
         );
 
         set({
+          lastDayActionSnapshot: preExileSnapshot,
           seats: synced.seats,
           mechWolfState: exileResult.mechWolfState,
+          combatState: exileResult.combatState ?? state.combatState,
+          treasureMasterState: exileResult.treasureMasterState ?? state.treasureMasterState,
           gargoyleState: synced.gargoyleState,
           pumpkinGhostState: synced.pumpkinGhostState,
           superGravekeeperState: synced.superGravekeeperState,
@@ -2346,8 +2500,11 @@ export const useGameStore = create<GameStore>()(
         );
 
         set({
+          lastDayActionSnapshot: preExileSnapshot,
           seats: synced.seats,
           mechWolfState: result.mechWolfState,
+          combatState: result.combatState ?? state.combatState,
+          treasureMasterState: result.treasureMasterState ?? state.treasureMasterState,
           gargoyleState: synced.gargoyleState,
           pumpkinGhostState: synced.pumpkinGhostState,
           superGravekeeperState: synced.superGravekeeperState,
@@ -2419,7 +2576,12 @@ export const useGameStore = create<GameStore>()(
           eliminatedSeats: [actorSeat],
         });
 
+        const shouldEnterNightNow =
+          !triggerGameOver && nextSheriffState.pendingBadgeTransferFrom === null;
+        const daySnapshot = captureGameSnapshot(state);
+
         set({
+          lastDayActionSnapshot: daySnapshot,
           seats: synced.seats,
           mechWolfState: result.mechWolfState,
           gargoyleState: synced.gargoyleState,
@@ -2431,15 +2593,17 @@ export const useGameStore = create<GameStore>()(
           dayHistory: nextDayHistory,
           exilePkCandidates: [],
           pendingShooters: [],
-          round: triggerGameOver ? state.round : nextRound,
-          currentStepIndex: 0,
-          currentNightDraft: triggerGameOver
-            ? state.currentNightDraft
-            : createEmptyNightDraft(nextRound),
+          enterNightAfterPendingShooters:
+            !triggerGameOver && nextSheriffState.pendingBadgeTransferFrom !== null,
+          round: shouldEnterNightNow ? nextRound : state.round,
+          currentStepIndex: shouldEnterNightNow ? 0 : state.currentStepIndex,
+          currentNightDraft: shouldEnterNightNow
+            ? createEmptyNightDraft(nextRound)
+            : state.currentNightDraft,
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
-          phase: triggerGameOver ? 'game_over' : 'night',
+          phase: triggerGameOver ? 'game_over' : shouldEnterNightNow ? 'night' : state.phase,
         });
 
         return {
@@ -2505,6 +2669,7 @@ export const useGameStore = create<GameStore>()(
         );
         const summary = `放逐階段結束：已翻牌之白貓（${res.eliminatedSeat} 號）正式出局`;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           mechWolfState: res.mechWolfState,
           gargoyleState: synced.gargoyleState,
@@ -2545,6 +2710,7 @@ export const useGameStore = create<GameStore>()(
         );
         const summary = `河豚翻牌炸死投票玩家：${res.killedSeats.join('、')} 號`;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           combatState: { ...curCombat, pufferfishBombUsed: true },
           gargoyleState: synced.gargoyleState,
@@ -2593,10 +2759,12 @@ export const useGameStore = create<GameStore>()(
           synced.victory,
           state.forceContinueAfterVictory,
         );
+        const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats);
         const shouldEnterNightNow =
           !triggerGameOver &&
           state.enterNightAfterPendingShooters &&
-          remainingShooters.length === 0;
+          remainingShooters.length === 0 &&
+          nextSheriffState.pendingBadgeTransferFrom === null;
         const nextRound = shouldEnterNightNow ? state.round + 1 : state.round;
         const dirLabel = direction === 'left' ? '左' : '右';
         const summary =
@@ -2604,6 +2772,7 @@ export const useGameStore = create<GameStore>()(
             ? `覺醒獵人（${hunterSeat} 號）向${dirLabel}開槍帶走最近狼人 ${res.killedSeat} 號`
             : `覺醒獵人（${hunterSeat} 號）向${dirLabel}開槍未命中存活狼人`;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           gargoyleState: synced.gargoyleState,
           pumpkinGhostState: synced.pumpkinGhostState,
@@ -2613,7 +2782,7 @@ export const useGameStore = create<GameStore>()(
           pendingShooters: remainingShooters,
           enterNightAfterPendingShooters:
             triggerGameOver || shouldEnterNightNow ? false : state.enterNightAfterPendingShooters,
-          sheriffState: syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats),
+          sheriffState: nextSheriffState,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'hunter_shoot',
             summary,
@@ -2658,6 +2827,7 @@ export const useGameStore = create<GameStore>()(
         );
         const summary = `老流氓（${res.eliminatedSeat} 號）延遲死亡正式出局`;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           mechWolfState: res.mechWolfState,
           gargoyleState: synced.gargoyleState,
@@ -2899,6 +3069,7 @@ export const useGameStore = create<GameStore>()(
         );
         const summary = `白澤延遲死亡結算：神職繼承人 ${res.eliminatedSeat} 號於放逐階段後正式出局`;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           mechWolfState: res.mechWolfState,
           gargoyleState: synced.gargoyleState,
@@ -3175,9 +3346,11 @@ export const useGameStore = create<GameStore>()(
           synced.victory,
           state.forceContinueAfterVictory,
         );
+        const daySnapshot = captureGameSnapshot(state);
 
         if (triggerGameOver) {
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState ?? state.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3196,8 +3369,27 @@ export const useGameStore = create<GameStore>()(
             preGameOverPhase: 'day_vote',
             phase: 'game_over',
           });
+        } else if (nextSheriffState.pendingBadgeTransferFrom !== null) {
+          set({
+            lastDayActionSnapshot: daySnapshot,
+            seats: synced.seats,
+            mechWolfState: result.mechWolfState ?? state.mechWolfState,
+            gargoyleState: synced.gargoyleState,
+            pumpkinGhostState: synced.pumpkinGhostState,
+            superGravekeeperState: synced.superGravekeeperState,
+            conversionState: synced.conversionState,
+            thirdPartySpecialState: synced.thirdPartySpecialState,
+            pendingSelfExplodeSeat: null,
+            combatState: nextCombatState,
+            sheriffState: nextSheriffState,
+            dayHistory: nextDayHistory,
+            pendingNightAnnouncement: null,
+            pendingShooters: [],
+            enterNightAfterPendingShooters: true,
+          });
         } else {
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState ?? state.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3315,8 +3507,10 @@ export const useGameStore = create<GameStore>()(
               ]
             : [];
 
+        const daySnapshot = captureGameSnapshot(state);
         if (triggerGameOver) {
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3334,9 +3528,10 @@ export const useGameStore = create<GameStore>()(
             preGameOverPhase: 'day_vote',
             phase: 'game_over',
           });
-        } else if (chainedShooter.length > 0) {
-          // 被白狼王自爆帶走者可連鎖開槍：先停留在白天結算開槍，結算完成後自動入夜
+        } else if (chainedShooter.length > 0 || nextSheriffState.pendingBadgeTransferFrom !== null) {
+          // 被白狼王自爆帶走者可連鎖開槍或觸發警徽移交：先停留在白天結算完成後自動入夜
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3347,11 +3542,13 @@ export const useGameStore = create<GameStore>()(
             pendingSelfExplodeSeat: null,
             sheriffState: nextSheriffState,
             dayHistory: nextDayHistory,
+            pendingNightAnnouncement: null,
             pendingShooters: chainedShooter,
             enterNightAfterPendingShooters: true,
           });
         } else {
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3370,6 +3567,10 @@ export const useGameStore = create<GameStore>()(
             speakingMeta: null,
             remainingSeconds: state.defaultSpeakDurationSec,
             exilePkCandidates: [],
+            exilePkStage: 'none',
+            exilePkSpeakingOrder: [],
+            exileResolvedToday: null,
+            pendingNightAnnouncement: null,
             pendingShooters: [],
             enterNightAfterPendingShooters: false,
             phase: 'night',
@@ -3431,8 +3632,10 @@ export const useGameStore = create<GameStore>()(
           state.forceContinueAfterVictory,
         );
 
+        const daySnapshot = captureGameSnapshot(state);
         if (triggerGameOver) {
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3450,9 +3653,27 @@ export const useGameStore = create<GameStore>()(
             preGameOverPhase: 'day_vote',
             phase: 'game_over',
           });
+        } else if (result.enterNightImmediately && nextSheriffState.pendingBadgeTransferFrom !== null) {
+          set({
+            lastDayActionSnapshot: daySnapshot,
+            seats: synced.seats,
+            mechWolfState: result.mechWolfState,
+            gargoyleState: synced.gargoyleState,
+            pumpkinGhostState: synced.pumpkinGhostState,
+            superGravekeeperState: synced.superGravekeeperState,
+            conversionState: synced.conversionState,
+            thirdPartySpecialState: synced.thirdPartySpecialState,
+            knightDuelUsed: true,
+            activeCharmedSeat: killedWolfBeauty ? null : state.activeCharmedSeat,
+            sheriffState: nextSheriffState,
+            dayHistory: nextDayHistory,
+            pendingShooters: [],
+            enterNightAfterPendingShooters: true,
+          });
         } else if (result.enterNightImmediately) {
           const nextRound = state.round + 1;
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3472,11 +3693,15 @@ export const useGameStore = create<GameStore>()(
             speakingMeta: null,
             remainingSeconds: state.defaultSpeakDurationSec,
             exilePkCandidates: [],
+            exilePkStage: 'none',
+            exilePkSpeakingOrder: [],
+            exileResolvedToday: null,
             pendingShooters: [],
             phase: 'night',
           });
         } else {
           set({
+            lastDayActionSnapshot: daySnapshot,
             seats: synced.seats,
             mechWolfState: result.mechWolfState,
             gargoyleState: synced.gargoyleState,
@@ -3576,6 +3801,7 @@ export const useGameStore = create<GameStore>()(
             : state.pendingShooters;
         const summary = `${actorSeat} 號使用潘朵拉魔盒「白天手槍」擊殺 ${targetSeat} 號出局`;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           gargoyleState: synced.gargoyleState,
           pumpkinGhostState: synced.pumpkinGhostState,
@@ -3625,15 +3851,21 @@ export const useGameStore = create<GameStore>()(
             ? `${wolfGirlSeat} 號（狼女孩）白天自爆分手，帶走伴侶 ${res.breakupDeathSeat} 號並進入黑夜`
             : `${wolfGirlSeat} 號（狼女孩）白天自爆，強制進入黑夜`;
         const nextRound = state.round + 1;
+        const nextSheriffState = syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats);
+        const shouldEnterNightNow =
+          !triggerGameOver && nextSheriffState.pendingBadgeTransferFrom === null;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           gargoyleState: synced.gargoyleState,
           pumpkinGhostState: synced.pumpkinGhostState,
           superGravekeeperState: synced.superGravekeeperState,
           conversionState: synced.conversionState,
           thirdPartySpecialState: synced.thirdPartySpecialState,
-          sheriffState: syncSheriffBadgeOnDeaths(state.sheriffState, synced.seats),
+          sheriffState: nextSheriffState,
           pendingSelfExplodeSeat: res.pendingSelfExplodeSeat,
+          enterNightAfterPendingShooters:
+            !triggerGameOver && nextSheriffState.pendingBadgeTransferFrom !== null,
           dayHistory: appendDayEvent(state.dayHistory, state.round, summary, {
             type: 'self_explode',
             summary,
@@ -3648,10 +3880,9 @@ export const useGameStore = create<GameStore>()(
           winner: triggerGameOver ? synced.victory.winner : state.winner,
           winReason: triggerGameOver ? synced.victory.winReason : state.winReason,
           preGameOverPhase: triggerGameOver ? 'day_vote' : state.preGameOverPhase,
-          phase: triggerGameOver ? 'game_over' : 'night',
-          ...(triggerGameOver
-            ? {}
-            : {
+          phase: triggerGameOver ? 'game_over' : shouldEnterNightNow ? 'night' : state.phase,
+          ...(shouldEnterNightNow
+            ? {
                 round: nextRound,
                 currentStepIndex: 0,
                 currentNightDraft: createEmptyNightDraft(nextRound),
@@ -3660,8 +3891,12 @@ export const useGameStore = create<GameStore>()(
                 speakingMeta: null,
                 remainingSeconds: state.defaultSpeakDurationSec,
                 exilePkCandidates: [],
+                exilePkStage: 'none' as const,
+                exilePkSpeakingOrder: [],
+                exileResolvedToday: null,
                 pendingShooters: [],
-              }),
+              }
+            : {}),
         });
         return { allowed: true, breakupDeathSeat: res.breakupDeathSeat };
       },
@@ -3686,6 +3921,7 @@ export const useGameStore = create<GameStore>()(
         );
         const summary = `蒙面平民（${seatNumber} 號）延遲死亡正式出局`;
         set({
+          lastDayActionSnapshot: captureGameSnapshot(state),
           seats: synced.seats,
           mechWolfState: res.mechWolfState,
           treasureMasterState: res.treasureMasterState,
@@ -3728,6 +3964,8 @@ export const useGameStore = create<GameStore>()(
           exileResolvedToday: null,
           pendingNightAnnouncement: null,
           pendingShooters: [] as PendingShooter[],
+          enterNightAfterPendingShooters: false,
+          lastDayActionSnapshot: null,
           phase: 'night' as const,
         };
         set({
@@ -3873,7 +4111,16 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: GAME_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
+      partialize: (state) => {
+        const {
+          lastDayActionSnapshot: _skipDaySnap,
+          nightStartSnapshot: _skipNightSnap,
+          preExileSnapshot: _skipPreExileSnap,
+          ...persisted
+        } = state;
+        return persisted;
+      },
       merge: (persistedState, currentState) => {
         const persisted = (persistedState ?? {}) as Partial<GameStore>;
         const normalizeSnapshotSeats = (snap: unknown): unknown => {

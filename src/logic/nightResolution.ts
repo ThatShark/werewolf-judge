@@ -2519,14 +2519,84 @@ export function resolveNight(input: NightResolutionInput): NightResolutionResult
   }
 
   // 7. 狼刀在先判定：若狼刀階段（含種狼感染轉化）已達狼人勝利條件，直接判狼人勝利（優先於女巫與毒師毒藥）
+  // 排除當晚受「舞者舞池免刀」或「小女孩指認替死」保護之目標，避免提前早退截斷 Step 8.68c / 8.69a
   if (ruleOverrides.wolfKillPriority) {
-    const wolfPhaseVictory = checkVictory(updatedSeats, ruleOverrides, nextTreasureMasterState, {
-      cursedFoxDiedThisResolution: salonDreamPiercedCursedFox,
-      conversionState: nextConversionState,
-      thirdPartySpecialState: nextThirdPartySpecialState,
-      wolfGirlState: nextWolfGirlState,
-      boardId: input.boardId,
-    });
+    const protectedFromEarlyWolfWin = new Set<number>();
+    let littleGirlSubSeat: number | null = null;
+
+    if (
+      draft.dancerFloorTargets &&
+      draft.dancerFloorTargets.length === 3 &&
+      initialSeats.some((s) => s.roleId === 'dancer' && s.isAlive) &&
+      canDancerPickFloor(initialSeats, nextThirdPartySpecialState, round, draft.dancerFloorTargets)
+        .allowed
+    ) {
+      const previewAlterSeat =
+        draft.maskedWolfAlterTarget != null &&
+        initialSeats.some((s) => s.roleId === 'masked_wolf' && s.isAlive)
+          ? draft.maskedWolfAlterTarget
+          : null;
+      const previewFloor = resolveDancerFloor(
+        initialSeats,
+        nextThirdPartySpecialState,
+        draft.dancerFloorTargets,
+        previewAlterSeat,
+      );
+      for (const immSeat of previewFloor.immuneToWolfKillSeats) {
+        if (deaths.some((d) => d.seat === immSeat && d.reason === 'wolf_kill')) {
+          protectedFromEarlyWolfWin.add(immSeat);
+        }
+      }
+    }
+
+    if (
+      draft.littleGirlIdentifyTarget != null &&
+      initialSeats.some((s) => s.roleId === 'little_girl' && s.isAlive) &&
+      deaths.some((d) => d.reason === 'wolf_kill') &&
+      canWolvesIdentifyLittleGirl(round, nextFinalBatchState).allowed
+    ) {
+      const identified = updatedSeats.find(
+        (s) => s.seatNumber === draft.littleGirlIdentifyTarget,
+      );
+      if (identified?.roleId === 'little_girl') {
+        const wkDeath = deaths.find((d) => d.reason === 'wolf_kill');
+        if (wkDeath) {
+          protectedFromEarlyWolfWin.add(wkDeath.seat);
+          littleGirlSubSeat = identified.seatNumber;
+        }
+      }
+    }
+
+    const seatsForWolfPriorityCheck =
+      protectedFromEarlyWolfWin.size > 0 || littleGirlSubSeat !== null
+        ? updatedSeats.map((s) => {
+            if (protectedFromEarlyWolfWin.has(s.seatNumber)) {
+              return { ...s, isAlive: true, deathReason: undefined, deathRound: undefined };
+            }
+            if (littleGirlSubSeat !== null && s.seatNumber === littleGirlSubSeat) {
+              return {
+                ...s,
+                isAlive: false,
+                deathReason: 'little_girl_caught' as const,
+                deathRound: round,
+              };
+            }
+            return s;
+          })
+        : updatedSeats;
+
+    const wolfPhaseVictory = checkVictory(
+      seatsForWolfPriorityCheck,
+      ruleOverrides,
+      nextTreasureMasterState,
+      {
+        cursedFoxDiedThisResolution: salonDreamPiercedCursedFox,
+        conversionState: nextConversionState,
+        thirdPartySpecialState: nextThirdPartySpecialState,
+        wolfGirlState: nextWolfGirlState,
+        boardId: input.boardId,
+      },
+    );
     if (wolfPhaseVictory.winner === 'wolf' || wolfPhaseVictory.winner === 'third_party') {
       nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, nextMechWolfState);
       nextTreasureMasterState = syncTreasureMasterTeamStatus(updatedSeats, nextTreasureMasterState);

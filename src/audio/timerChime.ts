@@ -1,16 +1,15 @@
+import { resumeSharedAudioContext } from './sharedAudioContext';
+
 /**
- * 使用瀏覽器原生 Web Audio API 合成柔和雙音提示音（倒數計時歸零時自動播放）。
+ * 使用全站共用 Web Audio API 合成柔和雙音提示音（倒數計時歸零時自動播放）。
  * 零外部音檔依賴，於離線與測試環境中安全降級為靜音。
  */
 export function playSoftTimerChime(): void {
   if (typeof window === 'undefined') return;
-  const AudioCtx =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioCtx) return;
+  const ctx = resumeSharedAudioContext();
+  if (!ctx) return;
 
   try {
-    const ctx = new AudioCtx();
     const now = ctx.currentTime;
 
     const playTone = (freq: number, startOffset: number, duration: number, peakGain: number) => {
@@ -30,10 +29,6 @@ export function playSoftTimerChime(): void {
     // 柔和雙音鐘聲（A5 -> E6）
     playTone(880, 0, 0.35, 0.14);
     playTone(1318.5, 0.22, 0.55, 0.12);
-
-    window.setTimeout(() => {
-      void ctx.close().catch(() => {});
-    }, 1000);
   } catch {
     // 忽略自動播放政策或無音效裝置環境錯誤
   }

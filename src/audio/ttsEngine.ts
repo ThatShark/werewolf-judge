@@ -1,3 +1,5 @@
+import { resumeSharedAudioContext } from './sharedAudioContext';
+
 /**
  * Web Speech API（window.speechSynthesis）語音播報引擎。
  * 用於「線上法官」模式自動念出睜眼、引導與閉眼提示，並在無支援環境下安全降級。
@@ -29,10 +31,11 @@ class TtsEngine {
   private previewTimerId: ReturnType<typeof setTimeout> | null = null;
   private warmupTimerId: ReturnType<typeof setTimeout> | null = null;
   private sequenceTimerId: ReturnType<typeof setTimeout> | null = null;
+  private watchdogTimerId: ReturnType<typeof setTimeout> | null = null;
+  private activeUtterance: SpeechSynthesisUtterance | null = null;
   private sequenceToken = 0;
 
   // Web Audio keep-alive（防止 iOS Safari 夜間語音通道進入休眠）
-  private keepAliveCtx: AudioContext | null = null;
   private keepAliveSource: AudioBufferSourceNode | null = null;
   private keepAliveGain: GainNode | null = null;
   private keepAliveRunning = false;
@@ -56,21 +59,7 @@ class TtsEngine {
   unlockAudio(): void {
     if (typeof window === 'undefined') return;
 
-    try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        if (!this.keepAliveCtx) {
-          this.keepAliveCtx = new AudioCtx();
-        }
-        if (this.keepAliveCtx.state === 'suspended') {
-          void this.keepAliveCtx.resume().catch(() => {});
-        }
-      }
-    } catch {
-      // 忽略無 AudioContext 環境
-    }
+    resumeSharedAudioContext();
 
     if (this.isSupported()) {
       try {
@@ -97,19 +86,8 @@ class TtsEngine {
     if (typeof window === 'undefined' || this.keepAliveRunning) return;
 
     try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-
-      if (!this.keepAliveCtx) {
-        this.keepAliveCtx = new AudioCtx();
-      }
-      if (this.keepAliveCtx.state === 'suspended') {
-        void this.keepAliveCtx.resume().catch(() => {});
-      }
-
-      const ctx = this.keepAliveCtx;
+      const ctx = resumeSharedAudioContext();
+      if (!ctx) return;
       // 1 秒靜音緩衝區循環播放，極低耗電但可讓 iOS 維持音訊 Session 活躍
       const buffer = ctx.createBuffer(1, Math.max(1, ctx.sampleRate), ctx.sampleRate);
       const source = ctx.createBufferSource();
@@ -181,27 +159,66 @@ class TtsEngine {
       clearTimeout(this.sequenceTimerId);
       this.sequenceTimerId = null;
     }
+    if (this.watchdogTimerId !== null) {
+      clearTimeout(this.watchdogTimerId);
+      this.watchdogTimerId = null;
+    }
+    this.activeUtterance = null;
   }
 
   private speakImmediate(cleaned: string, options: SpeakOptions): void {
-    try {
-      if (this.keepAliveCtx?.state === 'suspended') {
-        void this.keepAliveCtx.resume().catch(() => {});
+    const token = this.sequenceToken;
+    let finished = false;
+    const finishOnce = () => {
+      if (finished) return;
+      finished = true;
+      if (this.watchdogTimerId !== null) {
+        clearTimeout(this.watchdogTimerId);
+        this.watchdogTimerId = null;
       }
-      window.speechSynthesis.cancel();
+      if (this.activeUtterance === utteranceRef) {
+        this.activeUtterance = null;
+      }
+      if (token === this.sequenceToken) {
+        options.onEnd?.();
+      }
+    };
+
+    let utteranceRef: SpeechSynthesisUtterance | null = null;
+    try {
+      resumeSharedAudioContext();
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel();
+      }
+      const rate = Math.min(2.0, Math.max(0.5, options.rate ?? 1.0));
       const utterance = new window.SpeechSynthesisUtterance(cleaned);
+      utteranceRef = utterance;
+      // 掛載於實例屬性防止 iOS Safari / Chromium 播報中途 GC 回收導致 onend 遺失
+      this.activeUtterance = utterance;
       utterance.lang = 'zh-TW';
-      utterance.rate = Math.min(2.0, Math.max(0.5, options.rate ?? 1.0));
+      utterance.rate = rate;
       const voice = this.pickChineseVoice();
       if (voice) {
         utterance.voice = voice;
       }
-      utterance.onstart = () => options.onStart?.();
-      utterance.onend = () => options.onEnd?.();
-      utterance.onerror = () => options.onEnd?.();
+      utterance.onstart = () => {
+        if (token === this.sequenceToken) {
+          options.onStart?.();
+        }
+      };
+      utterance.onend = () => finishOnce();
+      utterance.onerror = () => finishOnce();
+
+      // Watchdog 超時保險：依字數與語速估算上限，避免 iOS Safari 遺失 onend 卡死倒數
+      const watchdogMs = Math.max(3500, Math.min(20000, Math.round((cleaned.length * 450) / rate) + 2500));
+      this.watchdogTimerId = setTimeout(() => {
+        this.watchdogTimerId = null;
+        finishOnce();
+      }, watchdogMs);
+
       window.speechSynthesis.speak(utterance);
     } catch {
-      options.onEnd?.();
+      finishOnce();
     }
   }
 
@@ -220,9 +237,7 @@ class TtsEngine {
     const warmupDelayMs = Math.max(0, options.warmupDelayMs ?? 0);
     if (warmupDelayMs > 0) {
       try {
-        if (this.keepAliveCtx?.state === 'suspended') {
-          void this.keepAliveCtx.resume().catch(() => {});
-        }
+        resumeSharedAudioContext();
         window.speechSynthesis.cancel();
       } catch {
         // ignore

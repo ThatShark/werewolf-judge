@@ -1,4 +1,5 @@
 import type { AmbientPresetId } from '../logic/types';
+import { resumeSharedAudioContext } from './sharedAudioContext';
 
 type PlaybackListener = (playing: boolean) => void;
 
@@ -145,23 +146,11 @@ class AmbientAudioEngine {
       return true;
     }
 
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) {
+    const ctx = resumeSharedAudioContext();
+    if (!ctx) {
       return false;
     }
-
-    if (!this.ctx) {
-      this.ctx = new AudioCtx();
-    }
-    if (this.ctx.state === 'suspended') {
-      void this.ctx.resume().catch(() => {
-        // autoplay policy may block until user gesture
-      });
-    }
-
-    const ctx = this.ctx;
+    this.ctx = ctx;
     const masterGain = ctx.createGain();
     const targetGain = this.currentVolume * 0.35;
     masterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
@@ -245,17 +234,9 @@ class AmbientAudioEngine {
   playSoftCue(type: 'step' | 'dawn' | 'timer' = 'step'): void {
     if (typeof window === 'undefined') return;
     try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      if (!this.ctx) {
-        this.ctx = new AudioCtx();
-      }
-      if (this.ctx.state === 'suspended') {
-        void this.ctx.resume().catch(() => {});
-      }
-      const ctx = this.ctx;
+      const ctx = resumeSharedAudioContext();
+      if (!ctx) return;
+      this.ctx = ctx;
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();

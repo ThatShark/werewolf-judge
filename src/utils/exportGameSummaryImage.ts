@@ -227,9 +227,14 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
   }
   totalH += 10 + footerH + PADDING;
 
+  // 動態限制最大單邊 <= 4096px 且總像素 <= 16,000,000（符合 iOS Safari Canvas 安全上限）
+  const maxDimScale = Math.min(4096 / Math.max(1, canvasW), 4096 / Math.max(1, totalH));
+  const maxAreaScale = Math.sqrt(16_000_000 / Math.max(1, canvasW * totalH));
+  const effectiveScale = Math.max(0.5, Math.min(SCALE, maxDimScale, maxAreaScale));
+
   const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(canvasW * SCALE);
-  canvas.height = Math.ceil(totalH * SCALE);
+  canvas.width = Math.ceil(canvasW * effectiveScale);
+  canvas.height = Math.ceil(totalH * effectiveScale);
   canvas.style.width = `${canvasW}px`;
   canvas.style.height = `${totalH}px`;
 
@@ -237,7 +242,7 @@ export function renderGameSummaryCanvas(matrix: GameSummaryMatrix): HTMLCanvasEl
   if (!ctx) {
     throw new Error('瀏覽器不支援 HTML5 Canvas 2D 繪圖');
   }
-  ctx.scale(SCALE, SCALE);
+  ctx.scale(effectiveScale, effectiveScale);
 
   // 1. 整體背景
   ctx.fillStyle = COLORS.bgCanvas;
@@ -811,13 +816,13 @@ export async function generateGameSummaryImage(
 ): Promise<GeneratedSummaryImage> {
   const matrix = buildGameSummaryMatrix(state, board, now);
   const canvas = renderGameSummaryCanvas(matrix);
-  const dataUrl = canvas.toDataURL('image/png');
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => {
       if (b) resolve(b);
       else reject(new Error('無法產生復盤圖片 PNG'));
     }, 'image/png');
   });
+  const dataUrl = URL.createObjectURL(blob);
   const filename = buildSummaryImageFilename(board?.name, now);
   return { blob, dataUrl, filename, matrix };
 }
@@ -830,7 +835,7 @@ export function triggerPngDownload(blob: Blob, filename: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function canNativeShareFile(blob: Blob, filename: string): boolean {

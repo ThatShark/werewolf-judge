@@ -739,6 +739,11 @@ export function resolveDayExile(
           : { ...s },
       );
       const nextMechWolfState = syncMechWolfTeamStatus(updatedSeats, mechWolfState);
+      const nextCombatState = {
+        ...extraOptions.combatState,
+        awakenedWolfBeautySubstituteUsed: true,
+        awakenedWolfBeautyActiveCharmSeat: null,
+      };
       const victory = checkVictory(updatedSeats, ruleOverrides, treasureMasterState, victoryOptions);
       return {
         seats: updatedSeats,
@@ -749,6 +754,7 @@ export function resolveDayExile(
         shootEligibility: null,
         mechWolfState: nextMechWolfState,
         treasureMasterState,
+        combatState: nextCombatState,
         victory,
       };
     }

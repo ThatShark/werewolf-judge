@@ -1,5 +1,6 @@
 import type { VictoryResult } from './game';
 import type {
+  CombatRuntimeState,
   HiddenWolfRuntimeState,
   MechWolfRuntimeState,
   TreasureMasterRuntimeState,
@@ -182,10 +183,13 @@ export interface DayExileResult {
   idiotRevealed: boolean;
   /** 盜寶蒙面狼為最後一狼被放逐時暫時免死並可隔夜再刀一人 */
   treasureMasterMaskedSurvived?: boolean;
+  /** 覺醒狼美人翻牌免死時由魅惑對象代替出局之座號 */
+  awakenedWolfBeautySubstitutedSeat?: number | null;
   charmedDeathSeat: number | null;
   shootEligibility: ShootEligibility | null;
   mechWolfState: MechWolfRuntimeState;
   treasureMasterState?: TreasureMasterRuntimeState;
+  combatState?: CombatRuntimeState;
   victory: VictoryResult;
 }
 

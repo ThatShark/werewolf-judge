@@ -96,4 +96,10 @@
   .border-selected-third {
     border: 1.5px solid #9E8CFC;
   }
+  .safe-pt {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }

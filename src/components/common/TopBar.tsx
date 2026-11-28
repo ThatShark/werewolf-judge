@@ -8,6 +8,8 @@ interface TopBarProps {
   phase: GamePhase;
   round: number;
   board?: BoardDefinition;
+  canUndoDayAction?: boolean;
+  onUndoDayAction?: () => void;
   onGoHome: () => void;
   onOpenQA: () => void;
   onOpenHistory: () => void;
@@ -25,6 +27,8 @@ export function TopBar({
   phase,
   round,
   board,
+  canUndoDayAction = false,
+  onUndoDayAction,
   onGoHome,
   onOpenQA,
   onOpenHistory,
@@ -52,8 +56,8 @@ export function TopBar({
       : null;
 
   return (
-    <header className="h-[52px] shrink-0 border-b border-subtle bg-surface">
-      <div className="mx-auto flex h-full max-w-lg items-center justify-between gap-2 px-2 md:max-w-2xl">
+    <header className="safe-pt shrink-0 border-b border-subtle bg-surface">
+      <div className="mx-auto flex h-[52px] max-w-lg items-center justify-between gap-2 px-2 md:max-w-2xl">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <button
             type="button"
@@ -85,6 +89,15 @@ export function TopBar({
 
         {isGame && (
           <div className="flex shrink-0 items-center gap-0.5">
+            {isActiveMatch && canUndoDayAction && onUndoDayAction && (
+              <button
+                type="button"
+                onClick={onUndoDayAction}
+                className="min-h-11 rounded-md px-2 text-[12px] font-semibold text-sheriff transition hover:bg-sheriff-tint"
+              >
+                撤銷上一步
+              </button>
+            )}
             {showHistory && (
               <button
                 type="button"

@@ -19,6 +19,14 @@ export function SummaryImageModal({ open, image, onClose }: SummaryImageModalPro
     if (!open) setStatusNotice(null);
   }, [open]);
 
+  useEffect(() => {
+    const url = image?.dataUrl;
+    if (!url || !url.startsWith('blob:')) return;
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [image?.dataUrl]);
+
   if (!open || !image) return null;
 
   const supportsShare = canNativeShareFile(image.blob, image.filename);
